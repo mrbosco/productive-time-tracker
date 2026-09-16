@@ -6,8 +6,11 @@ day. No server-side code — the browser talks to the Productive API directly.
 
 Full specification: [`docs/SPEC.md`](docs/SPEC.md). Decisions: [`docs/adr/`](docs/adr/).
 
-> **Status: scaffold.** Tooling only — no features yet. Routes, API client and screens land in
-> the pull requests that follow.
+> **Status: US-1.** Logging in and staying logged in (US-0) and the day view (US-1, with the week
+> strip from X-1) are in. Adding, editing and deleting an entry (US-2 to US-4) land in the pull
+> requests that follow. Parts of the day view are drawn but not yet wired — the timer control, the
+> quick-add line, the entry menu and `Copy from yesterday` all belong to later stories; CLAUDE.md
+> lists which.
 
 ## Requirements
 
