@@ -1,0 +1,8 @@
+{
+	"mcpServers": {
+		"productive": {
+			"type": "http",
+			"url": "https://mcp.productive.io/mcp"
+		}
+	}
+}

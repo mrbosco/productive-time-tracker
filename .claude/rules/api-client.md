@@ -73,13 +73,35 @@ hand-written client; ADR-0005 rules out generating types from the OpenAPI file.
 21. `source.pointer` omits its leading slash (`data/attributes/person`), contrary to JSON:API. Do
     not build field-level form mapping on it.
 
+## When the notes do not answer it
+
+The Productive MCP server (`.mcp.json`, `https://mcp.productive.io/mcp`) is configured for this
+project. It is the escalation path when this repo cannot answer an API question — use it instead of
+guessing at a payload or brute-forcing routes.
+
+25. **Order of resort**: `docs/api/README.md` and `docs/api/samples/` first, since they are already
+    verified. Then the MCP, which talks to the same account and knows the schema. Then a recorded
+    `curl`. Never a guess that goes straight into code.
+26. **An MCP answer is a lead, not a citation.** It is a model reading an API, not a response this
+    repo has seen. Confirm it with a real request and record the sample, then cite the sample. The
+    stop endpoint is the cautionary tale: fifteen plausible routes 404'd and the answer
+    (`PUT /timers/{id}/stop`) was a verb the path itself did not suggest — exactly the class of
+    question to ask the MCP first, and exactly the class of answer to verify before trusting.
+27. **The MCP can write.** It exposes create/update/delete across time entries, projects, invoices,
+    expenses, payments and purchase orders — far beyond this app's four endpoints. Read and lookup
+    calls are free. **Never call a mutating MCP tool without the user approving that specific
+    change**, the same discipline the recorded write samples followed. A mutation here hits a real
+    organization, and nothing in the tool name will warn you.
+28. Its connection is one organization at a time and per-user, so what it reports is scoped to
+    whoever authorised it. Say which organization an answer came from if it could matter.
+
 ## Tests
 
-22. Every function added here needs an MSW handler in `src/mocks/handlers.ts` — the suite runs with
+29. Every function added here needs an MSW handler in `src/mocks/handlers.ts` — the suite runs with
     `onUnhandledRequest: 'error'`, so an unhandled call fails the test rather than reaching the real
     API (ADR-0003).
-23. Fixtures are the recorded samples in `docs/api/samples/`, imported directly. Never hand-write a
+30. Fixtures are the recorded samples in `docs/api/samples/`, imported directly. Never hand-write a
     response body for a real endpoint; if a shape is not recorded, record it. Synthesising a
     _transport_ condition a sample cannot hold — a dead socket, a non-JSON body, an extra page — is
     fine, and should reuse a recorded resource where one exists.
-24. Parsing and error mapping are unit-tested against those samples (SPEC 8).
+31. Parsing and error mapping are unit-tested against those samples (SPEC 8).

@@ -88,7 +88,7 @@ Credentials are never in `.env`, the repo or the build. The token and organizati
 ## Rules, skills, agents
 
 - `.claude/rules/guidebook.md`, code conventions, scoped to `src/**`
-- `.claude/rules/api-client.md`, JSON:API client constraints, scoped to `src/api/**`
+- `.claude/rules/api-client.md`, JSON:API client constraints and the Productive MCP escalation path, scoped to `src/api/**`
 - `.claude/rules/git.md`, commit and PR format, unscoped
 - `.claude/rules/testing.md`, scoped to test files and `e2e/`
 - Skills: `feature` (build a story), `pr` (open one), `release` (cut one through the version PR)
@@ -102,4 +102,5 @@ Credentials are never in `.env`, the repo or the build. The token and organizati
 - Every behaviour change adds a changeset; CI enforces this on `feat/`, `fix/` and `perf/` branches
 - Releases go through the Version Packages PR that `.github/workflows/release.yml` opens; merging it tags `vX.Y.Z`. See the `release` skill
 - Do not add a dependency without an ADR. `docs/adr/0005-scope-cuts.md` lists what was deliberately rejected
+- The Productive MCP server is configured in `.mcp.json` (project scope, no secret in the file — it authenticates by browser OAuth). It is the escalation path for API questions this repo cannot answer; `.claude/rules/api-client.md` rules 25-28 govern when to use it and why its answers still need a recorded sample. **It can write to the real organization**, so mutating tools need explicit per-change approval
 - MCP servers irrelevant to this project (`adloop`, `chrome-devtools`) are disabled per project, not globally; re-enable either with `/mcp` if you need it here
