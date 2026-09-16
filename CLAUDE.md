@@ -63,7 +63,8 @@ src/
                 time-entries.ts, organization-memberships.ts, services.ts
   components/
     core/       shadcn primitives, copied in and edited here (components.json ui alias)
-    shared/     DatePicker, PageHeader, EmptyState, ErrorState, ConfirmDialog, layouts/
+    shared/     DatePicker, Illustration, PageHeader, ConfirmDialog, layouts/
+                (empty/error are states of TimeEntryList until a second caller, SPEC 6.1)
     features/   auth, time-entries, settings, timer, week, quick-add
   routes/       TanStack Router file routes; routeTree.gen.ts is generated, never edited
   lib/          date.ts, duration.ts, note.ts, storage.ts, query-client.ts
