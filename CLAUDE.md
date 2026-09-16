@@ -72,7 +72,9 @@ src/
 e2e/            Playwright specs, one per user story
 ```
 
-Only `components/core/`, `lib/`, `mocks/`, `routes/`, `styles/` and `__tests__/` exist today. `api/`, `components/shared/` and `components/features/` are specified in SPEC 6.1 and get created as stories land.
+`api/` is complete and is infrastructure, not a story: `client.ts` plus one typed module per resource, with MSW handlers built from the recorded responses in `docs/api/samples/`. Stories add hooks in `components/features/` that call these functions; they do not add API functions. Extending it means recording a sample first (`.claude/rules/api-client.md`).
+
+`components/shared/` and `components/features/` are specified in SPEC 6.1 and get created as stories land.
 
 ## Environment
 
@@ -86,6 +88,7 @@ Credentials are never in `.env`, the repo or the build. The token and organizati
 ## Rules, skills, agents
 
 - `.claude/rules/guidebook.md`, code conventions, scoped to `src/**`
+- `.claude/rules/api-client.md`, JSON:API client constraints, scoped to `src/api/**`
 - `.claude/rules/git.md`, commit and PR format, unscoped
 - `.claude/rules/testing.md`, scoped to test files and `e2e/`
 - Skills: `feature` (build a story), `pr` (open one), `release` (cut one through the version PR)
