@@ -117,7 +117,7 @@ zero-minute entry has `draft: false` (`docs/api/samples/time-entries-day-all-fie
 | A-5  | Edit route shape                                                                                     | `/entries/:id/edit`; opening it directly fetches the entry by ID. Create lives at `/entries/new?date=YYYY-MM-DD` (own route too, for symmetry and mobile).                                                                                                                                                             | decided |
 | A-6  | Time zone                                                                                            | Dates are calendar dates, not instants; the app never converts through UTC. `date` is formatted from local time.                                                                                                                                                                                                       | decided |
 | A-7  | Sorting                                                                                              | Entries for a day sorted by `created_at` ascending (order of logging), **client-side**: `/time_entries` accepts only `sort=date` and `sort=-date`, and rejects `created_at` with a 400 (`docs/api/samples/sort-support.txt`).                                                                                                                                                                                                                                                 | decided |
-| A-8  | Validation                                                                                           | The form requires duration > 0 and <= 24h. Existing zero-minute entries are still rendered, as `0h`, with no extra label. The muted `draft` label is rendered **only** from `attributes.draft`, which is a real API field and is independent of duration — the recorded zero-minute entry has `draft: false`. `draft` is therefore part of the day list's sparse fieldset. Description optional (API allows an empty or `null` note) but max length guarded; date required.                                                                                                               | decided |
+| A-8  | Validation                                                                                           | The form requires duration > 0 and <= 24h. Existing zero-minute entries are still rendered, as `0h`, with no extra label. The muted `draft` label is rendered **only** from `attributes.draft`, which is a real API field and is independent of duration — the recorded zero-minute entry has `draft: false`. `draft` is therefore part of the day list's sparse fieldset. Note that a **running timer also shows as a zero-minute entry**, because starting one creates its entry immediately (X-4); that is another reason the label cannot be derived from duration. Description optional (API allows an empty or `null` note) but max length guarded; date required.                                                                                                               | decided |
 | A-9  | Notes created in Productive's UI are rich text, so `note` may contain HTML. **Confirmed**: a recorded note reads `<ul><li><p>Probavam</p></li></ul>` (`docs/api/samples/time-entries-day.json`). `note` is also nullable, so the renderer handles `null` as well as HTML. | The app writes plain text with newlines and, when rendering, strips HTML tags to text (never `dangerouslySetInnerHTML`), preserving line breaks. Editing such an entry shows the stripped text; saving overwrites with plain text, which is documented.                                                                | decided |
 | A-10 | Delete confirmation                                                                                  | The assignment requires confirmation, so a dialog is used, unlike Productive's immediate delete with an UNDO toast. UNDO on top of the dialog is listed as a possible enhancement, not implemented.                                                                                                                    | decided |
 
@@ -214,7 +214,7 @@ Implemented only after all required stories are merged (`v0.2.0`), one PR each, 
 | 2   | X-2 | **Keyboard shortcuts.** `n` new, `←`/`→` day, `t` today, `?` shortcut sheet, `Esc` close; cards are focusable with roving `↑`/`↓`, `e` edits and `Delete`/`Backspace` opens the confirm dialog for the focused card; `s` stops a running timer. All shortcuts are disabled while an input, textarea or dialog has focus.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            | none                                                | S      |
 | 3   | P-2 | **Start/end range mode.** A toggle in the entry form swaps the duration field for `from`/`to` time inputs; minutes are computed client-side and only `time` is stored; end before start is a validation error; editing always opens in duration mode (the API keeps no range).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      | none beyond create/update                           | S      |
 | 4   | X-3 | **Duplicate / copy.** Card menu `Duplicate` opens New entry prefilled with the note and duration and `date = today` (Toggl's continue pattern; the source date stays reachable in the picker). Empty-day state adds `Copy from yesterday`: sequential `POST /time_entries` from the cached D-1 list, one toast with count and failures.                                                                                                                                                                                                                                                                                                                                                                                                                                                                             | create                                              | S      |
-| 5   | X-4 | **Timer.** Start a timer for the default service from the app bar; elapsed time is shown in the app bar on every route and mirrored into `document.title`; `{ timerId, startedAt, entryId? }` is persisted in `localStorage` so a refresh restores the indicator before the `['timer', personId]` query resolves. Stop opens the entry form prefilled with elapsed minutes. A card's `Continue` starts a timer that adds to that entry on stop (`PATCH`), not a new entry.                                                                                                                                                                                                                                                                                                                                          | `POST /timers`, stop endpoint (**partially verified** — see below) | M      |
+| 5   | X-4 | **Timer.** Start a timer for the default service from the app bar; elapsed time is shown in the app bar on every route and mirrored into `document.title`; `{ timerId, startedAt, entryId? }` is persisted in `localStorage` so a refresh restores the indicator before the `['timer', personId]` query resolves. Stop opens the entry form prefilled with elapsed minutes. A card's `Continue` starts a timer that adds to that entry on stop (`PATCH`), not a new entry.                                                                                                                                                                                                                                                                                                                                          | `POST /timers`, `PUT /timers/{id}/stop` (verified, see below) | M      |
 | 6   | X-5 | **Activity awareness while a timer runs.** Idle detection (no `pointermove`/`keydown`/`wheel`/`click` for `idleMinutes`, default 15) is gated on `document.visibilityState === 'visible'` so a background tab never triggers it. Banner offers Harvest's resolution model: `Pause and discard idle time` (subtracts `idleMinutes` from the value written on stop, client-side) and `Keep running`. The synthetic-input heuristic (near-constant pointer intervals, near-zero displacement, no non-pointer events) is implemented and unit-tested but sits behind a config flag, **off by default**, because the market (Toggl, Harvest) explicitly positions itself against input monitoring; the README explains the flag and the reasoning. Nothing is sent to the API; the timer is never stopped automatically. | none                                                | S      |
 | 7   | P-1 | **Quick add line.** One text input above the list parsing `1.5h client call yesterday`, `45m standup`, `2:30 fix login bug` into `{ time, note, date }` and opening the New entry form prefilled; never submits directly. Deterministic parser in `lib/quick-add.ts`, no AI, no network; table-driven unit tests. Cut first.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        | via the existing form                               | M      |
 
@@ -227,30 +227,40 @@ Implemented only after all required stories are merged (`v0.2.0`), one PR each, 
 
 ## 11. Research inputs
 
-#### X-4 timer endpoint status (2026-09-16)
+#### X-4 timer endpoints (verified 2026-09-16)
 
-Not "verified in Phase 4" as this row previously claimed. What is verified:
+Every call below was run against the live API and recorded in `docs/api/samples/`. The full route
+matrix, including the fifteen paths that 404, is in `timer-stop-endpoint-probes.txt`.
 
-- `GET /timers?filter[person_id]=P&filter[stopped_at][eq]=&include=time_entry` returns the running
-  timer, with `person_id` as a plain integer attribute alongside the relationships
-  (`docs/api/samples/timers-running.json`). `src/api/timers.ts` ships this, read-only.
-- `POST /timers` is reachable and writable with a normal API token — it answers 422, not 401/403 —
-  and the validation error points at `data/attributes/service`, so a timer is created against a
-  service (`docs/api/samples/error-422-timer-requires-service.json`).
+| Step         | Call                                              | Sample                                   |
+| ------------ | ------------------------------------------------- | ---------------------------------------- |
+| Start        | `POST /timers`                                    | `timer-create.json`                      |
+| Poll running | `GET /timers?filter[stopped_at][eq]=&include=time_entry` | `timers-running.json`             |
+| Stop         | `PUT /timers/{id}/stop` with body `{}`            | `timer-stop.json`                        |
+| Entry after  | `GET /time_entries/{linked id}`                   | `time-entry-from-timer.json`             |
+| Stop twice   | 409 `timer_already_stopped`                       | `error-409-timer-already-stopped.json`   |
 
-What is **not** verified, after trying every conventional route
-(`docs/api/samples/timer-stop-endpoint-probes.txt`): there is no stop endpoint.
-`POST /timers/{id}/stop`, `/stop_timer` and `/stop-timer` all 404 `route_not_found`, as do `PATCH`
-and `PUT` on `/timers/{id}`, while `GET /timers/{id}` returns 200 — member routes exist, mutation
-routes do not. `PATCH /time_entries/{id}` with `timer_stopped_at` is accepted and ignored; the field
-is read-only. `DELETE /timers/{id}` is the only untried candidate and is destructive.
+Start body — `service` and `person` as relationships, no attributes:
 
-**X-4 is blocked, not cut.** Starting a timer without a known stop mechanism would strand it — which
-is what has already happened to the test account's timer, running since 2026-09-15. The start
-payload, the stop mechanism and whether stopping writes `time` must be recorded before X-4 begins;
-if `DELETE /timers/{id}` turns out to be the only way to end a timer, X-4's "stop opens the entry
-form prefilled with elapsed minutes" needs rethinking, because a delete would not write elapsed
-time anywhere.
+```json
+{ "data": { "type": "timers", "relationships": {
+  "service": { "data": { "type": "services", "id": "S" } },
+  "person":  { "data": { "type": "people",   "id": "P" } } } } }
+```
+
+Three behaviours that shape X-4:
+
+1. **Starting a timer also creates a time entry**, dated today with `time: 0`, linked through the
+   timer's `time_entry` relationship. It appears in the day list straight away, so a running timer is
+   already a `0h` row before anything is stopped. X-4 must not create a second entry on stop.
+2. **Stopping writes the elapsed whole minutes onto that linked entry** as `time`, and returns them
+   as the timer's `total_time`. 87 seconds became `1`; the remainder is dropped. So "stop opens the
+   entry form prefilled with elapsed minutes" holds — but the entry already exists and already has
+   the value, so the form edits it rather than creating it.
+3. **`PUT`, not `POST`.** The same path 404s for `POST`. Stopping twice is 409
+   `timer_already_stopped`, which the UI treats as "already stopped", not as an error.
+
+`src/api/timers.ts` implements all three calls.
 
 - `docs/research/productive-app-analysis.md`: reverse-engineering of Productive's own Time screen (UI, mobile layout, network calls) and the adopt/adapt table that fed A-9, A-10, X-1, X-3 and X-4.
 - `docs/research/competitive-analysis.md`: Harvest and Toggl compared with Productive; source of the X-1..X-5 refinements, P-1, P-2, A-2, A-3 and the R-7 wording.
