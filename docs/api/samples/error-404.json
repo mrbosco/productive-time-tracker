@@ -1,0 +1,12 @@
+{
+  "errors": [
+    {
+      "status": "404",
+      "code": "record_not_found",
+      "title": "Record Not Found",
+      "detail": "The requested record was not found",
+      "meta": {},
+      "source": {}
+    }
+  ]
+}

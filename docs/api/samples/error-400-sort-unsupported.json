@@ -1,0 +1,14 @@
+{
+  "errors": [
+    {
+      "status": "unprocessable_content",
+      "code": "sort_param_unsupported",
+      "title": "Sort param unsupported",
+      "detail": "Sort by 'created_at' is not supported on this endpoint.",
+      "meta": {},
+      "source": {
+        "parameter": "sort"
+      }
+    }
+  ]
+}

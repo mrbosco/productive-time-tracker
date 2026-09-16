@@ -1,0 +1,15 @@
+DELETE /time_entries/163007266
+
+HTTP/2 204 
+date: Wed, 16 Sep 2026 08:39:52 GMT
+x-frame-options: SAMEORIGIN
+x-xss-protection: 0
+x-content-type-options: nosniff
+x-permitted-cross-domain-policies: none
+referrer-policy: strict-origin-when-cross-origin
+cache-control: no-cache
+x-request-id: 74d198a4-751d-47dc-bdf4-b433bba815cc
+x-runtime: 0.131482
+vary: Origin
+
+(response body: 0 bytes)

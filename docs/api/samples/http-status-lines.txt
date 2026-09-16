@@ -1,0 +1,23 @@
+HTTP status recorded for each sample (curl -w '%{http_code}').
+
+SAMPLE                                       HTTP
+organization-memberships.json                200
+organization-memberships-include-person.json 200
+time-entries-day.json                        200
+time-entries-day-date-operators.json         200
+time-entries-empty-day.json                  200
+time-entry-show.json                         200
+time-entries-per-page.json                   200
+time-entries-page-size.json                  200
+services.json                                200
+services-unfiltered.json                     200
+services-person-filter-ignored.json          200
+services-fields-without-relationship.json    200
+time-entry-create.json                       201
+time-entry-update.json                       200
+error-400-sort-unsupported.json              400
+error-401.json                               401
+error-403.json                               403
+error-404.json                               404
+error-422-missing-service.json               422
+timers-running.json                          200

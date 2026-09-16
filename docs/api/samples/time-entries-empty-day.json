@@ -1,0 +1,14 @@
+{
+  "data": [],
+  "links": {
+    "first": "https://api.productive.io/api/v2/time_entries?fields%5Bservices%5D=name&fields%5Btime_entries%5D=date%2Ctime%2Cnote%2Ccreated_at%2Cservice&filter%5Bafter%5D=2026-09-02&filter%5Bbefore%5D=2026-09-02&filter%5Bperson_id%5D=1448639&include=service&page%5Bnumber%5D=1&page%5Bsize%5D=200",
+    "last": "https://api.productive.io/api/v2/time_entries?fields%5Bservices%5D=name&fields%5Btime_entries%5D=date%2Ctime%2Cnote%2Ccreated_at%2Cservice&filter%5Bafter%5D=2026-09-02&filter%5Bbefore%5D=2026-09-02&filter%5Bperson_id%5D=1448639&include=service&page%5Bnumber%5D=0&page%5Bsize%5D=200"
+  },
+  "meta": {
+    "current_page": 1,
+    "total_pages": 0,
+    "total_count": 0,
+    "page_size": 200,
+    "max_page_size": 200
+  }
+}

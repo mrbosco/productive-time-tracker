@@ -1,0 +1,247 @@
+{
+  "data": [
+    {
+      "id": "16887825",
+      "type": "services",
+      "attributes": {
+        "name": "Acquiring new clients",
+        "time_tracking_enabled": true
+      }
+    },
+    {
+      "id": "16887826",
+      "type": "services",
+      "attributes": {
+        "name": "Administrative work",
+        "time_tracking_enabled": true
+      }
+    },
+    {
+      "id": "16887840",
+      "type": "services",
+      "attributes": {
+        "name": "Android Development",
+        "time_tracking_enabled": true
+      }
+    },
+    {
+      "id": "16887832",
+      "type": "services",
+      "attributes": {
+        "name": "App design",
+        "time_tracking_enabled": true
+      }
+    },
+    {
+      "id": "16887831",
+      "type": "services",
+      "attributes": {
+        "name": "App development",
+        "time_tracking_enabled": true
+      }
+    },
+    {
+      "id": "16887850",
+      "type": "services",
+      "attributes": {
+        "name": "Art and Graphics",
+        "time_tracking_enabled": true
+      }
+    },
+    {
+      "id": "16887848",
+      "type": "services",
+      "attributes": {
+        "name": "Content - Blog posts",
+        "time_tracking_enabled": true
+      }
+    },
+    {
+      "id": "16887835",
+      "type": "services",
+      "attributes": {
+        "name": "Design",
+        "time_tracking_enabled": true
+      }
+    },
+    {
+      "id": "16887845",
+      "type": "services",
+      "attributes": {
+        "name": "Design",
+        "time_tracking_enabled": true
+      }
+    },
+    {
+      "id": "16887829",
+      "type": "services",
+      "attributes": {
+        "name": "Design of the app",
+        "time_tracking_enabled": true
+      }
+    },
+    {
+      "id": "16887841",
+      "type": "services",
+      "attributes": {
+        "name": "Design prototype",
+        "time_tracking_enabled": true
+      }
+    },
+    {
+      "id": "16887834",
+      "type": "services",
+      "attributes": {
+        "name": "Development",
+        "time_tracking_enabled": true
+      }
+    },
+    {
+      "id": "16887846",
+      "type": "services",
+      "attributes": {
+        "name": "Development",
+        "time_tracking_enabled": true
+      }
+    },
+    {
+      "id": "16887836",
+      "type": "services",
+      "attributes": {
+        "name": "Expenses: Design",
+        "time_tracking_enabled": true
+      }
+    },
+    {
+      "id": "16887837",
+      "type": "services",
+      "attributes": {
+        "name": "Expenses: Programming",
+        "time_tracking_enabled": true
+      }
+    },
+    {
+      "id": "16887838",
+      "type": "services",
+      "attributes": {
+        "name": "Expenses: Programming",
+        "time_tracking_enabled": true
+      }
+    },
+    {
+      "id": "16887828",
+      "type": "services",
+      "attributes": {
+        "name": "Frontend development",
+        "time_tracking_enabled": true
+      }
+    },
+    {
+      "id": "16887849",
+      "type": "services",
+      "attributes": {
+        "name": "Game Design",
+        "time_tracking_enabled": true
+      }
+    },
+    {
+      "id": "16887842",
+      "type": "services",
+      "attributes": {
+        "name": "iOS Development",
+        "time_tracking_enabled": true
+      }
+    },
+    {
+      "id": "16887852",
+      "type": "services",
+      "attributes": {
+        "name": "Programming/Game Development",
+        "time_tracking_enabled": true
+      }
+    },
+    {
+      "id": "16887827",
+      "type": "services",
+      "attributes": {
+        "name": "Project management",
+        "time_tracking_enabled": true
+      }
+    },
+    {
+      "id": "16887830",
+      "type": "services",
+      "attributes": {
+        "name": "Project management",
+        "time_tracking_enabled": true
+      }
+    },
+    {
+      "id": "16887833",
+      "type": "services",
+      "attributes": {
+        "name": "Project management",
+        "time_tracking_enabled": true
+      }
+    },
+    {
+      "id": "16887844",
+      "type": "services",
+      "attributes": {
+        "name": "Project management",
+        "time_tracking_enabled": true
+      }
+    },
+    {
+      "id": "16887847",
+      "type": "services",
+      "attributes": {
+        "name": "Project management",
+        "time_tracking_enabled": true
+      }
+    },
+    {
+      "id": "16887843",
+      "type": "services",
+      "attributes": {
+        "name": "Quality Assurance/Testing",
+        "time_tracking_enabled": true
+      }
+    },
+    {
+      "id": "16887853",
+      "type": "services",
+      "attributes": {
+        "name": "Quality Assurance/Testing",
+        "time_tracking_enabled": true
+      }
+    },
+    {
+      "id": "16887851",
+      "type": "services",
+      "attributes": {
+        "name": "Sound and Music",
+        "time_tracking_enabled": true
+      }
+    },
+    {
+      "id": "16887839",
+      "type": "services",
+      "attributes": {
+        "name": "UI/UX Design",
+        "time_tracking_enabled": true
+      }
+    }
+  ],
+  "links": {
+    "first": "https://api.productive.io/api/v2/services?fields%5Bservices%5D=name%2Ctime_tracking_enabled&filter%5Bperson_id%5D=1448639&page%5Bnumber%5D=1&page%5Bsize%5D=200",
+    "last": "https://api.productive.io/api/v2/services?fields%5Bservices%5D=name%2Ctime_tracking_enabled&filter%5Bperson_id%5D=1448639&page%5Bnumber%5D=1&page%5Bsize%5D=200"
+  },
+  "meta": {
+    "current_page": 1,
+    "total_pages": 1,
+    "total_count": 29,
+    "page_size": 200,
+    "max_page_size": 200
+  }
+}

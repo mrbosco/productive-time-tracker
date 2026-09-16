@@ -1,0 +1,12 @@
+{
+  "errors": [
+    {
+      "status": "403",
+      "code": "no_person",
+      "title": "Access Denied",
+      "detail": "User provided with X-Auth-Token header does not have a person associated in the organization provided with X-Organization-Id header",
+      "meta": {},
+      "source": {}
+    }
+  ]
+}

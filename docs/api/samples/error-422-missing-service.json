@@ -1,0 +1,14 @@
+{
+  "errors": [
+    {
+      "status": "422",
+      "code": "invalid_attribute_value",
+      "title": "Invalid Attribute Value",
+      "detail": "person cannot track on this service",
+      "meta": {},
+      "source": {
+        "pointer": "data/attributes/person"
+      }
+    }
+  ]
+}

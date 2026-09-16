@@ -1,0 +1,139 @@
+{
+  "data": [
+    {
+      "id": "162921872",
+      "type": "time_entries",
+      "attributes": {
+        "draft": false,
+        "date": "2026-09-15",
+        "created_at": "2026-09-15T17:41:30.013+02:00",
+        "time": 240,
+        "billable_time": 0,
+        "recognized_time": 0,
+        "note": null,
+        "track_method_id": 4,
+        "started_at": "2026-09-15T17:41:29.699+02:00",
+        "timer_started_at": "2026-09-15T17:41:48.000+02:00",
+        "timer_stopped_at": "2026-09-15T17:41:45.000+02:00",
+        "approved": true,
+        "approved_at": "2026-09-15T17:41:30.000+02:00",
+        "updated_at": "2026-09-15T17:41:59.640+02:00",
+        "calendar_event_id": null,
+        "calendar_event_recurring_id": null,
+        "invoice_attribution_id": null,
+        "invoiced": false,
+        "overhead": true,
+        "overtime": false,
+        "overtime_cost_multiplier": "1.0",
+        "rejected": false,
+        "rejected_reason": null,
+        "rejected_at": null,
+        "last_activity_at": "2026-09-15T17:41:48.054+02:00",
+        "submitted": false,
+        "currency": "USD",
+        "currency_default": "USD",
+        "currency_normalized": "USD",
+        "cost": 0,
+        "cost_default": 0,
+        "cost_normalized": 0,
+        "work_cost": 0,
+        "work_cost_default": 0,
+        "work_cost_normalized": 0,
+        "overhead_cost": 0,
+        "overhead_cost_default": 0,
+        "overhead_cost_normalized": 0,
+        "internal_overhead_cost": 0,
+        "internal_overhead_cost_default": 0,
+        "internal_overhead_cost_normalized": 0,
+        "facility_overhead_cost": 0,
+        "facility_overhead_cost_default": 0,
+        "facility_overhead_cost_normalized": 0
+      },
+      "relationships": {
+        "organization": {
+          "data": {
+            "type": "organizations",
+            "id": "999999"
+          }
+        },
+        "person": {
+          "meta": {
+            "included": false
+          }
+        },
+        "service": {
+          "meta": {
+            "included": false
+          }
+        },
+        "task": {
+          "meta": {
+            "included": false
+          }
+        },
+        "approver": {
+          "meta": {
+            "included": false
+          }
+        },
+        "updater": {
+          "meta": {
+            "included": false
+          }
+        },
+        "rejecter": {
+          "meta": {
+            "included": false
+          }
+        },
+        "creator": {
+          "meta": {
+            "included": false
+          }
+        },
+        "last_actor": {
+          "meta": {
+            "included": false
+          }
+        },
+        "person_subsidiary": {
+          "meta": {
+            "included": false
+          }
+        },
+        "deal_subsidiary": {
+          "meta": {
+            "included": false
+          }
+        },
+        "timesheet": {
+          "meta": {
+            "included": false
+          }
+        },
+        "invoice_attribution": {
+          "meta": {
+            "included": false
+          }
+        },
+        "approval_statuses": {
+          "meta": {
+            "included": false
+          }
+        }
+      }
+    }
+  ],
+  "links": {
+    "first": "https://api.productive.io/api/v2/time_entries?filter%5Bperson_id%5D=1448639&page%5Bnumber%5D=1&page%5Bsize%5D=1&per_page=1",
+    "last": "https://api.productive.io/api/v2/time_entries?filter%5Bperson_id%5D=1448639&page%5Bnumber%5D=3&page%5Bsize%5D=1&per_page=1",
+    "next": "https://api.productive.io/api/v2/time_entries?filter%5Bperson_id%5D=1448639&page%5Bnumber%5D=2&page%5Bsize%5D=1&per_page=1"
+  },
+  "meta": {
+    "current_page": 1,
+    "total_pages": 3,
+    "total_count": 3,
+    "page_size": 1,
+    "max_page_size": 200
+  }
+}

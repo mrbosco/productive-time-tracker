@@ -1,0 +1,456 @@
+{
+  "data": [
+    {
+      "id": "16887825",
+      "type": "services",
+      "attributes": {
+        "name": "Acquiring new clients"
+      },
+      "relationships": {
+        "deal": {
+          "data": {
+            "type": "deals",
+            "id": "4287357"
+          }
+        }
+      }
+    },
+    {
+      "id": "16887826",
+      "type": "services",
+      "attributes": {
+        "name": "Administrative work"
+      },
+      "relationships": {
+        "deal": {
+          "data": {
+            "type": "deals",
+            "id": "4287357"
+          }
+        }
+      }
+    },
+    {
+      "id": "16887840",
+      "type": "services",
+      "attributes": {
+        "name": "Android Development"
+      },
+      "relationships": {
+        "deal": {
+          "data": {
+            "type": "deals",
+            "id": "4287350"
+          }
+        }
+      }
+    },
+    {
+      "id": "16887832",
+      "type": "services",
+      "attributes": {
+        "name": "App design"
+      },
+      "relationships": {
+        "deal": {
+          "data": {
+            "type": "deals",
+            "id": "4287361"
+          }
+        }
+      }
+    },
+    {
+      "id": "16887831",
+      "type": "services",
+      "attributes": {
+        "name": "App development"
+      },
+      "relationships": {
+        "deal": {
+          "data": {
+            "type": "deals",
+            "id": "4287361"
+          }
+        }
+      }
+    },
+    {
+      "id": "16887850",
+      "type": "services",
+      "attributes": {
+        "name": "Art and Graphics"
+      },
+      "relationships": {
+        "deal": {
+          "data": {
+            "type": "deals",
+            "id": "4287349"
+          }
+        }
+      }
+    },
+    {
+      "id": "16887848",
+      "type": "services",
+      "attributes": {
+        "name": "Content - Blog posts"
+      },
+      "relationships": {
+        "deal": {
+          "data": {
+            "type": "deals",
+            "id": "4287351"
+          }
+        }
+      }
+    },
+    {
+      "id": "16887835",
+      "type": "services",
+      "attributes": {
+        "name": "Design"
+      },
+      "relationships": {
+        "deal": {
+          "data": {
+            "type": "deals",
+            "id": "4287360"
+          }
+        }
+      }
+    },
+    {
+      "id": "16887845",
+      "type": "services",
+      "attributes": {
+        "name": "Design"
+      },
+      "relationships": {
+        "deal": {
+          "data": {
+            "type": "deals",
+            "id": "4287351"
+          }
+        }
+      }
+    },
+    {
+      "id": "16887829",
+      "type": "services",
+      "attributes": {
+        "name": "Design of the app"
+      },
+      "relationships": {
+        "deal": {
+          "data": {
+            "type": "deals",
+            "id": "4287359"
+          }
+        }
+      }
+    },
+    {
+      "id": "16887841",
+      "type": "services",
+      "attributes": {
+        "name": "Design prototype"
+      },
+      "relationships": {
+        "deal": {
+          "data": {
+            "type": "deals",
+            "id": "4287350"
+          }
+        }
+      }
+    },
+    {
+      "id": "16887834",
+      "type": "services",
+      "attributes": {
+        "name": "Development"
+      },
+      "relationships": {
+        "deal": {
+          "data": {
+            "type": "deals",
+            "id": "4287360"
+          }
+        }
+      }
+    },
+    {
+      "id": "16887846",
+      "type": "services",
+      "attributes": {
+        "name": "Development"
+      },
+      "relationships": {
+        "deal": {
+          "data": {
+            "type": "deals",
+            "id": "4287351"
+          }
+        }
+      }
+    },
+    {
+      "id": "16887828",
+      "type": "services",
+      "attributes": {
+        "name": "Frontend development"
+      },
+      "relationships": {
+        "deal": {
+          "data": {
+            "type": "deals",
+            "id": "4287359"
+          }
+        }
+      }
+    },
+    {
+      "id": "16887849",
+      "type": "services",
+      "attributes": {
+        "name": "Game Design"
+      },
+      "relationships": {
+        "deal": {
+          "data": {
+            "type": "deals",
+            "id": "4287349"
+          }
+        }
+      }
+    },
+    {
+      "id": "16887842",
+      "type": "services",
+      "attributes": {
+        "name": "iOS Development"
+      },
+      "relationships": {
+        "deal": {
+          "data": {
+            "type": "deals",
+            "id": "4287350"
+          }
+        }
+      }
+    },
+    {
+      "id": "16887852",
+      "type": "services",
+      "attributes": {
+        "name": "Programming/Game Development"
+      },
+      "relationships": {
+        "deal": {
+          "data": {
+            "type": "deals",
+            "id": "4287349"
+          }
+        }
+      }
+    },
+    {
+      "id": "16887827",
+      "type": "services",
+      "attributes": {
+        "name": "Project management"
+      },
+      "relationships": {
+        "deal": {
+          "data": {
+            "type": "deals",
+            "id": "4287359"
+          }
+        }
+      }
+    },
+    {
+      "id": "16887830",
+      "type": "services",
+      "attributes": {
+        "name": "Project management"
+      },
+      "relationships": {
+        "deal": {
+          "data": {
+            "type": "deals",
+            "id": "4287361"
+          }
+        }
+      }
+    },
+    {
+      "id": "16887833",
+      "type": "services",
+      "attributes": {
+        "name": "Project management"
+      },
+      "relationships": {
+        "deal": {
+          "data": {
+            "type": "deals",
+            "id": "4287360"
+          }
+        }
+      }
+    },
+    {
+      "id": "16887844",
+      "type": "services",
+      "attributes": {
+        "name": "Project management"
+      },
+      "relationships": {
+        "deal": {
+          "data": {
+            "type": "deals",
+            "id": "4287350"
+          }
+        }
+      }
+    },
+    {
+      "id": "16887847",
+      "type": "services",
+      "attributes": {
+        "name": "Project management"
+      },
+      "relationships": {
+        "deal": {
+          "data": {
+            "type": "deals",
+            "id": "4287351"
+          }
+        }
+      }
+    },
+    {
+      "id": "16887843",
+      "type": "services",
+      "attributes": {
+        "name": "Quality Assurance/Testing"
+      },
+      "relationships": {
+        "deal": {
+          "data": {
+            "type": "deals",
+            "id": "4287350"
+          }
+        }
+      }
+    },
+    {
+      "id": "16887853",
+      "type": "services",
+      "attributes": {
+        "name": "Quality Assurance/Testing"
+      },
+      "relationships": {
+        "deal": {
+          "data": {
+            "type": "deals",
+            "id": "4287349"
+          }
+        }
+      }
+    },
+    {
+      "id": "16887851",
+      "type": "services",
+      "attributes": {
+        "name": "Sound and Music"
+      },
+      "relationships": {
+        "deal": {
+          "data": {
+            "type": "deals",
+            "id": "4287349"
+          }
+        }
+      }
+    },
+    {
+      "id": "16887839",
+      "type": "services",
+      "attributes": {
+        "name": "UI/UX Design"
+      },
+      "relationships": {
+        "deal": {
+          "data": {
+            "type": "deals",
+            "id": "4287350"
+          }
+        }
+      }
+    }
+  ],
+  "included": [
+    {
+      "id": "4287357",
+      "type": "deals",
+      "attributes": {
+        "name": "Administration"
+      }
+    },
+    {
+      "id": "4287350",
+      "type": "deals",
+      "attributes": {
+        "name": "Mobile banking app [SAMPLE]"
+      }
+    },
+    {
+      "id": "4287361",
+      "type": "deals",
+      "attributes": {
+        "name": "Development"
+      }
+    },
+    {
+      "id": "4287349",
+      "type": "deals",
+      "attributes": {
+        "name": "Sonic Game [SAMPLE]"
+      }
+    },
+    {
+      "id": "4287351",
+      "type": "deals",
+      "attributes": {
+        "name": "Skin self-care app [SAMPLE]"
+      }
+    },
+    {
+      "id": "4287360",
+      "type": "deals",
+      "attributes": {
+        "name": "Monthly retainer"
+      }
+    },
+    {
+      "id": "4287359",
+      "type": "deals",
+      "attributes": {
+        "name": "Development"
+      }
+    }
+  ],
+  "links": {
+    "first": "https://api.productive.io/api/v2/services?fields%5Bdeals%5D=name&fields%5Bservices%5D=name%2Cdeal&filter%5Btime_tracking_enabled%5D=true&include=deal&page%5Bnumber%5D=1&page%5Bsize%5D=50",
+    "last": "https://api.productive.io/api/v2/services?fields%5Bdeals%5D=name&fields%5Bservices%5D=name%2Cdeal&filter%5Btime_tracking_enabled%5D=true&include=deal&page%5Bnumber%5D=1&page%5Bsize%5D=50"
+  },
+  "meta": {
+    "current_page": 1,
+    "total_pages": 1,
+    "total_count": 26,
+    "page_size": 50,
+    "max_page_size": 200
+  }
+}
