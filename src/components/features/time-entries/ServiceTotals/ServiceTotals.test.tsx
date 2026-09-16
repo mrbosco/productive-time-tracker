@@ -50,7 +50,7 @@ describe('ServiceTotals', () => {
 	const entries = [buildEntry('a', 120, 'Administrative work'), buildEntry('b', 105, 'Development')];
 
 	it('lists each service with its own total', () => {
-		render(<ServiceTotals entries={entries} weekMinutes={{ '2026-09-15': 225 }} />);
+		render(<ServiceTotals entries={entries} weekTotals={{ '2026-09-15': 225 }} />);
 		const card = screen.getByRole('region', { name: 'Totals by service' });
 
 		expect(within(card).getByText('Administrative work')).toBeInTheDocument();
@@ -59,15 +59,17 @@ describe('ServiceTotals', () => {
 	});
 
 	it('totals the day from the entries and the week from the week query', () => {
-		render(<ServiceTotals entries={entries} weekMinutes={{ '2026-09-14': 375, '2026-09-15': 225 }} />);
+		render(<ServiceTotals entries={entries} weekTotals={{ '2026-09-14': 375, '2026-09-15': 225 }} />);
 
 		expect(screen.getByText('Day total').parentElement).toHaveTextContent('3h 45m');
 		expect(screen.getByText('Week total').parentElement).toHaveTextContent('10h');
 	});
 
-	it('shows a zero week total rather than nothing when the week could not be loaded', () => {
-		render(<ServiceTotals entries={entries} weekMinutes={undefined} />);
+	/** A week that failed to load is not a week of zero hours. */
+	it('leaves the week total blank rather than reporting 0h when the week failed', () => {
+		render(<ServiceTotals entries={entries} weekTotals={undefined} isWeekError />);
 
-		expect(screen.getByText('Week total').parentElement).toHaveTextContent('0h');
+		expect(screen.getByText('Week total').parentElement).toHaveTextContent('unavailable');
+		expect(screen.getByText('Week total').parentElement).not.toHaveTextContent('0h');
 	});
 });

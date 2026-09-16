@@ -34,10 +34,10 @@ export function TimeEntryCard({ entry }: { entry: TimeEntry }) {
 	const note = toPlainText(entry.note);
 
 	return (
-		<article
-			tabIndex={0}
-			className="relative flex items-start gap-3 rounded-entry border border-line bg-surface p-4 md:gap-5 md:px-5 md:py-[18px]"
-		>
+		// Not focusable yet. The design gives cards a focus ring because X-2 moves between them with
+		// the arrow keys; until that lands, `tabIndex={0}` would only add a tab stop to an element
+		// with nothing to activate. X-2 brings it back as a roving tabindex.
+		<article className="relative flex items-start gap-3 rounded-entry border border-line bg-surface p-4 md:gap-5 md:px-5 md:py-[18px]">
 			{/*
 			 * Tabular numerals so a column of durations lines up on the digits rather than
 			 * shifting with each glyph width (design brief 2).
@@ -71,16 +71,19 @@ export function TimeEntryCard({ entry }: { entry: TimeEntry }) {
 
 				{/*
 				 * Every item here belongs to a later story - edit and delete to US-3 and US-4,
-				 * continue and duplicate to X-4 and X-3 - so the menu is drawn and reachable but
-				 * does nothing yet. It is listed in the PR as the one part of this screen that
-				 * looks finished and is not.
+				 * continue and duplicate to X-4 and X-3. The menu is drawn because the design puts
+				 * it on the card, but the items are `disabled` and say which story wires them: a
+				 * `Delete` that reads as destructive, takes focus and then does nothing is worse
+				 * than one that is visibly not ready (guidebook 18).
 				 */}
 				<DropdownMenuContent align="end" className="w-[210px]">
-					<DropdownMenuItem>Edit</DropdownMenuItem>
-					<DropdownMenuItem>Continue timer</DropdownMenuItem>
-					<DropdownMenuItem>Duplicate</DropdownMenuItem>
+					<DropdownMenuItem disabled>Edit (US-3)</DropdownMenuItem>
+					<DropdownMenuItem disabled>Continue timer (X-4)</DropdownMenuItem>
+					<DropdownMenuItem disabled>Duplicate (X-3)</DropdownMenuItem>
 					<DropdownMenuSeparator />
-					<DropdownMenuItem variant="destructive">Delete</DropdownMenuItem>
+					<DropdownMenuItem disabled variant="destructive">
+						Delete (US-4)
+					</DropdownMenuItem>
 				</DropdownMenuContent>
 			</DropdownMenu>
 		</article>

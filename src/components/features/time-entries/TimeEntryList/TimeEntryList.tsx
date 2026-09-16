@@ -110,9 +110,10 @@ export function TimeEntryList({ entries, isPending, isRetrying = false, onRetry,
 				 */}
 				<button
 					type="button"
-					className="rounded-input text-meta font-medium text-accent underline underline-offset-[3px]"
+					disabled
+					className="rounded-input text-meta font-medium text-accent underline underline-offset-[3px] disabled:opacity-60"
 				>
-					Copy from yesterday
+					Copy from yesterday (X-3)
 				</button>
 			</ListState>
 		);

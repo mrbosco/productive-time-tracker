@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { TimeEntry } from '@/api/types';
 import { render, screen } from '@/__tests__/test-utils';
 import { DaySummary } from './DaySummary';
-import { calculateDayTotal } from './DaySummary.utils';
+import { calculateDayTotal } from '../totals.utils';
 
 function buildEntry(minutes: number, id: string): TimeEntry {
 	return {

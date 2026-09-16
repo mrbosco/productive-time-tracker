@@ -94,26 +94,25 @@ describe('TimeEntryCard', () => {
 	});
 
 	/**
-	 * Every item belongs to a later story, so the menu opens and does nothing. It is here because
-	 * the design puts it on the card and a card that grew one later would reflow around it.
+	 * The menu is drawn because the design puts it on the card, but every item belongs to a later
+	 * story, so each says which and none of them activates.
 	 */
-	it('opens the entry menu with the actions the design lists', async () => {
+	it('opens the entry menu with the actions the design lists, each marked as not yet wired', async () => {
 		const user = userEvent.setup();
 		await renderWithProviders(<TimeEntryCard entry={buildEntry()} />);
 
 		await user.click(screen.getByRole('button', { name: 'Entry actions' }));
 
-		expect(await screen.findByRole('menuitem', { name: 'Edit' })).toBeInTheDocument();
-		expect(screen.getByRole('menuitem', { name: 'Continue timer' })).toBeInTheDocument();
-		expect(screen.getByRole('menuitem', { name: 'Duplicate' })).toBeInTheDocument();
-		expect(screen.getByRole('menuitem', { name: 'Delete' })).toBeInTheDocument();
+		for (const name of [/^Edit/, /^Continue timer/, /^Duplicate/, /^Delete/]) {
+			expect(await screen.findByRole('menuitem', { name })).toHaveAttribute('aria-disabled', 'true');
+		}
 	});
 
-	/** X-2 moves between cards with the arrow keys; the design gives them the focus ring for it. */
-	it('is focusable', async () => {
+	/** X-2 brings the roving tabindex; until then the card has nothing to activate. */
+	it('is not a tab stop of its own', async () => {
 		await renderWithProviders(<TimeEntryCard entry={buildEntry()} />);
 
-		expect(screen.getByRole('article')).toHaveAttribute('tabindex', '0');
+		expect(screen.getByRole('article')).not.toHaveAttribute('tabindex');
 	});
 
 	it('offers no More on a note that fits', async () => {

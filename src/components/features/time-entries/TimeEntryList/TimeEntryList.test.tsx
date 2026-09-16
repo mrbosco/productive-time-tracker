@@ -41,10 +41,10 @@ describe('TimeEntryList', () => {
 	});
 
 	/** X-3 copies yesterday's entries in; the design puts the offer in this state. */
-	it('offers Copy from yesterday alongside Add entry', async () => {
+	it('shows Copy from yesterday, marked as not yet wired', async () => {
 		await renderWithProviders(<TimeEntryList {...baseProps} entries={[]} />);
 
-		expect(screen.getByRole('button', { name: 'Copy from yesterday' })).toBeInTheDocument();
+		expect(screen.getByRole('button', { name: /^Copy from yesterday/ })).toBeDisabled();
 	});
 
 	/**

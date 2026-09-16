@@ -2,7 +2,7 @@ import { waitFor } from '@testing-library/react';
 import { http, HttpResponse } from 'msw';
 import { describe, expect, it } from 'vitest';
 import { renderHookWithProviders, testSession } from '@/__tests__/test-utils';
-import error401 from '../../../../docs/api/samples/error-401.json';
+import error401 from '@/../docs/api/samples/error-401.json';
 import { server } from '@/mocks/node';
 import { timeEntriesQueryOptions, useTimeEntries } from './useTimeEntries';
 

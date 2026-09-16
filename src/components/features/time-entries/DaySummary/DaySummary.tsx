@@ -1,6 +1,6 @@
 import type { TimeEntry } from '@/api/types';
 import { formatDuration } from '@/lib/duration';
-import { calculateDayTotal } from './DaySummary.utils';
+import { calculateDayTotal } from '../totals.utils';
 
 /**
  * `3h 45m logged · 3 entries` (design brief 3.2).
