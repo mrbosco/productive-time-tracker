@@ -8,19 +8,19 @@
  */
 
 /**
- * A known HTML tag, rather than the bare `<` character or any tag-shaped thing.
+ * Markup, as distinct from prose that happens to contain an angle bracket.
  *
- * Gating on `<` alone sent the app's own plain text through the HTML parser, and the tokenizer
- * reads `<` followed by a letter as the start of a tag it never finds the end of: "if x<y then"
- * came back as "if x" - the user's own description, silently truncated.
+ * Three readings were wrong before this one. Gating on `<` alone sent the app's own plain text
+ * through the HTML parser, and the tokenizer reads `<` plus a letter as a tag it never finds the
+ * end of: "if x<y then" came back as "if x". Gating on a tag *shape* still ate "Fixed <Button>
+ * rendering". And gating on an opening tag from a closed list still ate "if a<b then c>d", because
+ * `<b` is a real tag name and `[^>]*` happily swallowed " then c" up to the next `>`.
  *
- * Gating on a tag *shape* fixes that case but not "Fixed <Button> rendering", which is exactly the
- * kind of note someone writes here and is indistinguishable from markup by shape alone. So the
- * list is closed: these are the elements Productive's rich-text editor emits, and anything else
- * angle-bracketed is treated as the prose it almost certainly is.
+ * So the test is a *closing* tag or a void element. Markup that needs stripping always has one -
+ * Productive's editor emits `<p>`, `<ul>`, `<li>` pairs - and prose almost never does.
  */
 const PRODUCTIVE_MARKUP =
-	/<\/?(?:p|div|span|br|hr|ul|ol|li|a|b|i|u|s|em|strong|code|pre|blockquote|h[1-6]|table|thead|tbody|tr|td|th|img|script|style)\b[^>]*>/i;
+	/<\/(?:p|div|span|ul|ol|li|a|b|i|u|s|em|strong|code|pre|blockquote|h[1-6]|table|thead|tbody|tr|td|th|script|style)>|<(?:br|hr|img)\b[^>]*\/?>/i;
 
 /** Elements whose text content is code, not prose, and must not be rendered as the note. */
 const NON_PROSE_TAGS = new Set(['SCRIPT', 'STYLE', 'TEMPLATE', 'TITLE']);

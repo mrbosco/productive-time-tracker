@@ -60,6 +60,10 @@ describe('toPlainText', () => {
 		['if x<y then', 'if x<y then'],
 		['5 < 6 and 7 > 6', '5 < 6 and 7 > 6'],
 		['a -> b <- c', 'a -> b <- c'],
+		// `<b` is a real tag name, so an opening-tag test swallowed " then c" up to the next `>`.
+		['if a<b then c>d', 'if a<b then c>d'],
+		['use <i> for italics', 'use <i> for italics'],
+		['2 < 3 > 1', '2 < 3 > 1'],
 	])('leaves %s alone, because it is not markup', (note, expected) => {
 		expect(toPlainText(note)).toBe(expected);
 	});
