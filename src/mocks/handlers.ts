@@ -48,9 +48,20 @@ let nextCreatedId = 0;
  */
 let editedAttributes = new Map<string, Record<string, unknown>>();
 
+/**
+ * IDs a DELETE has removed.
+ *
+ * The third of the same sentence `createdEntries` and `editedAttributes` cover: R-12 is "removed
+ * from list", and a handler that answered 204 and then served the untouched fixture would fail an
+ * honest e2e in the mock rather than in the app. `showEntry` honours it too, so a deep link to a
+ * deleted entry 404s the way the real API would rather than serving it back.
+ */
+let deletedIds = new Set<string>();
+
 export function resetMockData(): void {
 	createdEntries = [];
 	editedAttributes = new Map();
+	deletedIds = new Set();
 	nextCreatedId = 0;
 }
 
@@ -111,6 +122,8 @@ function withAttributes<T extends { data: { id: string; attributes: Record<strin
  * recording of this endpoint; it covers one of the three IDs and proves the envelope shape.
  */
 function showEntry(id: string) {
+	if (deletedIds.has(id)) return HttpResponse.json(error404, { status: 404 });
+
 	if (id === timeEntryShow.data.id) {
 		return HttpResponse.json({ ...timeEntryShow, data: withEdits(timeEntryShow.data) });
 	}
@@ -149,11 +162,14 @@ export const handlers: RequestHandler[] = [
 		// Edits are applied before the filter, not after: changing an entry's date has to move it
 		// off the day it was on and onto the new one, which is the behaviour SPEC 4.2's old-date
 		// invalidation exists for.
-		const data = [...timeEntriesDay.data, ...createdEntries].map(withEdits).filter((entry) => {
-			const { date } = entry.attributes;
+		const data = [...timeEntriesDay.data, ...createdEntries]
+			.filter((entry) => !deletedIds.has(entry.id))
+			.map(withEdits)
+			.filter((entry) => {
+				const { date } = entry.attributes;
 
-			return (after === null || date >= after) && (before === null || date <= before);
-		});
+				return (after === null || date >= after) && (before === null || date <= before);
+			});
 
 		if (data.length === 0) return HttpResponse.json(timeEntriesEmptyDay);
 
@@ -186,7 +202,12 @@ export const handlers: RequestHandler[] = [
 		return HttpResponse.json(withAttributes(timeEntryUpdate, body, id));
 	}),
 
-	http.delete('*/time_entries/:id', () => new HttpResponse(null, { status: 204 })),
+	http.delete('*/time_entries/:id', ({ params }) => {
+		deletedIds.add(String(params.id));
+
+		// 204 with no body and no `Content-Type` - `time-entry-delete.txt`, api-client rule 14.
+		return new HttpResponse(null, { status: 204 });
+	}),
 
 	http.get('*/timers', () => HttpResponse.json(timersRunning)),
 
