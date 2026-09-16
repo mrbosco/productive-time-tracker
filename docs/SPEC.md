@@ -12,12 +12,27 @@ Time budget: ~10 hours for research, specification and implementation.
 
 Every requirement below is quoted or closely paraphrased from the assignment. IDs are used in commits, PRs and tests.
 
+US-1 to US-4 are the assignment's own user stories. US-0 is this project's: the assignment states
+login, credential persistence and logout as a paragraph under "Regarding the login screen" rather
+than as a story, and every other story is unreachable without it, so it is written up here in the
+same shape as the rest.
+
+**US-0 - Log in and stay logged in.** As a user I want to log in with my API token and organization
+ID and stay logged in across refreshes, so that I can manage my time entries. Acceptance criteria:
+
+- The login screen takes an API token and an organization ID (R-1).
+- Credentials survive a page refresh, and logging out clears them (R-2, persisted per A-4).
+- The person is resolved from the credentials, never typed (R-10), and the default service is
+  resolved in the background per A-1.
+- Login reports its failures distinctly: an invalid token, a token with no person in that
+  organization, and an unreachable API (SPEC 4.1, design brief 3.1).
+
 ### 2.1 Functional (must)
 
 | ID   | Requirement                                                                                                                           | Source                                                            |
 | ---- | ------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
-| R-1  | Login screen: user enters API token and organization ID                                                                               | "Features that must be implemented", "Regarding the login screen" |
-| R-2  | Credentials persisted across page refresh; logout clears them                                                                         | same                                                              |
+| R-1  | Login screen: user enters API token and organization ID                                                                               | US-0                                                              |
+| R-2  | Credentials persisted across page refresh; logout clears them                                                                         | US-0                                                              |
 | R-3  | Screen listing time entries for a selected date, default today                                                                        | US-1                                                              |
 | R-4  | Only entries belonging to the current person are shown                                                                                | US-1                                                              |
 | R-5  | User can change the selected date; list updates                                                                                       | US-1                                                              |
