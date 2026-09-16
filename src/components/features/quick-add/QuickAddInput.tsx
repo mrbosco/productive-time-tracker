@@ -34,7 +34,8 @@ export function QuickAddInput({ date }: { date: string }) {
 				placeholder="Quick add: 1.5h client call yesterday"
 				className="h-12 text-list"
 			/>
-			<span className="pl-0.5 text-caption text-muted">Opens the form prefilled</span>
+			{/* Not "prefilled": P-1's parser is not here yet, so the form opens empty. */}
+			<span className="pl-0.5 text-caption text-muted">Opens the entry form</span>
 		</form>
 	);
 }
