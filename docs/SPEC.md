@@ -1,6 +1,6 @@
 # Productive Time Tracker: Technical Specification
 
-Status: v1 (Phase 1 closed 2026-09-15). All open decisions resolved; see ADR-0001..0008.
+Status: v1 (Phase 1 closed 2026-09-15). All open decisions resolved; see ADR-0001..0009.
 
 ## 1. Purpose
 
@@ -36,7 +36,7 @@ ID and stay logged in across refreshes, so that I can manage my time entries. Ac
 | R-3  | Screen listing time entries for a selected date, default today                                                                        | US-1                                                              |
 | R-4  | Only entries belonging to the current person are shown                                                                                | US-1                                                              |
 | R-5  | User can change the selected date; list updates                                                                                       | US-1                                                              |
-| R-6  | Entry shows duration, multiline description, date                                                                                     | US-1                                                              |
+| R-6  | Entry shows duration, multiline description, date. The date is carried by the day heading, not repeated on every card (design brief 3.2) | US-1                                                              |
 | R-7  | Empty state when no entries: one sentence plus the primary "Add entry" action, never an illustration alone (competitive analysis 2.2) | US-1                                                              |
 | R-8  | Error state when loading fails                                                                                                        | US-1                                                              |
 | R-9  | Add entry: duration, description, date; list updates after success; validation and API errors shown                                   | US-2                                                              |
@@ -130,7 +130,7 @@ zero-minute entry has `draft: false` (`docs/api/samples/time-entries-day-all-fie
 | A-1  | The API requires a service on create, but the form must only have duration, date and description. | The form keeps exactly three fields. `/services` is **not** person-scoped, so "first service this person can track on" is not answerable from the API. Instead the app fetches `GET /services?filter[time_tracking_enabled]=true` with `page[size]=200`, `include=deal.company` and `fields[services]=name,deal&fields[deals]=name,company&fields[companies]=name`, sorts client-side by name and takes the first as the default. **Resolved lazily**: login blocks only on `organization_memberships`; on success the app calls `queryClient.prefetchQuery(['services', personId])` without awaiting it (`staleTime` 1 hour), so the day view renders on one request. The first create or timer start reads that cache, or waits for that single request if it has not landed. A "Default service" selector lives in a small Settings sheet reachable from the app bar, never on the entry form; edit keeps the entry's existing service. Selector labels are **"Company · Project · Service"** — neither service names nor deal names are unique alone. That form is unique across the recorded account but is not guaranteed, so a label still shared by two services gets ` (#<deal id>)` appended, to the colliding rows only. The selector keys on service ID regardless. | decided |
 | A-1b | What the app does when the API refuses the chosen service on create.                                  | A 422 whose `errors[]` contains `code: invalid_attribute_value` with `source.pointer` naming `person` (the recorded body reads "person cannot track on this service") shows that `detail` text and opens the Settings sheet so the default service can be changed. Any other 422 goes to the generic error banner, showing `detail` from `errors[]`. | decided |
 | A-2  | "Duration" input format                                                                              | Minutes are what the API stores; the UI accepts `h:mm`, `1h 30m`, `1.5h` or plain minutes, normalises to minutes and shows a live `= 1h 30m` preview next to the input (pattern from Productive); displays as `1h 30m`. Optional range mode (P-2) computes minutes from `from`/`to`.                                   | decided |
-| A-3  | "Selected date" navigation                                                                           | Previous/next day buttons around a label in words (`Today, Tue 15 Sep`, `Yesterday, Mon 14 Sep`, otherwise `Wed 9 Sep`), the label opens a calendar popover, plus a text-labelled `Today` button (pattern from Harvest).                                                                                               | decided |
+| A-3  | "Selected date" navigation                                                                           | Previous/next day buttons around a label in words (`Today, Tue 15 Sep`, `Yesterday, Mon 14 Sep`, otherwise `Wed 10 Sep 2026` - the dated form carries the year, per design brief 3.2), the label opens a calendar popover, plus a text-labelled `Today` button (pattern from Harvest).                                                                                               | decided |
 | A-4  | Where credentials are persisted                                                                      | `localStorage` (survives refresh and browser restart), namespaced key, cleared on logout. Session data (person ID, default service) is derived and cached alongside. See ADR-0004 for the security trade-off.                                                                                                          | decided |
 | A-5  | Edit route shape                                                                                     | `/entries/:id/edit`; opening it directly fetches the entry by ID. Create lives at `/entries/new?date=YYYY-MM-DD` (own route too, for symmetry and mobile).                                                                                                                                                             | decided |
 | A-6  | Time zone                                                                                            | Dates are calendar dates, not instants; the app never converts through UTC. `date` is formatted from local time.                                                                                                                                                                                                       | decided |
@@ -163,7 +163,8 @@ src/
 │   └── timers.ts           # read-only; see X-4
 ├── components/
 │   ├── core/               # Button, Card, Input, Textarea, Dialog, Toast (shadcn-based)
-│   ├── shared/             # DatePicker, PageHeader, EmptyState, ErrorState, ConfirmDialog, layouts/AppLayout
+│   ├── shared/             # DatePicker, PageHeader, ConfirmDialog, layouts/AppLayout
+│   │                       # (empty/error are states of TimeEntryList until a second caller)
 │   └── features/
 │       ├── auth/           # LoginForm, useSession
 │       ├── time-entries/   # TimeEntryList, TimeEntryCard, TimeEntryForm, DaySummary, hooks (useTimeEntries, useCreateTimeEntry, ...)
@@ -172,7 +173,7 @@ src/
 │       ├── week/           # WeekStrip, useWeekTotals
 │       └── quick-add/      # QuickAddInput, lib/quick-add parser (P-1)
 ├── routes/                 # TanStack Router file routes: __root.tsx, login.tsx, day.$date.tsx, entries.new.tsx, entries.$id.edit.tsx
-├── lib/                    # date.ts, duration.ts, storage.ts, query-client.ts
+├── lib/                    # date.ts, duration.ts, note.ts (A-9), storage.ts, query-client.ts
 ├── mocks/                  # MSW handlers + fixtures (used by tests and `pnpm dev:mock`)
 └── main.tsx, App.tsx, router.tsx
 e2e/                        # Playwright specs, one per user story
@@ -224,7 +225,13 @@ E2E does not hit the real API: no secrets in CI and deterministic runs. A manual
 
 ## 10. Extra features (beyond the required stories; ADR-0008)
 
-Implemented only after all required stories are merged (`v0.2.0`), one PR each, in this priority order. Any of them is cut without regret if the budget runs out; the README lists what shipped. Scope of each was refined by `docs/research/competitive-analysis.md` section 3 and 4.
+Implemented only after all required stories are merged (`v0.2.0`), one PR each, in this priority order.
+
+> **X-1 is the exception, and landed with US-1.** The week strip is not decoration on the day view,
+> it is a band of the screen the design draws between the date navigator and the day summary, and
+> its content is per-day totals - there is no way to render it "UI now, data later" without showing
+> numbers that are wrong. It costs one extra request per week (`filter[after]`/`filter[before]` over
+> a range), keyed on the week's Monday so stepping within a week reuses the cache. Any of them is cut without regret if the budget runs out; the README lists what shipped. Scope of each was refined by `docs/research/competitive-analysis.md` section 3 and 4.
 
 | #   | ID  | Feature                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             | API                                                 | Effort |
 | --- | --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------- | ------ |

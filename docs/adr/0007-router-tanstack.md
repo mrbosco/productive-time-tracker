@@ -26,3 +26,19 @@ Perfectly capable and more familiar, but it would leave date validation, auth re
 
 - `src/routes/` follows TanStack file conventions (`__root.tsx`, `day.$date.tsx`, `entries.$id.edit.tsx`); route tree is generated (`routeTree.gen.ts`, committed).
 - Devtools enabled in development only.
+
+## Amendment (US-1, 2026-09-16): the day loader prefetches rather than awaiting
+
+The Rationale above names `queryClient.ensureQueryData`. `/day/$date` ships with
+`queryClient.prefetchQuery`, not awaited.
+
+The goal that motivated the loader - start fetching on navigation rather than after mount - is met
+either way. Awaiting is what the design rules out: the day screen specifies a skeleton **under a
+usable date navigator** (`02-day-mobile-loading.png`) and an inline `Retry` that leaves the rest of
+the screen alone (`02-day-mobile-error.png`). An awaited loader holds the route on a blank screen
+until the request lands, and hands a failure to the router's `errorComponent`, which replaces the
+whole page and cannot offer a retry scoped to the list.
+
+So the route starts the request and the component subscribes to the same query key, which is what
+renders the four list states in place. `ensureQueryData` remains the right call for
+`/entries/:id/edit` (US-3), where there is nothing to render until the entry is known.
