@@ -1,15 +1,25 @@
+import type { QueryClient } from '@tanstack/react-query';
 import { createRouter } from '@tanstack/react-router';
+import type { AuthContextValue } from '@/components/features/auth/useSession';
 import { routeTree } from './routeTree.gen';
 
+export interface RouterContext {
+	queryClient: QueryClient;
+	auth: AuthContextValue;
+}
+
 /**
- * Router context (session, queryClient) and `beforeLoad` guards land with the auth
- * feature (ADR-0007); the scaffold only wires the provider.
+ * `auth` is filled in by `<RouterProvider context={{ auth }}>` in `App.tsx`, because it comes from
+ * React state and the router is created once, outside React. The non-null assertion is the shape
+ * TanStack documents for exactly this: the value is undefined only between `createRouter` and the
+ * first render, and nothing runs in that window.
  */
-export function createAppRouter() {
+export function createAppRouter(queryClient: QueryClient) {
 	return createRouter({
 		routeTree,
 		defaultPreload: 'intent',
 		scrollRestoration: true,
+		context: { queryClient, auth: undefined as unknown as AuthContextValue },
 	});
 }
 
