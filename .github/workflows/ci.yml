@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0 # changeset status needs origin/main
+
+      - uses: pnpm/action-setup@v4 # version comes from packageManager
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # Mirrors the README setup. VITE_API_BASE_URL is unread today, but src/api/ (SPEC 6.1)
+      # will read it; this keeps build and e2e working when it lands. No secrets: e2e runs
+      # against MSW in the browser, never the real API (ADR-0003).
+      - run: cp .env.example .env
+
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm build
+
+      # Guidebook 31: behaviour changes carry a changeset. The branch prefix is the proxy for
+      # "changes behaviour" (branch format in .claude/rules/git.md).
+      - name: Changeset present
+        if: startsWith(github.head_ref, 'feat/') || startsWith(github.head_ref, 'fix/') || startsWith(github.head_ref, 'perf/')
+        run: pnpm exec changeset status --since=origin/main
+
+      # playwright.config.ts boots pnpm dev:mock itself; both projects are Chromium.
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm test:e2e
+
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }} # the report matters most when e2e failed
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7

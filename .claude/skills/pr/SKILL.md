@@ -15,9 +15,11 @@ All four pass before the PR exists (guidebook 29):
 pnpm lint && pnpm typecheck && pnpm test && pnpm test:e2e
 ```
 
+`.github/workflows/ci.yml` runs the same four commands plus `changeset status`, so a red gate surfaces either way - locally is just faster than a round trip.
+
 Then confirm:
 
-- A changeset exists for behaviour changes: `ls .changeset/*.md` shows more than `README.md`
+- A changeset exists for behaviour changes: `ls .changeset/*.md` shows more than `README.md`. CI enforces this on `feat/`, `fix/` and `perf/` branches
 - Coverage has not dropped
 - `git status --short` is clean apart from what you mean to push
 - No credentials, tokens or organization IDs in the diff
@@ -44,7 +46,7 @@ Scope from `.claude/rules/git.md`. The ID is the story the PR closes.
 
 ## 4. Body
 
-Guidebook rule 28 - all six sections:
+`.github/PULL_REQUEST_TEMPLATE.md` pre-fills this; fill it in rather than writing from scratch. Guidebook rule 28 - all six sections, then the checklist:
 
 ```markdown
 ## Summary
@@ -57,27 +59,38 @@ Why this approach. Alternatives rejected and why. Cite the ADR if one governs it
 
 ## Spec and design
 
+- Story: US-2
 - Requirements: R-9, R-10 (SPEC 2.1)
 - Route: `/entries/new` (SPEC 6.2)
 - Design: `docs/design/screens/03-new-entry-mobile.png`, `03-new-entry-desktop.png`
 
 ## Screenshots
 
-| Mobile | Desktop |
-| ------ | ------- |
-| ...    | ...     |
+| Mobile (390px) | Desktop |
+| -------------- | ------- |
+| ...            | ...     |
 
 ## Test plan
 
 - Unit: ...
 - Component: loading, empty, error, data
 - E2E: `e2e/create-entry.spec.ts`, both projects
-- Manual against the real API: ...
+- Manual smoke against the real API: ...
 
 ## Open questions
 
 Anything you want the reviewer to decide. "None" is a valid answer.
+
+## Checklist
+
+- [ ] `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm test:e2e` all green
+- [ ] Changeset added (every behaviour change, guidebook 31)
+- [ ] Docs updated if behaviour changed
+- [ ] No token, organization ID or other secret in the diff
+- [ ] `US-n` / `R-n` / `X-n` / `P-n` in the title and in every `Refs:` footer
 ```
+
+`US-n` is the canonical story ID, never `UC-n` - the same rule as commits (`.claude/rules/git.md`).
 
 Screenshots are required, both viewports (N-4). Get them from the Playwright run or the dev server at a mobile viewport.
 

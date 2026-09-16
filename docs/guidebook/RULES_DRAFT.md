@@ -54,7 +54,7 @@ Purpose: this is the input for `.claude/rules/guidebook.md` (path-scoped to `src
 
 ## Git and pull requests (chapter: Pull requests, Code review)
 
-27. Small PRs, one feature each. Title includes the requirement ID (`R-9`, `UC-2`) in place of a Productive task ID.
+27. Small PRs, one feature each. Title includes the requirement ID (`R-9`, `US-2`) in place of a Productive task ID.
 28. PR description: summary and reasoning, links to design (`docs/design/`) and spec sections, screenshot (mobile + desktop), test plan, open questions.
 29. Code must be linted, formatted and unit-tested before review; coverage must not drop.
 30. Review language when self-reviewing or when the reviewer agent comments: concise, advise rather than ask, recommend fixes.

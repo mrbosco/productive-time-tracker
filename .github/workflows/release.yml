@@ -1,0 +1,45 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: release
+  cancel-in-progress: false # never cancel a half-written tag
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    env:
+      HUSKY: 0 # the action commits; pre-commit and commit-msg hooks must not run here
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # Pending changesets -> opens or updates the "Version Packages" PR.
+      # None left (that PR merged) -> publish runs, tagging vX.Y.Z and creating the GitHub
+      # Release from CHANGELOG.md. private: true + privatePackages.tag means it tags but
+      # publishes no npm package, so no NPM_TOKEN is needed.
+      #
+      # ponytail: GITHUB_TOKEN-opened PRs do not trigger pull_request, so ci.yml does not run
+      # on the Version Packages PR. Fine for a mechanical bump; use a PAT if that changes.
+      - uses: changesets/action@v1
+        with:
+          version: pnpm run version
+          publish: pnpm exec changeset publish
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

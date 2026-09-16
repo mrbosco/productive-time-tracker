@@ -88,7 +88,7 @@ Credentials are never in `.env`, the repo or the build. The token and organizati
 - `.claude/rules/guidebook.md`, code conventions, scoped to `src/**`
 - `.claude/rules/git.md`, commit and PR format, unscoped
 - `.claude/rules/testing.md`, scoped to test files and `e2e/`
-- Skills: `feature` (build a story), `pr` (open one), `release` (tag one)
+- Skills: `feature` (build a story), `pr` (open one), `release` (cut one through the version PR)
 - Agents: `api-explorer` (Productive endpoints), `reviewer` (diff against SPEC and guidebook)
 
 ## Working rules
@@ -96,6 +96,7 @@ Credentials are never in `.env`, the repo or the build. The token and organizati
 - One user story per branch and PR (SPEC 12). Every commit carries a scope and, for behaviour changes, a `Refs:` footer
 - Never edit `src/routeTree.gen.ts` or `public/mockServiceWorker.js`; both are generated
 - Tests are colocated with the unit under test. MSW is configured to error on unhandled requests, so every request a test makes needs a handler
-- Every behaviour change adds a changeset
+- Every behaviour change adds a changeset; CI enforces this on `feat/`, `fix/` and `perf/` branches
+- Releases go through the Version Packages PR that `.github/workflows/release.yml` opens; merging it tags `vX.Y.Z`. See the `release` skill
 - Do not add a dependency without an ADR. `docs/adr/0005-scope-cuts.md` lists what was deliberately rejected
 - MCP servers irrelevant to this project (`adloop`, `chrome-devtools`) are disabled per project, not globally; re-enable either with `/mcp` if you need it here

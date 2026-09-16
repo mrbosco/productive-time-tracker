@@ -7,7 +7,9 @@ description: Cut a release - version with Changesets, update the changelog, tag 
 
 Changesets owns the version. Never hand-edit `version` in `package.json` or `CHANGELOG.md`.
 
-The package is `private: true` and `.changeset/config.json` sets `privatePackages: { version: true, tag: true }`: it versions and tags, and **publishes nothing to npm**.
+The package is `private: true` and `.changeset/config.json` sets `privatePackages: { version: true, tag: true }`: it versions and tags, and **publishes nothing to npm**. No `NPM_TOKEN` anywhere.
+
+`.github/workflows/release.yml` drives this. You review and merge; the action versions, tags and publishes the GitHub Release.
 
 ## Milestones (SPEC 12)
 
@@ -20,7 +22,21 @@ The package is `private: true` and `.changeset/config.json` sets `privatePackage
 
 Extras are cut without regret if the budget runs out; the README lists what shipped.
 
-## 1. Check the gate
+## 1. Changesets, during development
+
+A release is only as good as the changesets that fed it. On the feature branch, before opening the PR:
+
+```sh
+pnpm changeset
+```
+
+- **Bump**: `patch` for a fix, `minor` for a feature. `major` is reserved for `v1.0.0`.
+- **Summary**: one line, past tense, user-facing. "Added inline validation to the entry form", not "refactor useEntryForm". It lands in `CHANGELOG.md` verbatim and a user reads it there.
+- Commit the generated `.changeset/*.md` with the feature, scope and all.
+
+**CI fails a `feat/`, `fix/` or `perf/` branch with no changeset** - `.github/workflows/ci.yml` runs `changeset status --since=origin/main`. Branches prefixed `docs/`, `chore/`, `ci/` and the rest skip the check. If a `feat/` branch genuinely changes nothing user-visible, rename the branch rather than faking a changeset.
+
+## 2. Check the gate
 
 From `main`, up to date, with every PR for the milestone merged:
 
@@ -29,45 +45,37 @@ git switch main && git pull
 pnpm lint && pnpm typecheck && pnpm test && pnpm test:e2e && pnpm build
 ```
 
-`pnpm build` matters here - it is the only step that proves the production bundle compiles.
+CI has already run all of this on each PR. Running it locally before a milestone is cheap insurance that the merges compose.
 
-## 2. Confirm the changesets
+## 3. Review the version PR
 
-```sh
-ls .changeset/*.md
-```
+Every push to `main` with pending changesets makes `release.yml` open or update a PR titled **Version Packages**. It contains exactly two things: the `package.json` bump and the `CHANGELOG.md` entries.
 
-Every behaviour change in the milestone should have one. A missing changeset means a feature vanishes from the changelog - add it now (`pnpm changeset`) rather than editing the changelog later.
+Read the changelog diff before merging. It is user-facing - reword anything that still reads like a commit subject. Push the fix to the PR branch; the action leaves manual edits alone.
 
-## 3. Version
+If the PR is missing, the usual cause is that no changeset reached `main`, or the repo setting **Settings - Actions - General - "Allow GitHub Actions to create and approve pull requests"** is off.
+
+## 4. Merge it
+
+Merging the Version Packages PR leaves no changesets on `main`, so the next `release.yml` run takes the other branch: it tags `vX.Y.Z` and creates the GitHub Release from the matching `CHANGELOG.md` section.
+
+Confirm both landed - the tag on `main` and the Release - and report the tag. If the milestone is `v1.0.0`, check the README's "what shipped" list matches reality first.
+
+## If the action is down
+
+The manual path still works, and is what the workflow automates:
 
 ```sh
 pnpm version
-```
-
-This runs `changeset version`: it consumes `.changeset/*.md`, bumps `package.json`, and writes `CHANGELOG.md`.
-
-Read the changelog before continuing. It is user-facing - reword entries that read like commit subjects.
-
-## 4. Commit and tag
-
-```sh
 git add -A
-git commit -m "chore(release): v0.2.0"
+git commit -m "Version Packages"
 git tag v0.2.0
-```
-
-`commit: false` in the changeset config is deliberate: the commit is yours to make and review.
-
-The commit needs a scope (`release`) like any other. No `Refs:` footer - the changelog carries the detail.
-
-## 5. Push
-
-```sh
 git push origin main --follow-tags
 ```
 
-Confirm the tag landed and report it. If the milestone is `v1.0.0`, check the README's "what shipped" list matches reality before pushing.
+`Version Packages` is the one commit message commitlint exempts (`ignores` in `commitlint.config.mjs`) - it is scopeless because a machine writes it. Do not invent a scope for it; the rest of the rules still apply to every commit you write yourself.
+
+Create the GitHub Release by hand from the `CHANGELOG.md` section for that version.
 
 ## Constraints
 

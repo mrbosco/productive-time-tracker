@@ -1,0 +1,27 @@
+version: 2
+
+# Grouped: ~50 dependencies would otherwise open a weekly PR flood.
+# Literal prefixes, no `include: scope` -- that would generate `deps-dev`, which is not in
+# commitlint.config.mjs SCOPES. `deps` is.
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: 'chore(deps)'
+    groups:
+      minor-and-patch:
+        patterns: ['*']
+        update-types: [minor, patch]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: 'ci(deps)'
+    groups:
+      actions:
+        patterns: ['*']

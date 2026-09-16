@@ -17,7 +17,7 @@ Refs: US-2, R-9
 ```
 
 - **type**: `feat`, `fix`, `refactor`, `perf`, `test`, `docs`, `build`, `ci`, `chore`, `style`, `revert`.
-- **scope**: required on every commit, from the list below. `scope-empty` is set to `never`, so a scopeless commit is rejected.
+- **scope**: required on every commit, from the list below. `scope-empty` is set to `never`, so a scopeless commit is rejected. One exception: `Version Packages`, written by `changesets/action`, is allowlisted in `commitlint.config.mjs` (`ignores`). It is the only scopeless commit on `main`, and no human writes it.
 - **subject**: imperative, lower case, no trailing full stop.
 - **no emoji anywhere** in the message. Enforced by the local `no-emoji` rule.
 
@@ -77,8 +77,8 @@ Refs: ADR-0005
 
 - One user story per branch and per PR (SPEC 12). Branch `type/scope-short-description`, e.g. `feat/time-entries-create`.
 - PR title repeats the commit format with the ID in parentheses: `feat(time-entries): add entry form (US-2)`.
-- PR body follows guidebook rule 28: summary and reasoning, links to `docs/design/` and the SPEC sections, mobile and desktop screenshots, test plan, open questions. Use the `pr` skill.
-- Before opening: lint, typecheck, unit tests, e2e all pass and a changeset exists (guidebook 29, 31).
+- PR body follows `.github/PULL_REQUEST_TEMPLATE.md`, which is guidebook rule 28 verbatim: Summary, Reasoning, Spec and design, Screenshots, Test plan, Open questions, then a Checklist. Use the `pr` skill. `US-n` in the Spec and design section, never `UC-n`.
+- Before opening: lint, typecheck, unit tests, e2e all pass and a changeset exists (guidebook 29, 31). `.github/workflows/ci.yml` runs the same gate on every PR, and fails a `feat/`, `fix/` or `perf/` branch that carries no changeset.
 
 ## Constraints
 

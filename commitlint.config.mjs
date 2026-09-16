@@ -44,6 +44,9 @@ export default {
 			},
 		},
 	],
+	// The version bump commit is written by changesets/action, not by a human, and is
+	// scopeless by design. It is the one message exempt from the rules below.
+	ignores: [(message) => message.startsWith('Version Packages')],
 	rules: {
 		'no-emoji': [2, 'always'],
 		// Every commit names the area it touches; there is a scope for tooling too.
