@@ -3,6 +3,7 @@ name: Release
 on:
   push:
     branches: [main]
+  workflow_dispatch: # re-run a release by hand; changeset git-tag skips a tag that already exists
 
 concurrency:
   group: release
@@ -31,15 +32,21 @@ jobs:
       - run: pnpm install --frozen-lockfile
 
       # Pending changesets -> opens or updates the "Version Packages" PR.
-      # None left (that PR merged) -> publish runs, tagging vX.Y.Z and creating the GitHub
-      # Release from CHANGELOG.md. private: true + privatePackages.tag means it tags but
-      # publishes no npm package, so no NPM_TOKEN is needed.
+      # None left (that PR merged) -> publish-script runs. The package is private and never
+      # reaches npm, so the script is `changeset git-tag`: it tags vX.Y.Z (privatePackages.tag in
+      # .changeset/config.json) and reports the tag through the CHANGESETS_OUTPUT file the action
+      # sets. The action then pushes the tag and creates the GitHub Release from CHANGELOG.md.
+      # No NPM_TOKEN anywhere.
+      #
+      # v2 of the action is required with @changesets/cli 3. v1 detected a release by grepping
+      # stdout for "New tag:", which cli 3 no longer prints, so tags were created in the runner
+      # and never pushed. v2 pushes the version commit and tags through the GitHub API with its
+      # github-token input (default: github.token); it does not read a GITHUB_TOKEN env var.
       #
       # ponytail: GITHUB_TOKEN-opened PRs do not trigger pull_request, so ci.yml does not run
       # on the Version Packages PR. Fine for a mechanical bump; use a PAT if that changes.
-      - uses: changesets/action@v1
+      - uses: changesets/action@v2
         with:
-          version: pnpm run version
-          publish: pnpm exec changeset publish
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          version-script: pnpm run version
+          publish-script: pnpm exec changeset git-tag
+          create-github-releases: true

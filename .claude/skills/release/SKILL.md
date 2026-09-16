@@ -61,6 +61,14 @@ Merging the Version Packages PR leaves no changesets on `main`, so the next `rel
 
 Confirm both landed - the tag on `main` and the Release - and report the tag. If the milestone is `v1.0.0`, check the README's "what shipped" list matches reality first.
 
+If the run did not happen or the tag is missing, start it by hand instead of pushing an empty commit:
+
+```sh
+gh workflow run release.yml --ref main
+```
+
+It is safe to repeat: `changeset git-tag` skips a tag that already exists, and the action creates a Release only for a tag it just made. If the tag exists but the Release does not, create the Release by hand from the `CHANGELOG.md` section (see below).
+
 ## If the action is down
 
 The manual path still works, and is what the workflow automates:
