@@ -2,7 +2,7 @@
 
 Client-side SPA (no server code) for managing a person's [Productive](https://www.productive.io/) time entries for a selected day: log in with an API token and organization ID, list entries for a date, create, edit and delete them. Built for the Productive Frontend Engineer take-home assignment; the PDF in `docs/assignment/` is the source of truth.
 
-**Status: scaffold.** Tooling is complete; no features and no commits yet.
+**Status: US-0.** Tooling and the API layer are complete; login, the session and the auth-guarded route tree are in place. The day view (US-1) is the next story.
 
 ## Source of truth
 
@@ -24,7 +24,7 @@ IDs appear in commits, PR titles and tests. Unpadded decimal, except ADRs.
 
 - `R-1`..`R-12` functional requirements (SPEC 2.1)
 - `N-1`..`N-7` non-functional requirements (SPEC 2.2)
-- `US-1`..`US-4` user stories from the assignment. Canonical form in commits and PRs
+- `US-0`..`US-4` user stories. Canonical form in commits and PRs. US-1 to US-4 are the assignment's; `US-0` (login and session) is this project's, because the assignment states login as a paragraph rather than a story (SPEC 2)
 - `UC-n` in `docs/diagrams/01-use-cases.mmd` maps 1:1 to `US-n`
 - `A-1`..`A-10` assumptions (SPEC 5)
 - `X-1`..`X-5`, `P-1`, `P-2` extra features (SPEC 10)
@@ -74,7 +74,7 @@ e2e/            Playwright specs, one per user story
 
 `api/` is complete and is infrastructure, not a story: `client.ts` plus one typed module per resource, with MSW handlers built from the recorded responses in `docs/api/samples/`. Stories add hooks in `components/features/` that call these functions; they do not add API functions. Extending it means recording a sample first (`.claude/rules/api-client.md`).
 
-`components/shared/` and `components/features/` are specified in SPEC 6.1 and get created as stories land.
+`components/shared/` and `components/features/` are specified in SPEC 6.1 and get created as stories land. `features/auth/` (session context, login form), `features/settings/useDefaultService.ts` (A-1) and `shared/layouts/AppLayout.tsx` (app bar, logout) landed with US-0.
 
 ## Environment
 

@@ -1,6 +1,6 @@
 import { http, HttpResponse, type RequestHandler } from 'msw';
 import error404 from '../../docs/api/samples/error-404.json';
-import memberships from '../../docs/api/samples/organization-memberships-include-person.json';
+import memberships from '../../docs/api/samples/organization-memberships-include-organization.json';
 import services from '../../docs/api/samples/services.json';
 import timeEntriesDay from '../../docs/api/samples/time-entries-day.json';
 import timeEntriesEmptyDay from '../../docs/api/samples/time-entries-empty-day.json';
@@ -24,6 +24,7 @@ import timersRunning from '../../docs/api/samples/timers-running.json';
 
 /** The date `time-entries-day.json` was recorded for; any other date responds empty. */
 export const SEEDED_DATE = '2026-09-15';
+
 interface RequestBody {
 	data?: { attributes?: Record<string, unknown> };
 }
@@ -66,6 +67,13 @@ function showEntry(id: string) {
 }
 
 export const handlers: RequestHandler[] = [
+	/**
+	 * Deliberately ignores `X-Organization-Id`, which is what the live API does: an unknown
+	 * organization is answered 200 with the token's own memberships
+	 * (`organization-memberships-unknown-organization.json`), and the app finds the match. The
+	 * recorded membership belongs to organization 999999, so logging in against anything else
+	 * fails here exactly as it does in production.
+	 */
 	http.get('*/organization_memberships', () => HttpResponse.json(memberships)),
 
 	http.get('*/services', () => HttpResponse.json(services)),

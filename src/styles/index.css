@@ -24,7 +24,8 @@
 	--color-on-accent: #ffffff; /* --on-accent */
 
 	/* Colour — semantic (derived: the design system publishes no semantics) */
-	--color-danger: #b3261e; /* destructive text, border, Delete button */
+	--color-danger: #b3261e; /* destructive text, border, Delete button, alert glyph */
+	--color-danger-ink: #7f1d19; /* alert banner copy: darker than the glyph it sits beside */
 	--color-danger-bg: #fdf2f2;
 	--color-danger-border: #f0cfcc;
 	--color-warning-fg: #8a5a12; /* activity banner icon */
@@ -70,12 +71,23 @@
 	/* Motion */
 	--ease-ui: cubic-bezier(0.2, 0.8, 0.2, 1);
 	--duration-ui: 140ms; /* colour and background only */
+
+	/* The one animation the design specifies: the spinner inside a submitting button. */
+	--animate-spinner: spinner 0.7s linear infinite;
+
+	@keyframes spinner {
+		to {
+			transform: rotate(360deg);
+		}
+	}
 }
 
 /* ---------------------------------------------------------------------------
-   shadcn/ui semantic variables.
-   Left as the CLI generates them. Mapping these onto the design tokens above
-   belongs to the first UI pull request, not to the scaffold.
+   shadcn/ui semantic variables, mapped onto the design tokens above.
+
+   Every shadcn primitive is styled through these, so one mapping restyles all
+   of them: a copied component that says `bg-primary` paints the design
+   system's indigo without being edited.
 
    Two are renamed: shadcn's `accent` and `muted` would shadow the design
    tokens of the same name, so they are `accent-surface` / `muted-surface`
@@ -109,33 +121,53 @@
 }
 
 :root {
-	--radius: 0.625rem;
-	--background: oklch(1 0 0);
-	--foreground: oklch(0.145 0 0);
-	--card: oklch(1 0 0);
-	--card-foreground: oklch(0.145 0 0);
-	--popover: oklch(1 0 0);
-	--popover-foreground: oklch(0.145 0 0);
-	--primary: oklch(0.205 0 0);
-	--primary-foreground: oklch(0.985 0 0);
-	--secondary: oklch(0.97 0 0);
-	--secondary-foreground: oklch(0.205 0 0);
-	--muted-surface: oklch(0.97 0 0);
-	--muted-foreground: oklch(0.556 0 0);
-	--accent-surface: oklch(0.97 0 0);
-	--accent-foreground: oklch(0.205 0 0);
-	--destructive: oklch(0.577 0.245 27.325);
-	--border: oklch(0.922 0 0);
-	--input: oklch(0.922 0 0);
-	--ring: oklch(0.708 0 0);
+	/* 12px: the design's input radius. Buttons and pills override it with `rounded-pill`. */
+	--radius: 0.75rem;
+	--background: var(--color-canvas);
+	--foreground: var(--color-ink);
+	--card: var(--color-surface);
+	--card-foreground: var(--color-ink);
+	--popover: var(--color-surface);
+	--popover-foreground: var(--color-ink);
+	--primary: var(--color-accent);
+	--primary-foreground: var(--color-on-accent);
+	--secondary: var(--color-subtle);
+	--secondary-foreground: var(--color-ink);
+	--muted-surface: var(--color-subtle);
+	--muted-foreground: var(--color-muted);
+	/* The selection wash, so a hovered menu item reads as the accent without shouting. */
+	--accent-surface: var(--color-selection);
+	--accent-foreground: var(--color-accent-dark);
+	--destructive: var(--color-danger);
+	--border: var(--color-line);
+	--input: var(--color-line);
+	--ring: var(--color-accent);
 }
 
 @layer base {
 	* {
-		@apply border-border outline-ring/50;
+		@apply border-border;
 	}
 
 	body {
 		@apply bg-canvas font-sans text-ink antialiased;
+	}
+
+	/*
+	 * One focus treatment everywhere: 2px accent at 2px offset (design README §1).
+	 * `:focus-visible` rather than `:focus` so a click does not draw a ring a
+	 * keyboard user is meant to see.
+	 */
+	:focus-visible {
+		@apply outline-2 outline-offset-2 outline-accent;
+	}
+
+	/*
+	 * Headings are focused programmatically after every navigation so the new page is
+	 * announced (guidebook 18). Nobody tabbed there, so drawing a ring around the title
+	 * on arrival reads as a rendering fault rather than as focus.
+	 */
+	h1[tabindex='-1']:focus-visible {
+		@apply outline-none;
 	}
 }

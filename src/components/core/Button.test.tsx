@@ -3,8 +3,8 @@ import { renderWithProviders, screen, userEvent } from '@/__tests__/test-utils';
 import { Button } from './Button';
 
 describe('Button', () => {
-	it('renders as a button with its accessible name', () => {
-		renderWithProviders(<Button>Add entry</Button>);
+	it('renders as a button with its accessible name', async () => {
+		await renderWithProviders(<Button>Add entry</Button>);
 
 		expect(screen.getByRole('button', { name: /add entry/i })).toBeInTheDocument();
 	});
@@ -12,7 +12,7 @@ describe('Button', () => {
 	it('calls onClick when clicked', async () => {
 		const user = userEvent.setup();
 		const onClick = vi.fn();
-		renderWithProviders(<Button onClick={onClick}>Add entry</Button>);
+		await renderWithProviders(<Button onClick={onClick}>Add entry</Button>);
 
 		await user.click(screen.getByRole('button', { name: /add entry/i }));
 
@@ -22,7 +22,7 @@ describe('Button', () => {
 	it('does not fire when disabled', async () => {
 		const user = userEvent.setup();
 		const onClick = vi.fn();
-		renderWithProviders(
+		await renderWithProviders(
 			<Button disabled onClick={onClick}>
 				Add entry
 			</Button>

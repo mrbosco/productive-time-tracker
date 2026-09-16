@@ -1,0 +1,51 @@
+{
+  "data": [
+    {
+      "id": "1448639",
+      "type": "organization_memberships",
+      "relationships": {
+        "organization": {
+          "data": {
+            "type": "organizations",
+            "id": "999999"
+          }
+        },
+        "person": {
+          "data": {
+            "type": "people",
+            "id": "1448639"
+          }
+        }
+      }
+    }
+  ],
+  "included": [
+    {
+      "id": "999999",
+      "type": "organizations",
+      "attributes": {
+        "name": "Example Organization"
+      }
+    },
+    {
+      "id": "1448639",
+      "type": "people",
+      "attributes": {
+        "email": "ada.lovelace@example.com",
+        "first_name": "Ada",
+        "last_name": "Lovelace"
+      }
+    }
+  ],
+  "links": {
+    "first": "https://api.productive.io/api/v2/organization_memberships?fields%5Borganization_memberships%5D=person%2Corganization&fields%5Borganizations%5D=name&fields%5Bpeople%5D=first_name%2Clast_name%2Cemail&include=person%2Corganization&page%5Bnumber%5D=1&page%5Bsize%5D=200",
+    "last": "https://api.productive.io/api/v2/organization_memberships?fields%5Borganization_memberships%5D=person%2Corganization&fields%5Borganizations%5D=name&fields%5Bpeople%5D=first_name%2Clast_name%2Cemail&include=person%2Corganization&page%5Bnumber%5D=1&page%5Bsize%5D=200"
+  },
+  "meta": {
+    "current_page": 1,
+    "total_pages": 1,
+    "total_count": 1,
+    "page_size": 200,
+    "max_page_size": 200
+  }
+}

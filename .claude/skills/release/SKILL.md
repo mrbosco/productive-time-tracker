@@ -16,7 +16,7 @@ The package is `private: true` and `.changeset/config.json` sets `privatePackage
 | Tag      | Contains                                                 |
 | -------- | -------------------------------------------------------- |
 | `v0.1.0` | Scaffold, tooling only                                   |
-| `v0.2.0` | The required stories: US-1 to US-4 / R-1 to R-12         |
+| `v0.2.0` | The required stories: US-0 to US-4 / R-1 to R-12         |
 | `v0.3.0` | Extras, in this order: X-1, X-2, P-2, X-3, X-4, X-5, P-1 |
 | `v1.0.0` | Submission                                               |
 

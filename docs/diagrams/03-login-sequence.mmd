@@ -6,27 +6,32 @@ sequenceDiagram
     participant API as Productive API
 
     U->>App: Enter API token + organization ID
-    Note over App,API: include=person is mandatory: without it the person<br/>relationship carries no data and no ID at all
-    App->>API: GET /organization_memberships?include=person
+    Note over App,API: include=person,organization is mandatory: without it neither<br/>relationship carries data, and no ID at all
+    App->>API: GET /organization_memberships?include=person,organization
     alt 401 invalid_auth_token
         API-->>App: errors[]
-        App-->>U: "Check your API token"
+        App-->>U: "Invalid API token."
     else 403 no_person
         API-->>App: errors[]
-        App-->>U: "That token has no person in organization X"
+        App-->>U: "This token is not a member of organization N."
     else network error
-        App-->>U: Inline error on login form
+        App-->>U: "Network error. Try again."
     else 200
-        API-->>App: membership + included person
-        App->>App: read relationships.person.data.id
-        Note over App,API: /services is organization-wide; filter[person_id]<br/>is silently ignored (A-1)
-        App->>API: GET /services?filter[time_tracking_enabled]=true (sparse, page[size]=200)
-        App->>App: sort by name, take the first as default service
-        App->>LS: save { token, organizationId, personId, defaultServiceId }
-        App-->>U: redirect to /day/today
+        API-->>App: every membership this token owns
+        Note over App,API: X-Organization-Id does not scope the collection: an unknown<br/>organization is answered 200 with the token's own memberships
+        App->>App: find the membership whose organization matches the entered ID<br/>(assignment, page 2)
+        alt no membership matches
+            App-->>U: "This token is not a member of organization N."
+        else matched
+            App->>App: read person from that membership
+            Note over App,API: /services is organization-wide, and a person_id<br/>filter there is silently ignored (A-1)
+            App->>LS: save { token, organizationId, personId, personName }
+            App-)API: prefetch GET /services (not awaited, A-1)
+            App-->>U: redirect to /day/today
+        end
     end
 
-    Note over App,LS: On refresh: read LS, re-validate with one<br/>GET /organization_memberships?include=person
+    Note over App,LS: On refresh: read LS, re-validate with one GET, and check the<br/>stored organization and person still match what it answers
     U->>App: Logout
     App->>LS: clear key
     App->>App: clear query cache, redirect /login

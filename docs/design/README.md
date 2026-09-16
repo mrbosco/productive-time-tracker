@@ -7,6 +7,12 @@ _derived_ and the duration format, both explained under "Decisions that differ f
 
 Files in this project:
 
+The authoritative source is the Claude Design project **"Design system accent conflicts"**
+(`1292b384-b318-467c-a2b9-1d92d5629a33`), read through the design MCP. `Login.dc.html` is a board;
+the markup it renders lives in `TimeTracker.dc.html` under `screen="login"`, and the tokens under
+`_ds/productive-time-design-system-.../`. When a PNG and that source disagree, the source wins —
+the PNGs are exports, and two of the sizing rules above were wrong because they were read off one.
+
 | File                        | What it is                                                                                                                                                                                         |
 | --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `Mobile Prototype.dc.html`  | The clickable mobile prototype at 390 × 844. Primary deliverable.                                                                                                                                  |
@@ -14,6 +20,7 @@ Files in this project:
 | `Screens Board.dc.html`     | Flat board: every screen and state side by side, mobile 390 and desktop 1440.                                                                                                                      |
 | `Component Sheet.dc.html`   | Every component from section 4, once per state, captioned.                                                                                                                                         |
 | `docs/design/screens/*.png` | Exports, named per the brief.                                                                                                                                                                      |
+| `docs/design/screens/implemented/*.png` | The built screens, captured from the running app at 390 and 1440. Evidence for a pull request, not a design source - where one disagrees with the design, the design wins. |
 
 ## 1. Design tokens
 
@@ -88,10 +95,13 @@ variable so the two stay in sync.
 ```
 
 Sizing rules used everywhere: tap targets 44px minimum (icon buttons are 44 × 44 even when
-the glyph is 18px), primary buttons 52px on mobile / 48px on desktop, inputs 56px,
-FAB 56px, app bar 56px mobile / 64px desktop, week cell 56 × 68 mobile / 88px tall desktop.
-Focus is a 2px `--color-accent` outline at 2px offset on every focusable element,
-including entry cards.
+the glyph is 18–20px), primary buttons **52px at every width** — the desktop screens centre the
+mobile card rather than resizing its controls — FAB 56px, app bar 56px mobile / 64px desktop,
+week cell 56 × 68 mobile / 88px tall desktop. Focus is a 2px `--color-accent` outline at 2px
+offset on every focusable element, including entry cards.
+
+Input height is **per screen, not global**: 52px on Login, 56px in the entry form, 48px in the
+compact rows. Take the height from the screen being built rather than from a single default.
 
 ## 2. Screens: what is reference, what is placeholder
 
@@ -140,9 +150,12 @@ including entry cards.
    Dialog → confirm, Sheet → default service / shortcuts / stop timer, Popover + Calendar →
    date picker, Toast, DropdownMenu → kebab and avatar, Skeleton → loading. Restyle the
    shadcn defaults with the tokens above rather than using them as-is.
-4. **Icons are drawn as solid monochrome paths** at 18–24px in 44px targets, per the design
-   system's rule. Do not add Lucide or Heroicons — a stroked set reads wrong beside the
-   solid play glyph.
+4. **Icons are the design system's own solid monochrome paths**, drawn inline at 18–20px inside
+   44px targets and painted with `currentColor`. No CDN icon set. This reverts an earlier decision
+   to standardise on `lucide-react`: that call was made from the PNG exports, before the design
+   source was available. The source draws every glyph as a filled path, and the design system's
+   readme is explicit that a stroked set reads wrong beside the solid play triangle. `lucide-react`
+   is still installed because `components.json` points shadcn at it, but nothing imports it.
 5. **Semantic colours are derived.** The design system publishes no success / warning /
    danger colours (its green and lime both resolve to indigo). The four above are additions
    and are used only where the brief demands them.
