@@ -21,17 +21,29 @@ live API disagreed, the live API won.
   harmless but unnecessary, and the client only sets it when there is a body.
 - Base URL: `https://api.productive.io/api/v2`
 
-`GET /organization_memberships` returned exactly one membership (`total_count: 1`) on the test
-account, and a valid token paired with a different organization ID fails 403 `no_person`
-(`error-403.json`). That is consistent with the header scoping the collection, but the test account
-has only one membership, so **scoping is inferred, not proven** — a multi-org account would settle
-it. Either way the 403 makes the "wrong organization" case an error, not a filtering problem.
+**`X-Organization-Id` does not scope `GET /organization_memberships`.** Recorded 2026-09-16: the
+same request with `X-Organization-Id: 1234`, an organization that does not exist, returns **200**
+and the token's own membership, whose `organization` relationship still points at the real
+organization (`organization-memberships-unknown-organization.json`). A valid token with a *real*
+organization it has no person in is refused with 403 `no_person` (`error-403.json`), so both
+outcomes happen and both have to be handled.
+
+This is why the app must **find the membership whose organization matches the entered ID** rather
+than take the first one back, which is exactly what the assignment describes on page two:
+"OrganizationMembership belonging to the Organization with the entered ID is found among the
+results." An earlier revision of this file claimed that match was impossible because the
+`organization` relationship carries no ID — that was read off a response fetched *without*
+`include=organization`, the same trap described under "The relationship trap" below. Asked for, it
+is there (`organization-memberships-include-organization.json`).
+
+Narrow the organization with `fields[organizations]=name`. The full record carries an invitation
+token, a billing email and analytics identifiers, none of which this app has any use for.
 
 ## Endpoints in use
 
 | Purpose        | Method + path                                  | Sample                                                 |
 | -------------- | ---------------------------------------------- | ------------------------------------------------------ |
-| Resolve person | `GET /organization_memberships?include=person` | `organization-memberships-include-person.json`         |
+| Resolve person | `GET /organization_memberships?include=person,organization` | `organization-memberships-include-organization.json`      |
 | List for a day | `GET /time_entries`                            | `time-entries-day.json`, `time-entries-empty-day.json` |
 | Read one       | `GET /time_entries/{id}`                       | `time-entry-show.json`                                 |
 | Create         | `POST /time_entries`                           | `time-entry-create.json`                               |
@@ -243,7 +255,7 @@ Three things worth knowing:
 
 | #   | Question (from the Phase 1 extract)                                | Answer                                                                                                                                                                                                      | Sample                                                                     | SPEC impact                                                                                                                 |
 | --- | ------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| 1   | `GET /organization_memberships` shape; is `include=person` needed?  | **Yes, and for more than the name.** Without it `relationships.person` is `{"meta":{"included":false}}` with no ID, and there is no `organization_id` attribute either.                                       | `organization-memberships.json`, `organization-memberships-include-person.json` | **Changes SPEC 4.1** — "pick the membership whose `organization.id` matches" cannot be done; the wrong organization is a 403 |
+| 1   | `GET /organization_memberships` shape; is `include=person` needed?  | **Yes, and for more than the name.** Without it `relationships.person` is `{"meta":{"included":false}}` with no ID, and there is no `organization_id` attribute either. The same holds for `organization`.    | `organization-memberships.json`, `organization-memberships-include-organization.json` | **Confirms SPEC 4.1** — "pick the membership whose `organization.id` matches" is exactly right, once `organization` is in the `include` |
 | 2   | Are `after`/`before` inclusive for a single day?                    | **Inclusive.** `after=before=2026-09-15` returns all 3 entries for that date.                                                                                                                                 | `time-entries-day.json`                                                     | Confirms SPEC 4.1                                                                                                           |
 | 3   | How to list trackable services; 422 body when `service_id` missing  | `filter[time_tracking_enabled]=true` (29 → 26), disagreeing with the attribute. `filter[person_id]` is ignored — the list is org-wide. 422 is `invalid_attribute_value` / "person cannot track on this service". | `services-unfiltered.json`, `services.json`, `error-422-missing-service.json` | **Breaks A-1** — "first service the person can track on" is not resolvable from this endpoint, so A-1 needs a new rule, not just a deal name in the selector |
 | 4   | 401 vs 403 bodies                                                   | 401 `invalid_auth_token` (bad token); 403 `no_person` (valid token, wrong organization).                                                                                                                      | `error-401.json`, `error-403.json`                                          | Login error copy can distinguish the two                                                                                    |
@@ -255,6 +267,7 @@ Three things worth knowing:
 
 | Finding                                                                                     | Sample                                       | SPEC impact                                                          |
 | ------------------------------------------------------------------------------------------- | -------------------------------------------- | -------------------------------------------------------------------- |
+| `X-Organization-Id` does not scope the membership collection: an unknown organization returns 200 and the token's own memberships. | `organization-memberships-unknown-organization.json` | **Restores SPEC 4.1** — the app finds the matching membership, and a login that skipped that step accepted any organization |
 | Sparse fieldsets supported on collections — 13x, 27x and 5.4x on the three in use.           | `services.json` and the other sparse samples | **Extends SPEC 4.2** — a concrete "no over-fetching" lever            |
 | `fields` is ignored on `GET /time_entries/{id}`; the full 44-attribute record comes back.    | `time-entry-show.json`                       | The efficiency lever does not apply to the edit route's fetch         |
 | `sort=created_at` is rejected; only `date`/`-date` are accepted.                             | `sort-support.txt`                           | **Changes A-7** — sort by `created_at` must be client-side            |
@@ -268,8 +281,19 @@ Three things worth knowing:
 
 ## Reproducing
 
-`docs/api/samples/` was recorded with throwaway records that were created, read, updated and then
-deleted, and the account was checked back to zero afterwards each time.
+`scripts/api-sample.sh` records one response into `docs/api/samples/`. It reads the credentials
+from the gitignored `.env.local` itself, so they never reach a terminal, a log or an agent's
+context, and it scrubs the organization ID, the person's name and email, and the organization name
+before anything is written.
+
+Two things it does that are not optional. It passes `curl -g`, because without it curl reads the
+`[` and `]` in `fields[organizations]` as a glob range and drops every sparse-fieldset parameter
+silently — which turns a 1.4 KB request into a 29 KB one carrying an invitation token and a
+billing email. And it refuses to write a body containing any of a list of secret-shaped keys, as
+the backstop for exactly that failure.
+
+The earlier samples were recorded by hand with throwaway records that were created, read, updated
+and then deleted, and the account was checked back to zero afterwards each time.
 
 Two caveats about replaying these against the live account. The timer verification stopped a timer
 that had been running since 2026-09-15, which wrote 1332 minutes onto entry `162921872`; that entry
