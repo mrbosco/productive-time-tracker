@@ -36,6 +36,47 @@ describe('AppLayout', () => {
 		expect(await screen.findByText('Ada Lovelace')).toBeInTheDocument();
 	});
 
+	/**
+	 * Read from the membership the session was already re-validated against, rather than stored as
+	 * another field on the session.
+	 */
+	it('shows the person email in the account menu', async () => {
+		const user = userEvent.setup();
+		await renderWithProviders(<AppLayout session={session}>content</AppLayout>, { session });
+
+		await user.click(screen.getByRole('button', { name: 'Account menu' }));
+
+		expect(await screen.findByText('ada.lovelace@example.com')).toBeInTheDocument();
+	});
+
+	it('shows the default-service sheet beside logout, marked as not yet wired', async () => {
+		const user = userEvent.setup();
+		await renderWithProviders(<AppLayout session={session}>content</AppLayout>, { session });
+
+		await user.click(screen.getByRole('button', { name: 'Account menu' }));
+
+		expect(await screen.findByRole('menuitem', { name: /^Default service/ })).toHaveAttribute('aria-disabled', 'true');
+	});
+
+	/**
+	 * X-4 owns starting one; the bar carries the control so it does not move when that lands, and
+	 * says it is not ready rather than taking focus and doing nothing.
+	 */
+	it('carries the timer control on every authenticated screen, disabled until X-4', async () => {
+		await renderWithProviders(<AppLayout session={session}>content</AppLayout>, { session });
+
+		expect(screen.getByRole('button', { name: 'Start timer' })).toBeDisabled();
+	});
+
+	it('keeps logging out working', async () => {
+		const user = userEvent.setup();
+		await renderWithProviders(<AppLayout session={session}>content</AppLayout>, { session });
+
+		await user.click(screen.getByRole('button', { name: 'Account menu' }));
+
+		expect(await screen.findByRole('menuitem', { name: 'Log out' })).not.toHaveAttribute('aria-disabled');
+	});
+
 	it('clears the stored session and the cache on logout', async () => {
 		const user = userEvent.setup();
 		const { queryClient, router } = await renderWithProviders(<AppLayout session={session}>content</AppLayout>, {

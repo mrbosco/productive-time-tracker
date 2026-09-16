@@ -10,6 +10,14 @@ import { expect, type Page, test } from '@playwright/test';
  */
 const SESSION_STORAGE_KEY = 'tracktive.session';
 
+/**
+ * Where a logged-in visitor lands: `/` redirects to today's day view (R-3), and "today" is
+ * whatever day the suite runs on. Matching the shape rather than recomputing the date keeps this
+ * from re-implementing `lib/date` in a file that compiles without the DOM lib.
+ */
+// No leading anchor: `toHaveURL` matches a regex against the whole URL, origin included.
+const DAY_URL = /\/day\/\d{4}-\d{2}-\d{2}$/;
+
 async function logIn(page: Page) {
 	await page.getByLabel('API token').fill('test-token');
 	await page.getByLabel('Organization ID').fill('999999');
@@ -62,13 +70,19 @@ test.describe('login and session', () => {
 
 		await logIn(page);
 
-		await expect(page).toHaveURL('/');
-		await expect(page.getByRole('heading', { name: 'Time Tracker' })).toBeVisible();
-		await expect(page.getByText('Logged in as Ada Lovelace')).toBeVisible();
-		// A-1: resolved in the background after login, without the screen waiting on it.
-		await expect(
-			page.getByText('Default service: Example Agency · Administration · Acquiring new clients')
-		).toBeVisible();
+		await expect(page).toHaveURL(DAY_URL);
+		await expect(page.getByRole('heading', { level: 1, name: /^Today, / })).toBeVisible();
+	});
+
+	test('carries the person through to the day screen', async ({ page }) => {
+		await page.goto('/login');
+
+		await logIn(page);
+		await expect(page).toHaveURL(DAY_URL);
+
+		await page.getByRole('button', { name: 'Account menu' }).click();
+
+		await expect(page.getByText('Ada Lovelace')).toBeVisible();
 	});
 
 	test('moves focus to the heading of the screen it navigates to', async ({ page }) => {
@@ -78,28 +92,29 @@ test.describe('login and session', () => {
 
 		// Without this a keyboard or screen-reader user is left on the submit button of a screen
 		// that no longer exists, with nothing announcing the new one (guidebook 18).
-		await expect(page.getByRole('heading', { name: 'Time Tracker' })).toBeFocused();
+		await expect(page.getByRole('heading', { level: 1 })).toBeFocused();
 	});
 
 	test('stays logged in across a refresh', async ({ page }) => {
 		await page.goto('/login');
 		await logIn(page);
-		await expect(page).toHaveURL('/');
+		await expect(page).toHaveURL(DAY_URL);
+		const landed = page.url();
 
 		await page.reload();
 
-		await expect(page).toHaveURL('/');
-		await expect(page.getByText('Logged in as Ada Lovelace')).toBeVisible();
+		await expect(page).toHaveURL(landed);
+		await expect(page.getByRole('heading', { level: 1, name: /^Today, / })).toBeVisible();
 	});
 
 	test('sends a logged-in visitor away from the login screen', async ({ page }) => {
 		await page.goto('/login');
 		await logIn(page);
-		await expect(page).toHaveURL('/');
+		await expect(page).toHaveURL(DAY_URL);
 
 		await page.goto('/login');
 
-		await expect(page).toHaveURL('/');
+		await expect(page).toHaveURL(DAY_URL);
 	});
 
 	test('drops a stored session whose organization the token is not in', async ({ page }) => {
@@ -131,7 +146,7 @@ test.describe('login and session', () => {
 	test('logging out clears the stored credentials', async ({ page }) => {
 		await page.goto('/login');
 		await logIn(page);
-		await expect(page).toHaveURL('/');
+		await expect(page).toHaveURL(DAY_URL);
 
 		await page.getByRole('button', { name: 'Account menu' }).click();
 		await page.getByRole('menuitem', { name: 'Log out' }).click();

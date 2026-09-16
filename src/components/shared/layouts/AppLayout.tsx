@@ -1,14 +1,14 @@
+import { useQuery } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
-import { Button } from '@/components/core/Button';
+import logoUrl from '@/assets/logo-productive.svg';
 import {
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuItem,
-	DropdownMenuLabel,
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from '@/components/core/DropdownMenu';
-import { useLogout } from '@/components/features/auth/useSession';
+import { sessionQueryOptions, useLogout } from '@/components/features/auth/useSession';
 import type { Session } from '@/lib/storage';
 
 /** "Ada Lovelace" -> "AL". One letter when there is only one word, empty when the name is. */
@@ -21,37 +21,98 @@ export function toInitials(name: string): string {
 		.join('');
 }
 
+function PlayIcon() {
+	return (
+		<svg width="14" height="14" viewBox="0 0 20 20" aria-hidden="true" className="text-accent">
+			<path d="M6 3.6 16 10 6 16.4V3.6Z" fill="currentColor" />
+		</svg>
+	);
+}
+
+function CaretIcon() {
+	return (
+		<svg width="14" height="14" viewBox="0 0 20 20" aria-hidden="true" className="text-muted">
+			<path d="M4 8.2h12L10 15 4 8.2Z" fill="currentColor" />
+		</svg>
+	);
+}
+
 /**
- * The chrome every authenticated screen sits in: app name, and the avatar menu that holds logout
- * (R-2). `Default service...` joins it with the Settings sheet, and the timer control with X-4.
+ * The timer control (SPEC 10, X-4). Idle only: starting a timer is X-4's, and this screen is
+ * read-only until then. Drawn because the design puts it in the app bar on every authenticated
+ * route, and a bar that gains a control later would move everything beside it.
+ */
+function TimerButton() {
+	return (
+		<button
+			type="button"
+			disabled
+			title="Starting a timer arrives with X-4"
+			className="duration-ui flex h-10 flex-none items-center gap-[7px] rounded-pill border border-line bg-surface px-3.5 text-label font-medium transition-colors ease-ui hover:bg-subtle disabled:opacity-60 disabled:hover:bg-surface md:gap-2 md:px-4"
+		>
+			<PlayIcon />
+			Start timer
+		</button>
+	);
+}
+
+/**
+ * The chrome every authenticated screen sits in: the product mark and name, the timer control,
+ * and the avatar menu that holds logout (R-2).
+ *
+ * The email comes from the membership the session was already re-validated against, so the menu
+ * reads the way the design draws it without the session having to carry another field.
  */
 export function AppLayout({ session, children }: { session: Session; children: ReactNode }) {
 	const logout = useLogout();
+	const { data: memberships } = useQuery(sessionQueryOptions(session));
+	const email = memberships?.find((membership) => membership.personId === session.personId)?.person?.email ?? null;
 	const initials = toInitials(session.personName);
 
 	return (
 		<div className="min-h-dvh">
-			<header className="flex h-14 items-center justify-between border-b border-line bg-surface px-4 md:h-16 md:px-12">
-				<span className="text-base font-semibold">Time Tracker</span>
+			<header className="flex h-14 items-center gap-2 border-b border-line bg-surface pr-2 pl-4 md:h-16 md:gap-3 md:px-12">
+				<img src={logoUrl} alt="Productive" className="hidden h-6 md:block" />
+				<span aria-hidden="true" className="mx-1 hidden h-5 w-px bg-line md:block" />
+				<span className="flex-1 text-list font-medium tracking-[-.01em]">Time Tracker</span>
+
+				<TimerButton />
+
+				{/* X-2's shortcut sheet. Desktop only, as the design has it. */}
+				<button
+					type="button"
+					aria-label="Keyboard shortcuts"
+					disabled
+					title="The shortcuts sheet arrives with X-2"
+					className="duration-ui hidden size-10 flex-none place-items-center rounded-pill border border-line bg-surface text-meta font-medium text-muted transition-colors ease-ui hover:bg-subtle disabled:opacity-60 disabled:hover:bg-surface md:grid"
+				>
+					?
+				</button>
 
 				<DropdownMenu>
-					<DropdownMenuTrigger asChild>
-						<Button
-							variant="ghost"
-							size="icon"
-							// The initials are decoration over the name in the menu, so the button
-							// gets the accessible name instead of leaving a screen reader to read
-							// out two letters.
-							aria-label="Account menu"
-							className="rounded-pill bg-selection text-label font-semibold text-accent-dark hover:bg-selection"
-						>
+					<DropdownMenuTrigger
+						// The initials are decoration over the name in the menu, so the button
+						// gets the accessible name instead of leaving a screen reader to read
+						// out two letters.
+						aria-label="Account menu"
+						className="flex h-11 flex-none items-center gap-2 rounded-pill px-1 md:h-10"
+					>
+						<span className="grid size-8 place-items-center rounded-pill bg-selection text-caption font-medium text-accent-dark">
 							{initials}
-						</Button>
+						</span>
+						<span className="hidden md:block">
+							<CaretIcon />
+						</span>
 					</DropdownMenuTrigger>
 
-					<DropdownMenuContent align="end">
-						<DropdownMenuLabel>{session.personName}</DropdownMenuLabel>
+					<DropdownMenuContent align="end" className="w-[246px]">
+						<div className="px-3 pt-2.5 pb-3">
+							<p className="text-meta font-medium">{session.personName}</p>
+							{email !== null && <p className="mt-[3px] text-caption text-muted">{email}</p>}
+						</div>
 						<DropdownMenuSeparator />
+						{/* A-1's settings sheet, which US-2 needs and this screen does not. */}
+						<DropdownMenuItem disabled>Default service... (US-2)</DropdownMenuItem>
 						<DropdownMenuItem onSelect={logout}>Log out</DropdownMenuItem>
 					</DropdownMenuContent>
 				</DropdownMenu>

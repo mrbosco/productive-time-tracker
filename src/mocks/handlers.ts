@@ -80,10 +80,30 @@ export const handlers: RequestHandler[] = [
 
 	http.get('*/time_entries/:id', ({ params }) => showEntry(String(params.id))),
 
+	/**
+	 * Filters the recorded day by `filter[after]`/`filter[before]`, which the live API treats as an
+	 * inclusive range. Matching the exact day would answer the week strip's Monday-to-Sunday
+	 * request with an empty week, so every day but the seeded one would read as `0h` in
+	 * `pnpm dev:mock` and in the e2e run - a mock artefact that looks exactly like a bug.
+	 */
 	http.get('*/time_entries', ({ request }) => {
-		const date = new URL(request.url).searchParams.get('filter[after]');
+		const params = new URL(request.url).searchParams;
+		const after = params.get('filter[after]');
+		const before = params.get('filter[before]');
 
-		return HttpResponse.json(date === SEEDED_DATE || date === null ? timeEntriesDay : timeEntriesEmptyDay);
+		const data = timeEntriesDay.data.filter((entry) => {
+			const { date } = entry.attributes;
+
+			return (after === null || date >= after) && (before === null || date <= before);
+		});
+
+		if (data.length === 0) return HttpResponse.json(timeEntriesEmptyDay);
+
+		return HttpResponse.json({
+			...timeEntriesDay,
+			data,
+			meta: { ...timeEntriesDay.meta, total_count: data.length },
+		});
 	}),
 
 	http.post('*/time_entries', async ({ request }) =>

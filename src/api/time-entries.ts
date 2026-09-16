@@ -59,10 +59,10 @@ function parseMutatedTimeEntry(document: JsonApiDocument): MutatedTimeEntry {
  */
 const FIELDS = 'fields[time_entries]=date,time,note,created_at,draft,service&fields[services]=name';
 
-function buildDayPath(personId: string, date: string, page: number): string {
+function buildRangePath(personId: string, from: string, to: string, page: number): string {
 	const filters =
 		`filter[person_id]=${encodeURIComponent(personId)}` +
-		`&filter[after]=${encodeURIComponent(date)}&filter[before]=${encodeURIComponent(date)}`;
+		`&filter[after]=${encodeURIComponent(from)}&filter[before]=${encodeURIComponent(to)}`;
 
 	return (
 		`/time_entries?${filters}&include=service&${FIELDS}` +
@@ -85,7 +85,21 @@ function compareByCreatedAt(a: TimeEntry, b: TimeEntry): number {
  * logs that many entries in a day. An empty day reports `total_pages: 0`, hence the `<` loop.
  */
 export async function listTimeEntries(auth: Auth, personId: string, date: string): Promise<TimeEntry[]> {
-	const documents = await requestAllPages(auth, (page) => buildDayPath(personId, date, page));
+	return listTimeEntriesInRange(auth, personId, date, date);
+}
+
+/**
+ * Every entry between two calendar dates, both ends included. The week strip reads a whole week
+ * this way rather than issuing seven day requests (SPEC 10, X-1); a single day is the same call
+ * with `from` and `to` set to it.
+ */
+export async function listTimeEntriesInRange(
+	auth: Auth,
+	personId: string,
+	from: string,
+	to: string
+): Promise<TimeEntry[]> {
+	const documents = await requestAllPages(auth, (page) => buildRangePath(personId, from, to, page));
 
 	return documents.flatMap(parseTimeEntries).sort(compareByCreatedAt);
 }
