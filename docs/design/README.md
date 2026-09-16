@@ -20,6 +20,7 @@ the PNGs are exports, and two of the sizing rules above were wrong because they 
 | `Screens Board.dc.html`     | Flat board: every screen and state side by side, mobile 390 and desktop 1440.                                                                                                                      |
 | `Component Sheet.dc.html`   | Every component from section 4, once per state, captioned.                                                                                                                                         |
 | `docs/design/screens/*.png` | Exports, named per the brief.                                                                                                                                                                      |
+| `docs/design/screens/implemented/*.png` | The built screens, captured from the running app at 390 and 1440. Evidence for a pull request, not a design source - where one disagrees with the design, the design wins. |
 
 ## 1. Design tokens
 
