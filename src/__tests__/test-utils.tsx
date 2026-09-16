@@ -26,7 +26,7 @@ function createTestQueryClient() {
  * here when a new route becomes a link target, rather than re-wiring providers in one test file
  * (testing.md rule 1).
  */
-const TEST_ROUTE_PATHS = ['/', '/login', '/day/$date', '/entries/new'];
+const TEST_ROUTE_PATHS = ['/', '/login', '/day/$date', '/entries/new', '/entries/$id/edit'];
 
 /**
  * A throwaway router whose every route renders the component under test, so anything that

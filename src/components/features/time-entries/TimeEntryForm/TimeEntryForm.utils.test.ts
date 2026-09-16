@@ -8,7 +8,7 @@ import {
 	MAX_NOTE_LENGTH,
 	summariseUnsavedEntry,
 	timeEntrySchema,
-	toCreateErrorMessage,
+	toSaveErrorMessage,
 } from './TimeEntryForm.utils';
 
 const schema = timeEntrySchema();
@@ -90,29 +90,37 @@ describe('isServiceRefusal', () => {
 	});
 });
 
-describe('toCreateErrorMessage', () => {
+describe('toSaveErrorMessage', () => {
 	/**
 	 * A 422 speaks in Productive's words. We know the entry was refused; only the API knows why,
 	 * and paraphrasing it would be guessing (api-client rule 19 forbids branching on the text, not
 	 * showing it).
 	 */
 	it('passes a 422 through in the API own words', () => {
-		expect(toCreateErrorMessage(toApiError(422, error422))).toBe('person cannot track on this service');
+		expect(toSaveErrorMessage(toApiError(422, error422))).toBe('person cannot track on this service');
 	});
 
 	it('names a transport failure as one rather than blaming the save', () => {
-		expect(toCreateErrorMessage(new ApiError(0, [], 'unreachable'))).toBe('Network error. Try again.');
+		expect(toSaveErrorMessage(new ApiError(0, [], 'unreachable'))).toBe('Network error. Try again.');
 	});
 
 	it('tells the user to log in again when the session is rejected', () => {
-		expect(toCreateErrorMessage(toApiError(401, error401))).toBe('Your session was rejected. Log in again.');
+		expect(toSaveErrorMessage(toApiError(401, error401))).toBe('Your session was rejected. Log in again.');
+	});
+
+	/**
+	 * Only reachable from the edit form (US-3), and only when the entry was deleted elsewhere while
+	 * it was open. "Try again" would be advice that cannot work.
+	 */
+	it('says the entry is gone rather than offering a retry that cannot work', () => {
+		expect(toSaveErrorMessage(toApiError(404, error404))).toBe('This entry no longer exists.');
 	});
 
 	it.each([
-		['a 404', toApiError(404, error404)],
+		['a 500', toApiError(500, error404)],
 		['a thrown string', 'boom'],
 	])('falls back to the design wording for %s', (_name, error) => {
-		expect(toCreateErrorMessage(error)).toBe('Could not save the entry. Try again.');
+		expect(toSaveErrorMessage(error)).toBe('Could not save the entry. Try again.');
 	});
 });
 

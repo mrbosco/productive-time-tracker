@@ -34,6 +34,29 @@ export interface DefaultService {
 }
 
 /**
+ * The label one particular service wears, in the same "Company · Project · Service" shape the
+ * default gets (A-1) - including the deal-ID suffix when two services would otherwise read alike,
+ * which is why the whole list is labelled rather than just this one.
+ *
+ * The edit form needs this because the service an entry is already logged against is not
+ * necessarily the default, and rendering the same fact as a bare name on one screen and a full path
+ * on the next is the kind of seam that reads as two different applications.
+ *
+ * Falls back to the service's own name: the entry carries it from `include=service`, so the line is
+ * never empty while the list is still loading, and never wrong if the service has since been
+ * untracked and dropped out of `/services`.
+ */
+export function useServiceLabel(session: Session, service: Service | null): string | null {
+	const { data } = useQuery(servicesQueryOptions(session));
+
+	if (service === null) return null;
+
+	const match = labelServices(data ?? []).find((candidate) => candidate.service.id === service.id);
+
+	return match?.label ?? service.name;
+}
+
+/**
  * The service a new entry is logged against (A-1). The API requires one on create but the form has
  * only three fields, so the app picks: the person's chosen default, else the first service by name.
  * Sorting is client-side and by name because the pick has to be stable across sessions, and

@@ -1,12 +1,83 @@
 import { http, HttpResponse } from 'msw';
-import { describe, expect, it } from 'vitest';
+import { useEffect, useState } from 'react';
+import { describe, expect, it, vi } from 'vitest';
+import error404 from '../../../../../docs/api/samples/error-404.json';
 import error422 from '../../../../../docs/api/samples/error-422-missing-service.json';
 import services from '../../../../../docs/api/samples/services.json';
-import { renderWithProviders, screen, testSession, userEvent, waitFor } from '@/__tests__/test-utils';
+import type { TimeEntry } from '@/api/types';
+import { act, renderWithProviders, screen, testSession, userEvent, waitFor } from '@/__tests__/test-utils';
 import { server } from '@/mocks/node';
 import { TimeEntryForm } from './TimeEntryForm';
 
 const DATE = '2026-09-15';
+
+/** An entry as the edit route's loader hands it over: already parsed, service included. */
+function buildEntry(overrides: Partial<TimeEntry> = {}): TimeEntry {
+	return {
+		id: '162903873',
+		date: DATE,
+		minutes: 90,
+		note: '<p>Standup and time logging.</p>',
+		draft: false,
+		// Deliberately not the default (`Acquiring new clients` sorts first): the point of the service
+		// line on this form is that it shows the entry's own, whatever the default happens to be.
+		serviceId: '16887840',
+		service: {
+			id: '16887840',
+			name: 'Android Development',
+			dealName: 'Mobile banking app [SAMPLE]',
+			dealId: '4287350',
+			companyName: 'Company B [SAMPLE]',
+		},
+		createdAt: '2026-09-15T16:08:26.527+02:00',
+		...overrides,
+	};
+}
+
+/** What `labelServices` makes of the entry's service, and of the default it must not be confused with. */
+const ENTRY_SERVICE_LABEL = 'Company B [SAMPLE] · Mobile banking app [SAMPLE] · Android Development';
+const DEFAULT_SERVICE_LABEL = 'Example Agency · Administration · Acquiring new clients';
+
+/**
+ * The edit form with a way to hand it a newer copy of the same entry, which is what the route does
+ * when the loader resolves after the first render.
+ *
+ * Driven through a ref rather than a button: `rerender` would replace the element
+ * `renderWithProviders` wrapped, providers and all, and a control outside the dialog cannot be
+ * clicked because Radix sets `pointer-events: none` on everything behind it.
+ */
+function ReseedingForm({ onReady }: { onReady: (deliver: () => void) => void }) {
+	const [entry, setEntry] = useState(buildEntry());
+
+	useEffect(() => {
+		onReady(() => {
+			setEntry(buildEntry({ minutes: 135 }));
+		});
+	}, [onReady]);
+
+	return <TimeEntryForm session={testSession} date={entry.date} entry={entry} />;
+}
+
+/** Renders the harness and hands back the way to deliver the fresher entry. */
+async function renderReseedingForm() {
+	let deliver = () => undefined as void;
+	const captureDeliver = (next: () => void) => {
+		deliver = next;
+	};
+
+	await renderWithProviders(<ReseedingForm onReady={captureDeliver} />, { session: testSession });
+
+	return () => {
+		act(deliver);
+	};
+}
+
+function renderEditForm(entry = buildEntry()) {
+	return renderWithProviders(<TimeEntryForm session={testSession} date={entry.date} entry={entry} />, {
+		session: testSession,
+		initialEntry: `/entries/${entry.id}/edit`,
+	});
+}
 
 function renderForm(date = DATE) {
 	return renderWithProviders(<TimeEntryForm session={testSession} date={date} />, {
@@ -354,5 +425,199 @@ describe('TimeEntryForm', () => {
 		await waitFor(() => {
 			expect(router.state.location.pathname).toBe(`/day/${DATE}`);
 		});
+	});
+});
+
+/**
+ * US-3, R-11. The same component, so only the differences are worth asserting here: where the values
+ * start, what the buttons say, what goes on the wire, and the two things editing deliberately does
+ * not do - wait on a service, or offer to change one.
+ */
+describe('TimeEntryForm, editing an entry', () => {
+	it('opens prefilled with the entry own values (R-11)', async () => {
+		await renderEditForm();
+
+		expect(await screen.findByRole('button', { name: /Date Tue 15 Sep 2026/ })).toBeInTheDocument();
+		expect(screen.getByRole('textbox', { name: 'Duration' })).toHaveValue('1h 30m');
+		expect(screen.getByRole('textbox', { name: 'Description' })).toHaveTextContent('Standup and time logging.');
+	});
+
+	it('says it is editing, and that the button saves changes', async () => {
+		await renderEditForm();
+
+		expect(await screen.findByRole('heading', { name: 'Edit entry' })).toBeInTheDocument();
+		expect(screen.getByRole('button', { name: 'Save changes' })).toBeInTheDocument();
+		expect(screen.queryByRole('button', { name: 'Save entry' })).not.toBeInTheDocument();
+	});
+
+	/**
+	 * A-1: edit keeps the entry's existing service. It is the entry's own, not the default - and it
+	 * is text, because the sheet behind the New entry form's link decides what the *next* entry gets
+	 * and would open showing a different service selected than the line just clicked.
+	 */
+	it('names the entry own service, not the default, and does not offer to change it (A-1)', async () => {
+		await renderEditForm();
+
+		expect(screen.getByText(/Logging as Ada Lovelace/)).toBeInTheDocument();
+		// The full "Company · Project · Service" label the New entry form uses, so the same fact does
+		// not read as a bare name on one screen and a path on the next.
+		expect(await screen.findByText(ENTRY_SERVICE_LABEL)).toBeInTheDocument();
+		expect(screen.queryByText(DEFAULT_SERVICE_LABEL)).not.toBeInTheDocument();
+		expect(screen.queryByRole('button', { name: new RegExp(ENTRY_SERVICE_LABEL) })).not.toBeInTheDocument();
+	});
+
+	it('sends only the field that changed, and never the service (SPEC 4.1, A-1)', async () => {
+		const fetchSpy = vi.spyOn(globalThis, 'fetch');
+		const user = userEvent.setup();
+		await renderEditForm();
+
+		const duration = screen.getByRole('textbox', { name: 'Duration' });
+		await user.clear(duration);
+		await user.type(duration, '2h');
+		await user.click(screen.getByRole('button', { name: 'Save changes' }));
+
+		await waitFor(() => {
+			const patch = fetchSpy.mock.calls.find(([, init]) => init?.method === 'PATCH');
+			expect(patch).toBeDefined();
+
+			const body = JSON.parse(patch?.[1]?.body as string) as {
+				data: { attributes: Record<string, unknown>; relationships?: unknown };
+			};
+
+			// SPEC 4.1 is "Only changed attributes": the date and note were never touched, so they
+			// are not resent as though they had been.
+			expect(body.data.attributes).toEqual({ time: 120 });
+			expect(body.data.relationships).toBeUndefined();
+		});
+	});
+
+	it('returns to the day the entry ends up on, and says it saved', async () => {
+		const user = userEvent.setup();
+		const { router } = await renderEditForm();
+
+		const duration = screen.getByRole('textbox', { name: 'Duration' });
+		await user.clear(duration);
+		await user.type(duration, '2h');
+		await user.click(screen.getByRole('button', { name: 'Save changes' }));
+
+		await waitFor(() => {
+			expect(router.state.location.pathname).toBe(`/day/${DATE}`);
+		});
+		expect(router.state.location.state.toast).toBe('Entry saved');
+	});
+
+	/** A-8 is one schema for both write surfaces, so the edit form rejects what create rejects. */
+	it('rejects a duration the create form would reject too (A-8)', async () => {
+		const user = userEvent.setup();
+		await renderEditForm();
+
+		const duration = screen.getByRole('textbox', { name: 'Duration' });
+		await user.clear(duration);
+		await user.type(duration, '25h');
+		await user.click(screen.getByRole('button', { name: 'Save changes' }));
+
+		expect(await screen.findByText('Duration cannot be more than 24h.')).toBeInTheDocument();
+	});
+
+	/**
+	 * The one failure only this surface can have: the entry was deleted somewhere else while this
+	 * form was open. "Try again" would be advice that cannot work.
+	 */
+	it('says the entry is gone when the save finds it deleted', async () => {
+		server.use(http.patch('*/time_entries/:id', () => HttpResponse.json(error404, { status: 404 })));
+		const user = userEvent.setup();
+		await renderEditForm();
+
+		const duration = screen.getByRole('textbox', { name: 'Duration' });
+		await user.clear(duration);
+		await user.type(duration, '2h');
+		await user.click(screen.getByRole('button', { name: 'Save changes' }));
+
+		expect(await screen.findByRole('alert')).toHaveTextContent('This entry no longer exists.');
+	});
+
+	it('shows the design wording when the save fails for any other reason', async () => {
+		server.use(http.patch('*/time_entries/:id', () => new HttpResponse(null, { status: 500 })));
+		const user = userEvent.setup();
+		await renderEditForm();
+
+		const duration = screen.getByRole('textbox', { name: 'Duration' });
+		await user.clear(duration);
+		await user.type(duration, '2h');
+		await user.click(screen.getByRole('button', { name: 'Save changes' }));
+
+		expect(await screen.findByRole('alert')).toHaveTextContent('Could not save the entry. Try again.');
+	});
+
+	/**
+	 * Editing sends no service, so a `/services` request that never lands must not hold the save -
+	 * the New entry form's Save is disabled in exactly this situation and this one must not be.
+	 */
+	it('saves even when the service list is unavailable, and still names the service (A-1)', async () => {
+		server.use(http.get('*/services', () => new HttpResponse(null, { status: 500 })));
+		await renderEditForm();
+
+		expect(screen.getByRole('button', { name: 'Save changes' })).toBeEnabled();
+		expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+		// Falls back to the name the entry itself carries, rather than leaving the line blank.
+		expect(await screen.findByText('Android Development')).toBeInTheDocument();
+	});
+
+	/**
+	 * `defaultValues` is read once at mount, and the entry can arrive after it - the router can
+	 * render this route with a stale copy first. The form has to follow the entry, or reopening one
+	 * just saved shows what it said before the save and saving again puts it back.
+	 */
+	it('follows the entry when a fresher one arrives (R-11)', async () => {
+		const deliverFresherEntry = await renderReseedingForm();
+		expect(screen.getByRole('textbox', { name: 'Duration' })).toHaveValue('1h 30m');
+
+		deliverFresherEntry();
+
+		await waitFor(() => {
+			expect(screen.getByRole('textbox', { name: 'Duration' })).toHaveValue('2h 15m');
+		});
+	});
+
+	/** ...but never over someone's shoulder: a field being typed in is left alone. */
+	it('leaves a field that has been typed in alone when it re-seeds', async () => {
+		const user = userEvent.setup();
+		const deliverFresherEntry = await renderReseedingForm();
+
+		const duration = screen.getByRole('textbox', { name: 'Duration' });
+		await user.clear(duration);
+		await user.type(duration, '45m');
+
+		deliverFresherEntry();
+
+		await waitFor(() => {
+			expect(screen.getByRole('textbox', { name: 'Duration' })).toHaveValue('45m');
+		});
+	});
+
+	/** Drawn because the design puts it at the end of this form; US-4 wires it (guidebook 18). */
+	it('draws the delete action without arming it', async () => {
+		await renderEditForm();
+
+		expect(await screen.findByRole('button', { name: /^Delete entry/ })).toBeDisabled();
+	});
+
+	it('has no delete action on the New entry form', async () => {
+		await renderForm();
+
+		expect(screen.queryByRole('button', { name: /^Delete entry/ })).not.toBeInTheDocument();
+	});
+
+	/** An untouched edit form is not a draft, so leaving it must not ask (Improvements 10). */
+	it('closes without asking when nothing was changed', async () => {
+		const user = userEvent.setup();
+		const { router } = await renderEditForm();
+
+		await user.click(screen.getByRole('button', { name: 'Cancel' }));
+
+		await waitFor(() => {
+			expect(router.state.location.pathname).toBe(`/day/${DATE}`);
+		});
+		expect(screen.queryByRole('dialog', { name: 'Save your changes?' })).not.toBeInTheDocument();
 	});
 });

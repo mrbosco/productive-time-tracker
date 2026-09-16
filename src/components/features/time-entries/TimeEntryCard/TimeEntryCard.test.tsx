@@ -128,17 +128,30 @@ describe('TimeEntryCard', () => {
 		expect(scrollHeight).toHaveBeenCalled();
 	});
 
-	/**
-	 * The menu is drawn because the design puts it on the card, but every item belongs to a later
-	 * story, so each says which and none of them activates.
-	 */
-	it('opens the entry menu with the actions the design lists, each marked as not yet wired', async () => {
+	/** The card's only way into the edit route (US-3, R-11). */
+	it('links the menu Edit to this entry own edit route', async () => {
 		const user = userEvent.setup();
 		await renderWithProviders(<TimeEntryCard entry={buildEntry()} />);
 
 		await user.click(screen.getByRole('button', { name: 'Entry actions' }));
 
-		for (const name of [/^Edit/, /^Continue timer/, /^Duplicate/, /^Delete/]) {
+		const edit = await screen.findByRole('menuitem', { name: 'Edit' });
+
+		expect(edit).toHaveAttribute('href', '/entries/162903873/edit');
+		expect(edit).not.toHaveAttribute('aria-disabled', 'true');
+	});
+
+	/**
+	 * The rest of the menu is drawn because the design puts it on the card, but each item belongs to
+	 * a later story, so it says which and does not activate.
+	 */
+	it('leaves the actions later stories own marked as not yet wired', async () => {
+		const user = userEvent.setup();
+		await renderWithProviders(<TimeEntryCard entry={buildEntry()} />);
+
+		await user.click(screen.getByRole('button', { name: 'Entry actions' }));
+
+		for (const name of [/^Continue timer/, /^Duplicate/, /^Delete/]) {
 			expect(await screen.findByRole('menuitem', { name })).toHaveAttribute('aria-disabled', 'true');
 		}
 	});

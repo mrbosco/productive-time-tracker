@@ -2,13 +2,15 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useBlocker, useNavigate } from '@tanstack/react-router';
 import { useEffect, useId, useState } from 'react';
 import { Controller, useForm, useWatch } from 'react-hook-form';
+import type { TimeEntry, TimeEntryInput } from '@/api/types';
 import { Button } from '@/components/core/Button';
 import { Dialog, DialogContent, DialogTitle } from '@/components/core/Dialog';
 import { Input } from '@/components/core/Input';
 import { RichTextEditor } from '@/components/core/RichTextEditor/RichTextEditor';
 import { SettingsSheet } from '@/components/features/settings/SettingsSheet/SettingsSheet';
-import { useDefaultService } from '@/components/features/settings/useDefaultService';
+import { useDefaultService, useServiceLabel } from '@/components/features/settings/useDefaultService';
 import { useCreateTimeEntry } from '@/components/features/time-entries/useCreateTimeEntry';
+import { useUpdateTimeEntry } from '@/components/features/time-entries/useUpdateTimeEntry';
 import { UnsavedChangesDialog } from '@/components/features/time-entries/TimeEntryForm/UnsavedChangesDialog';
 import {
 	isServiceRefusal,
@@ -17,7 +19,7 @@ import {
 	type TimeEntryFormValues,
 	summariseUnsavedEntry,
 	timeEntrySchema,
-	toCreateErrorMessage,
+	toSaveErrorMessage,
 } from '@/components/features/time-entries/TimeEntryForm/TimeEntryForm.utils';
 import { DatePicker } from '@/components/shared/DatePicker/DatePicker';
 import { formatDayWithYear } from '@/lib/date';
@@ -43,14 +45,27 @@ function CalendarIcon() {
 
 interface TimeEntryFormProps {
 	session: Session;
-	/** The day being logged, from the route's search param (A-5). */
+	/**
+	 * The day this form belongs to when creating: the route's search param (A-5). When editing, the
+	 * entry's own date wins over whatever is passed here - a caller that disagreed with the entry
+	 * would otherwise discard to a day the entry was never on.
+	 */
 	date: string;
+	/** The entry being edited (US-3). Absent means this is the New entry form. */
+	entry?: TimeEntry;
 	maxNoteLength?: number;
 }
 
 /**
- * The New entry form (US-2, R-9). Three fields and nothing else: the service is chosen once in
- * settings (A-1), and the person is the session's (R-10).
+ * The entry form: New entry when `entry` is absent (US-2, R-9), Edit entry when it is (US-3, R-11).
+ * Three fields and nothing else: the service is chosen once in settings (A-1), and the person is
+ * the session's (R-10).
+ *
+ * One component rather than two, because the design draws one screen twice - 3.4 is "same layout as
+ * New entry, prefilled" - and because everything that is hard here is shared: the dirty-state
+ * blocker, the `beforeunload` guard, the discard prompt, the duration preview and the
+ * error-replaces-the-hint row. What differs is a title, a button label, where the values start and
+ * which mutation runs. Editing sends no service (A-1) and so never waits on one.
  *
  * A modal at both widths, which is what the design draws: a full screen on mobile, a 560px dialog
  * over the day on desktop, where "adding time is never worth a page change". That is also what
@@ -67,15 +82,36 @@ interface TimeEntryFormProps {
  * form with a "Tracked from 09:18 to 10:00" caption and Discard in place of Cancel - but per
  * SPEC 11 it edits the entry the timer already created rather than creating one.
  */
-export function TimeEntryForm({ session, date, maxNoteLength = MAX_NOTE_LENGTH }: TimeEntryFormProps) {
+export function TimeEntryForm({ session, date, entry, maxNoteLength = MAX_NOTE_LENGTH }: TimeEntryFormProps) {
 	const navigate = useNavigate();
+	const isEditing = entry !== undefined;
+	// The entry is authoritative about its own day; the prop only answers for the New entry form.
+	const dayDate = entry?.date ?? date;
+	/*
+	 * ponytail: one component for both surfaces, so the edit path also runs `useDefaultService` and
+	 * ignores its answer - A-1 keeps the entry's own service. The `/services` request behind it is
+	 * not wasted, though: `useServiceLabel` below reads the same query to label the entry's service
+	 * the way the default is labelled. Splitting this into a shell plus two wrappers would charge
+	 * six drilled props and a rewrite of US-2's tested markup to save nothing.
+	 */
 	const { service, label, isPending: isServicePending, isError: isServiceError } = useDefaultService(session);
+	// The entry's own service, labelled the way the default is - both read the one `/services`
+	// query, so this costs no extra request on either path.
+	const entryServiceLabel = useServiceLabel(session, entry?.service ?? null);
 	const createEntry = useCreateTimeEntry(session);
+	const updateEntry = useUpdateTimeEntry(session);
 
 	const [errorMessage, setErrorMessage] = useState<string | null>(null);
 	const [isUnsavedOpen, setIsUnsavedOpen] = useState(false);
 	const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 	const fieldId = useId();
+
+	/** What the fields start from: blank for a new entry, the entry's own values for an edit. */
+	const seed = {
+		date: dayDate,
+		duration: entry === undefined ? '' : formatDuration(entry.minutes),
+		note: entry?.note ?? '',
+	};
 
 	const {
 		register,
@@ -83,12 +119,29 @@ export function TimeEntryForm({ session, date, maxNoteLength = MAX_NOTE_LENGTH }
 		control,
 		setValue,
 		getValues,
-		formState: { errors, isDirty, isSubmitting },
+		formState: { errors, dirtyFields, isDirty, isSubmitting },
 	} = useForm<TimeEntryFormValues, unknown, TimeEntryFormOutput>({
 		resolver: zodResolver(timeEntrySchema(maxNoteLength)),
 		mode: 'onSubmit',
 		reValidateMode: 'onSubmit',
-		defaultValues: { date, duration: '', note: '' },
+		/*
+		 * Editing starts from the entry rather than from blank, and `formatDuration` is what the
+		 * field would have accepted anyway (A-2) - so `isDirty` stays false until something is
+		 * actually changed, and the dismissal prompt does not fire on a form nobody touched.
+		 */
+		defaultValues: seed,
+
+		/*
+		 * `values` as well, because `defaultValues` is read once at mount and the entry can arrive
+		 * after it. Opening an entry the router still holds a stale copy of mounted this form on the
+		 * old values; the fresh ones landed a render later and were ignored, so reopening an entry
+		 * just saved showed what it said before the save - and saving that form put it back.
+		 *
+		 * `keepDirtyValues` is what makes re-seeding safe: a field someone has typed in is left
+		 * alone, and only the ones they have not touched follow the entry.
+		 */
+		values: entry === undefined ? undefined : seed,
+		resetOptions: { keepDirtyValues: true },
 	});
 
 	// `useWatch` rather than `watch`: it returns the value instead of a function, which is what
@@ -101,11 +154,13 @@ export function TimeEntryForm({ session, date, maxNoteLength = MAX_NOTE_LENGTH }
 	 * keeps the two causes apart: a list that would not load is worth retrying, an organization
 	 * that tracks nothing is not.
 	 */
-	const serviceProblem = isServiceError
-		? 'Could not load the service list, so there is nothing to log this against yet. Try again.'
-		: !isServicePending && service === null
-			? 'This organization has no services with time tracking enabled, so entries cannot be logged yet.'
-			: null;
+	const serviceProblem = isEditing
+		? null
+		: isServiceError
+			? 'Could not load the service list, so there is nothing to log this against yet. Try again.'
+			: !isServicePending && service === null
+				? 'This organization has no services with time tracking enabled, so entries cannot be logged yet.'
+				: null;
 
 	/**
 	 * A refresh or a closed tab cannot be intercepted by the dialog, so it gets the browser's own
@@ -161,23 +216,51 @@ export function TimeEntryForm({ session, date, maxNoteLength = MAX_NOTE_LENGTH }
 	}
 
 	function discard() {
-		void navigate({ to: '/day/$date', params: { date } });
+		void navigate({ to: '/day/$date', params: { date: dayDate } });
 	}
 
 	async function submit(values: TimeEntryFormOutput) {
-		if (service === null) return;
-
 		setErrorMessage(null);
 
+		// `note` is nullable on the wire, and an emptied editor reports `''` rather than `<p></p>`,
+		// so clearing the description stores "no note" rather than a note that happens to be blank.
+		const note = values.note.trim() === '' ? null : values.note;
+
 		try {
-			await createEntry.mutateAsync({
-				date: values.date,
-				minutes: values.duration,
-				// `note` is nullable on the wire, and an empty textarea is "no note" rather than a
-				// note that happens to be blank.
-				note: values.note.trim() === '' ? null : values.note,
-				serviceId: service.id,
-			});
+			if (entry === undefined) {
+				if (service === null) return;
+
+				await createEntry.mutateAsync({
+					date: values.date,
+					minutes: values.duration,
+					note,
+					serviceId: service.id,
+				});
+			} else {
+				/*
+				 * SPEC 4.1: "Only changed attributes". `dirtyFields` is react-hook-form's own answer
+				 * to what was edited, measured against the values the entry was loaded with, so a
+				 * field someone typed in and then typed back does not count as a change.
+				 *
+				 * No `serviceId` in any case: A-1 keeps the entry's existing service. `previousDate`
+				 * is what tells the hook which other day to invalidate when the date moved (SPEC 4.2).
+				 */
+				const changes: Partial<TimeEntryInput> = {};
+				if (dirtyFields.date === true) changes.date = values.date;
+				if (dirtyFields.duration === true) changes.minutes = values.duration;
+				if (dirtyFields.note === true) changes.note = note;
+
+				// Nothing to send is not a failure, and PATCHing an empty body to say so would be a
+				// request that asks the API to do nothing. Fall through to the same confirmation.
+				if (Object.keys(changes).length > 0) {
+					await updateEntry.mutateAsync({
+						id: entry.id,
+						previousDate: entry.date,
+						date: values.date,
+						changes,
+					});
+				}
+			}
 
 			// The day the entry belongs to, not the one the form was opened from - changing the
 			// date field moves the entry, and landing back on the old day would hide it.
@@ -187,7 +270,7 @@ export function TimeEntryForm({ session, date, maxNoteLength = MAX_NOTE_LENGTH }
 				state: { toast: 'Entry saved' },
 			});
 		} catch (error) {
-			setErrorMessage(toCreateErrorMessage(error));
+			setErrorMessage(toSaveErrorMessage(error));
 			// A-1b: the refused service is not a field on this form, so saying so is not enough -
 			// the only place it can be changed is opened too.
 			if (isServiceRefusal(error)) setIsSettingsOpen(true);
@@ -242,7 +325,7 @@ export function TimeEntryForm({ session, date, maxNoteLength = MAX_NOTE_LENGTH }
 								</svg>
 							</button>
 							<DialogTitle className="text-base font-medium tracking-[-.01em] md:text-title md:font-bold md:tracking-[-.02em]">
-								New entry
+								{isEditing ? 'Edit entry' : 'New entry'}
 							</DialogTitle>
 						</div>
 
@@ -368,20 +451,30 @@ export function TimeEntryForm({ session, date, maxNoteLength = MAX_NOTE_LENGTH }
 							</div>
 
 							{/*
-							 * Read-only meta, not a field (A-1). The service is a link because it is
-							 * changeable - just not from here.
+							 * Read-only meta, not a field (A-1).
+							 *
+							 * On the New entry form the service is a link, because the sheet behind it
+							 * is what decides the one this entry will get. On the edit form it is
+							 * plain text: A-1 keeps the entry's existing service and the PATCH never
+							 * carries one, so the sheet would open showing a different service
+							 * selected than the line that was just clicked - a control that appears to
+							 * change this entry and does not.
 							 */}
 							<div className="flex flex-wrap items-baseline gap-1.5 text-label leading-[1.5] text-muted">
 								<span>Logging as {session.personName} · Service:</span>
-								<button
-									type="button"
-									onClick={() => {
-										setIsSettingsOpen(true);
-									}}
-									className="font-medium text-accent underline underline-offset-[3px]"
-								>
-									{label ?? (isServicePending ? 'Loading…' : 'Choose a service')}
-								</button>
+								{entry === undefined ? (
+									<button
+										type="button"
+										onClick={() => {
+											setIsSettingsOpen(true);
+										}}
+										className="font-medium text-accent underline underline-offset-[3px]"
+									>
+										{label ?? (isServicePending ? 'Loading…' : 'Choose a service')}
+									</button>
+								) : (
+									<span className="font-medium">{entryServiceLabel ?? 'Unknown service'}</span>
+								)}
 							</div>
 
 							{(errorMessage ?? serviceProblem) !== null && (
@@ -392,6 +485,24 @@ export function TimeEntryForm({ session, date, maxNoteLength = MAX_NOTE_LENGTH }
 									<AlertIcon />
 									<span className="text-meta leading-[1.4] text-danger-ink">{errorMessage ?? serviceProblem}</span>
 								</div>
+							)}
+
+							{/*
+							 * US-4 wires this, and it is drawn here now for the reason the day view's
+							 * kebab is: the design puts it at the end of this form, and a bar that
+							 * gained a destructive control later would reflow the buttons under a
+							 * thumb already reaching for Save. Disabled rather than hidden, and it
+							 * says which story owns it - a `Delete` that takes focus and does nothing
+							 * is worse than one that is visibly not ready (guidebook 18).
+							 */}
+							{isEditing && (
+								<button
+									type="button"
+									disabled
+									className="self-start rounded-input text-base font-medium text-danger underline underline-offset-[3px] disabled:opacity-60 md:text-meta"
+								>
+									Delete entry (US-4)
+								</button>
 							)}
 						</div>
 
@@ -408,15 +519,20 @@ export function TimeEntryForm({ session, date, maxNoteLength = MAX_NOTE_LENGTH }
 							>
 								Cancel
 							</Button>
+							{/*
+							 * Editing never waits on the service: A-1 keeps the entry's own and the
+							 * PATCH does not carry one, so a `/services` request that has not landed
+							 * (or failed) must not hold the save.
+							 */}
 							<Button
 								type="submit"
-								disabled={isSubmitting || service === null}
+								disabled={isSubmitting || (!isEditing && service === null)}
 								className="flex-1 md:h-11 md:flex-none md:px-6"
 							>
 								{isSubmitting && (
 									<span className="size-4 animate-spinner rounded-pill border-2 border-white/35 border-t-white" />
 								)}
-								{isSubmitting ? 'Saving' : 'Save entry'}
+								{isSubmitting ? 'Saving' : isEditing ? 'Save changes' : 'Save entry'}
 							</Button>
 						</div>
 					</form>

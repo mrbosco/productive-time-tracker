@@ -1,3 +1,4 @@
+import { Link } from '@tanstack/react-router';
 import { useEffect, useId, useRef, useState } from 'react';
 import type { TimeEntry } from '@/api/types';
 import {
@@ -78,14 +79,21 @@ export function TimeEntryCard({ entry }: { entry: TimeEntry }) {
 				</DropdownMenuTrigger>
 
 				{/*
-				 * Every item here belongs to a later story - edit and delete to US-3 and US-4,
-				 * continue and duplicate to X-4 and X-3. The menu is drawn because the design puts
-				 * it on the card, but the items are `disabled` and say which story wires them: a
-				 * `Delete` that reads as destructive, takes focus and then does nothing is worse
-				 * than one that is visibly not ready (guidebook 18).
+				 * `Edit` is live from US-3; the rest belong to later stories and stay `disabled`
+				 * saying so - a `Delete` that reads as destructive, takes focus and then does
+				 * nothing is worse than one that is visibly not ready (guidebook 18).
+				 *
+				 * A `Link`, never an import of the form. ADR-0010 measured TipTap at 404 kB raw and
+				 * `autoCodeSplitting` keeps it out of the day's chunk; pulling the form in here to
+				 * open it would drag the whole ProseMirror tree onto the screen SPEC 4.2 requires to
+				 * render on one request.
 				 */}
 				<DropdownMenuContent align="end" className="w-[210px]">
-					<DropdownMenuItem disabled>Edit (US-3)</DropdownMenuItem>
+					<DropdownMenuItem asChild>
+						<Link to="/entries/$id/edit" params={{ id: entry.id }}>
+							Edit
+						</Link>
+					</DropdownMenuItem>
 					<DropdownMenuItem disabled>Continue timer (X-4)</DropdownMenuItem>
 					<DropdownMenuItem disabled>Duplicate (X-3)</DropdownMenuItem>
 					<DropdownMenuSeparator />
