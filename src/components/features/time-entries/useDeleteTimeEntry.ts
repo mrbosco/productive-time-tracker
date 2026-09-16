@@ -70,9 +70,10 @@ export function useDeleteTimeEntry(session: Session) {
 		},
 
 		onError: (_error, { date }, context) => {
-			// SPEC 4.2: "on failure the entry is restored". Put back exactly what was there,
-			// including `undefined` for a key nothing had loaded - writing an empty array instead
-			// would turn "not fetched" into "this day is empty".
+			// SPEC 4.2: "on failure the entry is restored" - to exactly what was there. A key
+			// nothing had loaded needs no undoing and gets none: `onMutate` skipped it, and
+			// `setQueryData` ignores an `undefined` value rather than writing one, so the two
+			// agree without a guard here.
 			if (context === undefined) return;
 
 			queryClient.setQueryData(['time-entries', session.personId, date], context.entries);

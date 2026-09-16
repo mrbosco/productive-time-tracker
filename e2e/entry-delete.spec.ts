@@ -36,15 +36,22 @@ async function signIn(page: Page) {
 	});
 }
 
-/** From the day view, the way the design offers: the card's kebab menu. */
-async function openConfirmFromMenu(page: Page) {
+async function openSeededDay(page: Page) {
 	await page.goto(`/day/${SEEDED_DATE}`);
 	await expect(page.getByRole('article')).toHaveCount(3);
+}
 
+/** The way the design offers: the first card's kebab menu. Assumes the day is already open. */
+async function askToDelete(page: Page) {
 	await page.getByRole('button', { name: 'Entry actions' }).first().click();
 	await page.getByRole('menuitem', { name: 'Delete' }).click();
 
 	await expect(page.getByRole('dialog', { name: 'Delete this entry?' })).toBeVisible();
+}
+
+async function openConfirmFromMenu(page: Page) {
+	await openSeededDay(page);
+	await askToDelete(page);
 }
 
 test.describe('deleting a time entry', () => {
@@ -95,11 +102,11 @@ test.describe('deleting a time entry', () => {
 	test('takes the minutes off the day summary and the week strip (X-1)', async ({ page }) => {
 		// Read before the dialog opens: Radix marks the day behind it `aria-hidden`, so neither the
 		// summary nor the strip is role-queryable while the question is up.
-		await page.goto(`/day/${SEEDED_DATE}`);
+		await openSeededDay(page);
 		await expect(page.getByText('9h logged · 3 entries')).toBeVisible();
 		await expect(page.getByRole('link', { name: 'Tue 15 Sep, 9h logged' })).toBeVisible();
 
-		await openConfirmFromMenu(page);
+		await askToDelete(page);
 		await page.getByRole('button', { name: 'Delete' }).click();
 
 		await expect(page.getByText('4h logged · 2 entries')).toBeVisible();

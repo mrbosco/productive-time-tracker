@@ -3,7 +3,7 @@ import { ConfirmDialog } from '@/components/shared/ConfirmDialog/ConfirmDialog';
 import { formatDuration } from '@/lib/duration';
 import { toPlainText } from '@/lib/note';
 
-interface DeleteEntryDialogProps {
+interface TimeEntryDeleteDialogProps {
 	/** The entry being asked about, or `null` when nothing is. Open is derived from it. */
 	entry: TimeEntry | null;
 	onOpenChange: (open: boolean) => void;
@@ -22,13 +22,15 @@ interface DeleteEntryDialogProps {
  * Open is derived from `entry` rather than tracked beside it: a dialog that is up but has no entry
  * to name is a state neither caller can usefully be in.
  */
-export function DeleteEntryDialog({ entry, onOpenChange, onConfirm }: DeleteEntryDialogProps) {
+export function TimeEntryDeleteDialog({ entry, onOpenChange, onConfirm }: TimeEntryDeleteDialogProps) {
 	if (entry === null) return null;
 
-	// `toPlainText` survives ADR-0010 for exactly this: which entry, not what its bullets were. A
-	// list rendered inside the sentence would be the wrong shape, and an entry with no description
-	// is named by its duration alone rather than by a dangling separator.
-	const note = toPlainText(entry.note).trim();
+	// The first line, which is what the design asks for (brief 4). `toPlainText` survives ADR-0010
+	// for exactly this - which entry, not what its bullets were - but it keeps the breaks between
+	// blocks, so a note written as four bullets would otherwise run them together into one
+	// sentence. An entry with no description is named by its duration alone rather than by a
+	// dangling separator.
+	const [firstLine = ''] = toPlainText(entry.note).trim().split('\n');
 
 	return (
 		<ConfirmDialog
@@ -42,8 +44,16 @@ export function DeleteEntryDialog({ entry, onOpenChange, onConfirm }: DeleteEntr
 			}}
 			cancelLabel="Cancel"
 		>
-			<span className="font-medium text-ink tabular-nums">{formatDuration(entry.minutes)}</span>
-			{note === '' ? '' : ` · ${note}`}
+			{/*
+			 * Clamped as well as shortened: one line of a note has no length limit of its own, and
+			 * a long one would grow a 400px dialog until `Delete` sat below the fold on a phone -
+			 * the destructive control becoming harder to reach than the safe one is the wrong
+			 * direction to fail in (N-4).
+			 */}
+			<span className="line-clamp-3">
+				<span className="font-medium text-ink tabular-nums">{formatDuration(entry.minutes)}</span>
+				{firstLine === '' ? '' : ` · ${firstLine}`}
+			</span>
 		</ConfirmDialog>
 	);
 }

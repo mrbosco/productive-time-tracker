@@ -4,6 +4,14 @@ import { cn } from '@/lib/utils';
 /** The design's dismissal delay (`TimeTracker.dc.html`). */
 const TOAST_DURATION_MS = 2600;
 
+/**
+ * Longer for a failure. A confirmation can go once it has been read - the thing it describes stays
+ * on screen. A failure is the opposite: it reports something that did not happen, it is the only
+ * report of it where there is no banner to carry one (SPEC 4.2), and the screen behind it looks
+ * exactly as it did before the attempt.
+ */
+const ERROR_TOAST_DURATION_MS = 6000;
+
 function CheckIcon() {
 	return (
 		<svg width="18" height="18" viewBox="0 0 20 20" aria-hidden="true" className="flex-none text-success">
@@ -46,7 +54,8 @@ interface ToastProps {
  * announced politely. An error is `role="alert"`: it reports that what they asked for did not
  * happen, which is worth interrupting for.
  */
-export function Toast({ children, onDismiss, durationMs = TOAST_DURATION_MS, variant = 'success' }: ToastProps) {
+export function Toast({ children, onDismiss, durationMs, variant = 'success' }: ToastProps) {
+	const delay = durationMs ?? (variant === 'error' ? ERROR_TOAST_DURATION_MS : TOAST_DURATION_MS);
 	/**
 	 * The timer is keyed on the message and the delay, never on `onDismiss`.
 	 *
@@ -64,12 +73,12 @@ export function Toast({ children, onDismiss, durationMs = TOAST_DURATION_MS, var
 	useEffect(() => {
 		const timer = setTimeout(() => {
 			dismiss.current();
-		}, durationMs);
+		}, delay);
 
 		return () => {
 			clearTimeout(timer);
 		};
-	}, [durationMs, children]);
+	}, [delay, children]);
 
 	return (
 		<div

@@ -1,11 +1,11 @@
 import { Link, useNavigate } from '@tanstack/react-router';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import type { TimeEntry } from '@/api/types';
 import { Toast } from '@/components/core/Toast';
 import { QuickAddInput } from '@/components/features/quick-add/QuickAddInput';
 import { DateNavigator } from '@/components/features/time-entries/DateNavigator/DateNavigator';
 import { DaySummary } from '@/components/features/time-entries/DaySummary/DaySummary';
-import { DeleteEntryDialog } from '@/components/features/time-entries/DeleteEntryDialog/DeleteEntryDialog';
+import { TimeEntryDeleteDialog } from '@/components/features/time-entries/TimeEntryDeleteDialog/TimeEntryDeleteDialog';
 import { ServiceTotals } from '@/components/features/time-entries/ServiceTotals/ServiceTotals';
 import { TimeEntryList } from '@/components/features/time-entries/TimeEntryList/TimeEntryList';
 import { useDeleteTimeEntry } from '@/components/features/time-entries/useDeleteTimeEntry';
@@ -53,6 +53,20 @@ export function DayView({ session, date }: { session: Session; date: string }) {
 
 	const hasEntries = entries !== undefined && entries.length > 0;
 
+	/**
+	 * Where focus goes once the card it was on is gone (guidebook 18).
+	 *
+	 * The dialog was opened from that card's kebab, so Radix hands focus back to it on close - and
+	 * the optimistic removal then unmounts the element holding it, dropping focus to the document.
+	 * A keyboard or screen-reader user loses their place on the one path this story is about, and
+	 * the failure path loses it too, because the row is unmounted and remounted there as well.
+	 *
+	 * ponytail: the day's own primary control, which is rendered at every width and on an emptied
+	 * day too. The better target is the next card's own menu - "the same place in the list" - and
+	 * X-2 is what makes that cheap, because its roving tabindex owns focus inside the list already.
+	 */
+	const addEntryRef = useRef<HTMLAnchorElement>(null);
+
 	async function confirmDelete(entry: TimeEntry) {
 		// Closed first: the row is already gone from the cache by the time the request is sent
 		// (SPEC 4.2), so leaving the dialog up to spin would be asking the user to wait for
@@ -65,6 +79,10 @@ export function DayView({ session, date }: { session: Session; date: string }) {
 		} catch {
 			// The row is back already - the hook restores it - so this only has to say why.
 			setToast({ message: 'Could not delete the entry.', variant: 'error' });
+		} finally {
+			// After either outcome, and after the await: the row is unmounted on the way through
+			// both, so moving focus any earlier would only be undone.
+			addEntryRef.current?.focus();
 		}
 	}
 
@@ -93,6 +111,7 @@ export function DayView({ session, date }: { session: Session; date: string }) {
 					 * action, which is ordinary, and not the same thing as one control listed twice.
 					 */}
 					<Link
+						ref={addEntryRef}
 						to="/entries/new"
 						search={{ date }}
 						className="duration-ui fixed right-4 bottom-7 z-10 inline-flex size-14 items-center justify-center gap-2 rounded-pill bg-accent text-on-accent shadow-fab transition-colors ease-ui hover:bg-accent-dark md:static md:ml-auto md:h-11 md:w-auto md:px-5 md:shadow-none"
@@ -141,7 +160,7 @@ export function DayView({ session, date }: { session: Session; date: string }) {
 			 * the values it was opened with for as long as it is on screen: a background refetch
 			 * that removed the row would otherwise leave a question about nothing.
 			 */}
-			<DeleteEntryDialog
+			<TimeEntryDeleteDialog
 				entry={entryPendingDelete}
 				onOpenChange={(next) => {
 					if (!next) setEntryPendingDelete(null);

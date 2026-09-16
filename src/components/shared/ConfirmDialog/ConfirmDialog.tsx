@@ -27,8 +27,9 @@ interface ConfirmDialogProps {
  * caller that does (`UnsavedChangesDialog`) says so because there the affirmative *is* the safe
  * choice.
  *
- * Layered above whatever opened it: both callers sit inside another dialog - the entry form, or
- * the day behind it - so the overlay has to dim that rather than sit under it.
+ * Layered above whatever opened it. On the day view that is the screen, but the entry form is
+ * itself a dialog, and an overlay on the default layer would dim the day and leave the form lit
+ * over it - so both sit on the raised pair the unsaved prompt already used.
  */
 export function ConfirmDialog({
 	open,

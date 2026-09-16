@@ -39,6 +39,38 @@ describe('DayView', () => {
 		expect(dialog).toHaveTextContent('Probavam');
 	});
 
+	/**
+	 * `ConfirmDialog` asserts this standalone; this is the path that can break it. The menu returns
+	 * focus to the kebab on close, on a timeout that runs after the dialog has already placed its
+	 * own focus, and only the dialog's trap puts it back.
+	 */
+	it('opens with the safe choice focused, even coming from the menu (guidebook 18)', async () => {
+		const user = userEvent.setup();
+		await renderDay();
+
+		await askToDelete(user);
+
+		expect(screen.getByRole('button', { name: 'Cancel' })).toHaveFocus();
+	});
+
+	/**
+	 * The card the dialog was opened from is the element Radix hands focus back to, and the
+	 * optimistic removal unmounts it - so without somewhere to put focus it lands on the document
+	 * and a keyboard user loses the day entirely.
+	 */
+	it('keeps focus on the day after the card it was opened from is gone (guidebook 18)', async () => {
+		const user = userEvent.setup();
+		await renderDay();
+
+		await askToDelete(user);
+		await user.click(screen.getByRole('button', { name: 'Delete' }));
+
+		await waitFor(() => {
+			expect(screen.getAllByRole('article')).toHaveLength(2);
+		});
+		expect(screen.getByRole('link', { name: 'Add entry' })).toHaveFocus();
+	});
+
 	it('deletes the entry and confirms it on the day (R-12)', async () => {
 		const user = userEvent.setup();
 		await renderDay();

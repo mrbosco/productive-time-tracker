@@ -9,7 +9,7 @@ import { Input } from '@/components/core/Input';
 import { RichTextEditor } from '@/components/core/RichTextEditor/RichTextEditor';
 import { SettingsSheet } from '@/components/features/settings/SettingsSheet/SettingsSheet';
 import { useDefaultService, useServiceLabel } from '@/components/features/settings/useDefaultService';
-import { DeleteEntryDialog } from '@/components/features/time-entries/DeleteEntryDialog/DeleteEntryDialog';
+import { TimeEntryDeleteDialog } from '@/components/features/time-entries/TimeEntryDeleteDialog/TimeEntryDeleteDialog';
 import { useCreateTimeEntry } from '@/components/features/time-entries/useCreateTimeEntry';
 import { useDeleteTimeEntry } from '@/components/features/time-entries/useDeleteTimeEntry';
 import { useUpdateTimeEntry } from '@/components/features/time-entries/useUpdateTimeEntry';
@@ -589,7 +589,7 @@ export function TimeEntryForm({ session, date, entry, maxNoteLength = MAX_NOTE_L
 			 * prompt already use. The day view's dialog, because it is the same question about the
 			 * same entry (design brief 4).
 			 */}
-			<DeleteEntryDialog
+			<TimeEntryDeleteDialog
 				entry={isConfirmDeleteOpen ? (entry ?? null) : null}
 				onOpenChange={setIsConfirmDeleteOpen}
 				onConfirm={() => {
