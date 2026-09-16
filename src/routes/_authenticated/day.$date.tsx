@@ -53,7 +53,7 @@ function DayRoute() {
 	const { date } = Route.useParams();
 	const navigate = useNavigate();
 	const { data: entries, isPending, isFetching, refetch } = useTimeEntries(session, date);
-	const { data: weekTotals, isPending: isWeekPending } = useWeekTotals(session, date);
+	const { data: weekTotals, isPending: isWeekPending, isError: isWeekError } = useWeekTotals(session, date);
 
 	const hasEntries = entries !== undefined && entries.length > 0;
 
@@ -90,7 +90,7 @@ function DayRoute() {
 				</Link>
 			</div>
 
-			<WeekStrip date={date} totals={weekTotals} isPending={isWeekPending} />
+			<WeekStrip date={date} weekTotals={weekTotals} isPending={isWeekPending} isError={isWeekError} />
 
 			<div className="grid items-start gap-3 md:grid-cols-[minmax(0,1fr)_340px] md:gap-8">
 				<div className="flex flex-col gap-3 md:gap-3.5">
@@ -117,7 +117,7 @@ function DayRoute() {
 
 				{hasEntries && (
 					<div className="hidden md:block">
-						<ServiceTotals entries={entries} weekMinutes={weekTotals} />
+						<ServiceTotals entries={entries} weekTotals={weekTotals} isWeekError={isWeekError} />
 					</div>
 				)}
 			</div>

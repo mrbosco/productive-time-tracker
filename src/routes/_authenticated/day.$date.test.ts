@@ -75,4 +75,14 @@ describe('the day route loader', () => {
 			expect.objectContaining({ queryKey: ['time-entries', testSession.personId, '2026-09-15'] })
 		);
 	});
+
+	/** The other half of the screen, and the request X-1 exists to make only once per week. */
+	it('starts the week request too, keyed on the week Monday', () => {
+		const { prefetchQuery } = runLoader('2026-09-15');
+
+		expect(prefetchQuery).toHaveBeenCalledWith(
+			expect.objectContaining({ queryKey: ['week-totals', testSession.personId, '2026-09-14'] })
+		);
+		expect(prefetchQuery).toHaveBeenCalledTimes(2);
+	});
 });
