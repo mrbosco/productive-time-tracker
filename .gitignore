@@ -1,0 +1,14 @@
+node_modules
+dist
+coverage
+playwright-report
+test-results
+.env
+.env.*
+!.env.example
+*.local
+.DS_Store
+
+# Claude Code local/personal settings (project settings.json is checked in)
+.claude/settings.local.json
+.tanstack
