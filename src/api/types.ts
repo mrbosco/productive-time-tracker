@@ -14,8 +14,10 @@ export interface Person {
 export interface Service {
 	id: string;
 	name: string;
-	/** Service names duplicate heavily ("Project management" appears 5x); the deal disambiguates. */
+	/** The deal is Productive's "project". Names repeat, so this alone does not identify a service. */
 	dealName: string | null;
+	dealId: string | null;
+	companyName: string | null;
 }
 
 export interface OrganizationMembership {
@@ -32,6 +34,11 @@ export interface TimeEntry {
 	minutes: number;
 	/** May contain HTML from Productive's rich-text editor (A-9). Strip before rendering. */
 	note: string | null;
+	/**
+	 * Productive's own draft flag. Independent of `minutes` being 0 - the recorded zero-minute entry
+	 * has `draft: false` - so the UI's draft label renders from this, never from the duration (A-8).
+	 */
+	draft: boolean;
 	serviceId: string | null;
 	service: Service | null;
 	/** The API cannot sort by this, so the day list orders on it client-side (A-7). */

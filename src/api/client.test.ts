@@ -22,7 +22,10 @@ describe('JSON:API parsing', () => {
 		const entries = parseTimeEntries(asDocument(timeEntriesDay));
 
 		expect(entries).toHaveLength(3);
-		expect(entries[0]?.service).toEqual({ id: '16887825', name: 'Acquiring new clients', dealName: null });
+		// The day list includes services with only `name`, so the deal fields are absent here by
+		// design - the selector's fuller shape comes from /services (A-1).
+		expect(entries[0]?.service).toMatchObject({ id: '16887825', name: 'Acquiring new clients' });
+		expect(entries[0]?.service?.dealName).toBeNull();
 	});
 
 	it('keeps a note that arrived as rich-text HTML intact for the renderer to strip (A-9)', () => {
@@ -36,6 +39,15 @@ describe('JSON:API parsing', () => {
 
 		expect(entry?.minutes).toBe(0);
 		expect(entry?.note).toBeNull();
+	});
+
+	it('reads draft from the API flag, which a zero-minute entry does not imply (A-8)', () => {
+		const entries = parseTimeEntries(asDocument(timeEntriesDay));
+		const zeroMinute = entries.find((candidate) => candidate.id === '162921848');
+
+		expect(zeroMinute?.minutes).toBe(0);
+		expect(zeroMinute?.draft).toBe(false);
+		expect(entries.every((entry) => entry.draft === false)).toBe(true);
 	});
 
 	it('reads the person out of a membership fetched with include=person', () => {

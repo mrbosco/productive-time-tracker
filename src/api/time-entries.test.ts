@@ -43,7 +43,7 @@ describe('listTimeEntries', () => {
 		// Set membership rather than the exact string: reordering the list is behaviour-preserving.
 		// `service` must be in it or the relationship linkage is dropped along with the attributes.
 		expect(seen.params?.get('fields[time_entries]')?.split(',')).toEqual(
-			expect.arrayContaining(['date', 'time', 'note', 'created_at', 'service'])
+			expect.arrayContaining(['date', 'time', 'note', 'created_at', 'draft', 'service'])
 		);
 		expect(seen.params?.get('fields[services]')?.split(',')).toContain('name');
 	});

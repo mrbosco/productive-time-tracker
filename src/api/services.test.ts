@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import servicesSample from '../../docs/api/samples/services.json';
 import orphaned from '../../docs/api/samples/services-fields-without-relationship.json';
 import type { JsonApiDocument } from './client';
-import { parseServices } from './services';
+import { labelServices, parseServices } from './services';
 
 const asDocument = (sample: unknown) => sample as JsonApiDocument;
 
@@ -15,13 +15,37 @@ describe('parseServices', () => {
 		expect(named.every((service) => service.dealName !== null)).toBe(true);
 	});
 
-	it('does not make the label unique, because deal names duplicate too', () => {
-		// Two distinct deals are both called "Development", so "Project management — Development"
-		// appears twice. The selector must key on service id and cannot present the label as unique.
-		const services = parseServices(asDocument(servicesSample));
-		const labels = services.map((service) => `${service.name} — ${service.dealName ?? ''}`);
+	// This started as an assertion that the deal alone disambiguates. It failed - two distinct deals
+	// are both named "Development" - which is why A-1 uses the three-part label. It now guards that rule.
+	it('disambiguates every service with Company - Project - Service', () => {
+		const labelled = labelServices(parseServices(asDocument(servicesSample)));
 
-		expect(new Set(labels).size).toBeLessThan(labels.length);
+		expect(labelled).toHaveLength(26);
+		expect(new Set(labelled.map((entry) => entry.label)).size).toBe(labelled.length);
+		expect(labelled.some((entry) => entry.label.includes('·'))).toBe(true);
+	});
+
+	it('neither name alone is unique, which is why all three parts are needed', () => {
+		const services = parseServices(asDocument(servicesSample));
+
+		expect(new Set(services.map((service) => service.name)).size).toBeLessThan(services.length);
+		expect(new Set(services.map((service) => `${service.name}|${service.dealName ?? ''}`)).size).toBeLessThan(
+			services.length
+		);
+	});
+
+	it('appends the deal id only to labels that still collide, never to every row', () => {
+		const collide = [
+			{ id: 's1', name: 'Design', dealName: 'Retainer', dealId: 'd1', companyName: 'Acme' },
+			{ id: 's2', name: 'Design', dealName: 'Retainer', dealId: 'd2', companyName: 'Acme' },
+			{ id: 's3', name: 'Build', dealName: 'Retainer', dealId: 'd3', companyName: 'Acme' },
+		];
+
+		const labelled = labelServices(collide);
+
+		expect(labelled[0]?.label).toBe('Acme · Retainer · Design (#d1)');
+		expect(labelled[1]?.label).toBe('Acme · Retainer · Design (#d2)');
+		expect(labelled[2]?.label).toBe('Acme · Retainer · Build');
 	});
 
 	it('reports no deal when the field list dropped the relationship, rather than guessing', () => {

@@ -25,6 +25,7 @@ function toTimeEntry(document: JsonApiDocument, resource: Resource): TimeEntry {
 		date: readAttributeString(resource, 'date') ?? '',
 		minutes: readAttributeNumber(resource, 'time'),
 		note: readAttributeString(resource, 'note'),
+		draft: resource.attributes?.draft === true,
 		serviceId,
 		service: service === undefined ? null : toService(document, service),
 		createdAt: readAttributeString(resource, 'created_at') ?? '',
@@ -47,6 +48,7 @@ function parseMutatedTimeEntry(document: JsonApiDocument): MutatedTimeEntry {
 		date: readAttributeString(resource, 'date') ?? '',
 		minutes: readAttributeNumber(resource, 'time'),
 		note: readAttributeString(resource, 'note'),
+		draft: resource.attributes?.draft === true,
 		createdAt: readAttributeString(resource, 'created_at') ?? '',
 	};
 }
@@ -55,7 +57,7 @@ function parseMutatedTimeEntry(document: JsonApiDocument): MutatedTimeEntry {
  * Sparse fieldsets take a day from 8.6 KB to 1.6 KB - a full time entry carries ~45 attributes
  * (costs, approval, invoicing, overtime) and this screen renders four of them.
  */
-const FIELDS = 'fields[time_entries]=date,time,note,created_at,service&fields[services]=name';
+const FIELDS = 'fields[time_entries]=date,time,note,created_at,draft,service&fields[services]=name';
 
 function buildDayPath(personId: string, date: string, page: number): string {
 	const filters =
