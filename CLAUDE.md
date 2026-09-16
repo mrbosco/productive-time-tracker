@@ -2,7 +2,13 @@
 
 Client-side SPA (no server code) for managing a person's [Productive](https://www.productive.io/) time entries for a selected day: log in with an API token and organization ID, list entries for a date, create, edit and delete them. Built for the Productive Frontend Engineer take-home assignment; the PDF in `docs/assignment/` is the source of truth.
 
+<<<<<<< HEAD
 **Status: US-2 (with X-1).** Tooling and the API layer are complete; login, the session and the auth-guarded route tree are in place; the day view lists a selected date's entries with the week strip and totals around them; and the entry form creates one, against the service chosen in the settings sheet (A-1). Descriptions are rich text in both directions (A-9 as amended by ADR-0010). Edit an entry (US-3) is the next story.
+=======
+
+**Status: US-2 (with X-1).** Tooling and the API layer are complete; login, the session and the auth-guarded route tree are in place; the day view lists a selected date's entries with the week strip and totals around them; and the entry form creates one, against the service chosen in the settings sheet (A-1). Edit an entry (US-3) is the next story.
+
+> > > > > > > origin/main
 
 ## Source of truth
 
@@ -80,9 +86,13 @@ e2e/            Playwright specs, one per user story
 
 Parts of the day view are **drawn but inert**, because the design puts them on this screen and a bar or card that gained a control later would reflow around it: the timer pill and the `?` sheet in the app bar, the quick-add line (it opens the form without parsing), the entry card's kebab menu, and `Copy from yesterday`. Each belongs to US-3, US-4, X-2, X-3 or X-4 and is wired there. `Default service...` was one of them and is now live (US-2).
 
+<<<<<<< HEAD
 Descriptions are **rich text** (ADR-0010). The form's field is TipTap, trimmed to paragraphs, bold, italic, strike and the two list kinds; `components/shared/Note` renders a stored note as elements by walking the parsed DOM against an allowlist, so `dangerouslySetInnerHTML` still appears nowhere. `lib/note.ts`'s `toPlainText` stays for the places that want a line of text rather than a document. ProseMirror does not receive input under jsdom, so typing a list or bolding a word is covered in `e2e/entry-create.spec.ts` rather than in a component test - and entry cards are queried as `article`, because a note's own bullets are `listitem`s now.
 
-The entry form is a **modal at both widths** - a full screen on mobile, a 560px dialog over the day on desktop, where the design's build notes say "adding time is never worth a page change". The P-2 range toggle is deliberately absent rather than drawn inert: it is an extra, and the field it swaps is the one the form is for. `TimeEntryForm.tsx` names where its markup lives in the design source, as it does for X-4's stop-timer sheet.
+=======
+
+> > > > > > > origin/main
+> > > > > > > The entry form is a **modal at both widths** - a full screen on mobile, a 560px dialog over the day on desktop, where the design's build notes say "adding time is never worth a page change". The P-2 range toggle is deliberately absent rather than drawn inert: it is an extra, and the field it swaps is the one the form is for. `TimeEntryForm.tsx` names where its markup lives in the design source, as it does for X-4's stop-timer sheet.
 
 ## Environment
 
