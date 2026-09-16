@@ -81,3 +81,31 @@ describe('toPlainText', () => {
 		expect(toPlainText('<p>Hello</p><style>.a{color:red}</style>')).toBe('Hello');
 	});
 });
+
+/**
+ * The same gap the renderer had: inside a foreign namespace `tagName` keeps its authored case, so
+ * `<svg><script>` arrived as `script` and walked past a check written in upper case. Nothing could
+ * execute - this function only ever returns text - but the script source became the description,
+ * and the card asks this function whether an entry has one.
+ */
+describe('foreign-namespace content', () => {
+	it.each([
+		['<svg><script>window.stolen = 1</script></svg>', 'window.stolen'],
+		['<math><style>x{}</style></math>', 'x{}'],
+		['<p>Safe</p><svg><script>window.stolen = 1</script></svg>', 'window.stolen'],
+	])('does not read %s as prose', (note, leaked) => {
+		expect(toPlainText(note)).not.toContain(leaked);
+	});
+
+	it('keeps the prose beside it', () => {
+		expect(toPlainText('<p>Safe</p><svg><script>bad()</script></svg>')).toBe('Safe');
+	});
+
+	/**
+	 * The card decides "no description" from this function and renders with the other walker, so a
+	 * note the renderer refuses to draw must not read as having one here.
+	 */
+	it('agrees with the renderer that markup-only content is not a description', () => {
+		expect(toPlainText('<svg><script>bad()</script></svg>').trim()).toBe('');
+	});
+});

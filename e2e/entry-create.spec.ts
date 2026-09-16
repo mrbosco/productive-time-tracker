@@ -79,7 +79,7 @@ test.describe('adding a time entry', () => {
 		await expect(page).toHaveURL(new RegExp(`/day/${SEEDED_DATE}$`));
 		await expect(page.getByRole('status')).toHaveText('Entry saved');
 		await expect(page.getByText('Mapped the time_entries payload')).toBeVisible();
-		await expect(page.getByRole('listitem')).toHaveCount(4);
+		await expect(page.getByRole('article')).toHaveCount(4);
 	});
 
 	/** A-2: the preview is the only confirmation that what was typed was read as intended. */
@@ -148,8 +148,85 @@ test.describe('adding a time entry', () => {
 		await page.getByRole('button', { name: 'Discard changes' }).click();
 
 		await expect(page).toHaveURL(new RegExp(`/day/${SEEDED_DATE}$`));
-		await expect(page.getByRole('listitem')).toHaveCount(3);
+		await expect(page.getByRole('article')).toHaveCount(3);
 		await expect(page.getByRole('status')).toHaveCount(0);
+	});
+
+	/**
+	 * ADR-0010, and the reason these live here rather than in a component test: ProseMirror listens
+	 * for `beforeinput` and composition events jsdom does not implement, so the editor only really
+	 * runs in a browser.
+	 */
+	test('starts a list from a dash, and saves it as one', async ({ page }) => {
+		await openForm(page);
+
+		await page.getByRole('textbox', { name: 'Duration' }).fill('30m');
+		const description = page.getByRole('textbox', { name: 'Description' });
+		await description.click();
+		await page.keyboard.type('- first');
+		await page.keyboard.press('Enter');
+		await page.keyboard.type('second');
+
+		await expect(description.locator('ul li')).toHaveCount(2);
+
+		await page.getByRole('button', { name: 'Save entry' }).click();
+
+		// And the day renders it as a list too, rather than flattening it back to lines.
+		await expect(page).toHaveURL(new RegExp(`/day/${SEEDED_DATE}$`));
+		await expect(page.getByRole('article').last().locator('ul li')).toHaveCount(2);
+	});
+
+	test('bolds the selection with the usual shortcut', async ({ page }) => {
+		await openForm(page);
+
+		const description = page.getByRole('textbox', { name: 'Description' });
+		await description.click();
+		await page.keyboard.type('plain ');
+		await page.keyboard.press('ControlOrMeta+b');
+		await page.keyboard.type('bold');
+
+		await expect(description.locator('strong')).toHaveText('bold');
+	});
+
+	/**
+	 * The editor only runs in a browser, so this is the only level that can assert a typed note
+	 * survives anything. Covers the failed-save case the component test cannot reach.
+	 */
+	test('keeps the written note when the form is reopened after a prompt', async ({ page }) => {
+		await openForm(page);
+
+		const description = page.getByRole('textbox', { name: 'Description' });
+		await description.click();
+		await page.keyboard.type('- worth keeping');
+
+		await page.getByRole('button', { name: 'Cancel' }).click();
+		await page.getByRole('button', { name: 'Continue editing' }).click();
+
+		await expect(description.locator('ul li')).toHaveCount(1);
+		await expect(description).toContainText('worth keeping');
+	});
+
+	/**
+	 * Tab is "next control" in a form, not "indent the list" (guidebook 18).
+	 *
+	 * Two items, not one: indenting the *first* item of a list is a no-op in ProseMirror, so a
+	 * single-item version passes whether or not the binding was removed. The caret has to sit on
+	 * a second item for Tab to have something to do.
+	 */
+	test('lets Tab leave the editor rather than indenting the list', async ({ page }) => {
+		await openForm(page);
+
+		const description = page.getByRole('textbox', { name: 'Description' });
+		await description.click();
+		await page.keyboard.type('- first');
+		await page.keyboard.press('Enter');
+		await page.keyboard.type('second');
+		await expect(description.locator('ul li')).toHaveCount(2);
+
+		await page.keyboard.press('Tab');
+
+		await expect(description.locator('ul ul')).toHaveCount(0);
+		await expect(description).not.toBeFocused();
 	});
 
 	test('closes an untouched form without asking', async ({ page }) => {

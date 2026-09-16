@@ -3,7 +3,13 @@ import error401 from '../../../../../docs/api/samples/error-401.json';
 import error404 from '../../../../../docs/api/samples/error-404.json';
 import error422 from '../../../../../docs/api/samples/error-422-missing-service.json';
 import { ApiError, toApiError } from '@/api/client';
-import { isServiceRefusal, MAX_NOTE_LENGTH, timeEntrySchema, toCreateErrorMessage } from './TimeEntryForm.utils';
+import {
+	isServiceRefusal,
+	MAX_NOTE_LENGTH,
+	summariseUnsavedEntry,
+	timeEntrySchema,
+	toCreateErrorMessage,
+} from './TimeEntryForm.utils';
 
 const schema = timeEntrySchema();
 
@@ -107,5 +113,48 @@ describe('toCreateErrorMessage', () => {
 		['a thrown string', 'boom'],
 	])('falls back to the design wording for %s', (_name, error) => {
 		expect(toCreateErrorMessage(error)).toBe('Could not save the entry. Try again.');
+	});
+});
+
+describe('summariseUnsavedEntry', () => {
+	it.each([
+		['1h 45m', '<p>Paired</p>', '1h 45m', true],
+		['1h 45m', '', '1h 45m', false],
+		['', '<p>Paired</p>', null, true],
+		['half a day', '<p>Paired</p>', null, true],
+		['0', '<p>Paired</p>', null, true],
+	])('reads %s / %s as duration %s and hasNote %s', (duration, note, expectedDuration, expectedHasNote) => {
+		const summary = summariseUnsavedEntry({ date: '2026-09-15', duration, note });
+
+		expect(summary.duration).toBe(expectedDuration);
+		expect(summary.hasNote).toBe(expectedHasNote);
+	});
+
+	/** The note is markup now, so emptiness is about words rather than about tags (ADR-0010). */
+	it('does not count an empty paragraph as a description', () => {
+		expect(summariseUnsavedEntry({ date: '2026-09-15', duration: '', note: '<p></p>' }).hasNote).toBe(false);
+	});
+
+	it('counts a list as a description', () => {
+		const note = '<ul><li><p>one</p></li></ul>';
+
+		expect(summariseUnsavedEntry({ date: '2026-09-15', duration: '', note }).hasNote).toBe(true);
+	});
+});
+
+describe('the note length guard', () => {
+	/** Counted as text, not as markup: the tags are not characters anyone typed (ADR-0010). */
+	it('measures what was written rather than the tags around it', () => {
+		const schema = timeEntrySchema(10);
+		const note = `<ul><li><p>${'x'.repeat(10)}</p></li></ul>`;
+
+		expect(schema.safeParse({ date: '2026-09-15', duration: '30m', note }).success).toBe(true);
+	});
+
+	it('still rejects prose past the cap', () => {
+		const schema = timeEntrySchema(10);
+		const note = `<p>${'x'.repeat(11)}</p>`;
+
+		expect(schema.safeParse({ date: '2026-09-15', duration: '30m', note }).success).toBe(false);
 	});
 });

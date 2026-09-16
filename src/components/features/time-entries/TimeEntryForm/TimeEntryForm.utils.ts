@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { ApiError } from '@/api/client';
 import { isoDateSchema } from '@/lib/date';
 import { formatDuration, parseDuration } from '@/lib/duration';
+import { toPlainText } from '@/lib/note';
 
 /**
  * A-8 requires the note to be "guarded" for length but fixes no number, and neither does the API -
@@ -62,7 +63,18 @@ export function timeEntrySchema(maxNoteLength: number = MAX_NOTE_LENGTH) {
 
 			return minutes;
 		}),
-		note: z.string().max(maxNoteLength, `Keep the description under ${String(maxNoteLength)} characters.`),
+		/**
+		 * Measured as text, not as markup. The field stores HTML now (ADR-0010), and counting the
+		 * tags would reject a description for characters the user cannot see and did not type.
+		 * The overhead is bounded - prose in paragraphs and lists, nothing nested deeply - so the
+		 * cap still does its job of catching a paste accident before Productive has to.
+		 */
+		note: z
+			.string()
+			.refine(
+				(note) => toPlainText(note).length <= maxNoteLength,
+				`Keep the description under ${String(maxNoteLength)} characters.`
+			),
 	});
 }
 
@@ -127,6 +139,6 @@ export function summariseUnsavedEntry(values: TimeEntryFormValues): {
 
 	return {
 		duration: minutes !== null && minutes > 0 ? formatDuration(minutes) : null,
-		hasNote: values.note.trim() !== '',
+		hasNote: toPlainText(values.note).trim() !== '',
 	};
 }

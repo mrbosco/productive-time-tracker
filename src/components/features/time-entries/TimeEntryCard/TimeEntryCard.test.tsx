@@ -45,14 +45,49 @@ describe('TimeEntryCard', () => {
 		expect(screen.getByText('Draft')).toBeInTheDocument();
 	});
 
-	/** A-9: notes written in Productive's editor come back as markup. */
-	it('renders a rich-text note as text rather than as markup', async () => {
+	/**
+	 * A-9 as amended by ADR-0010. A note Productive stored as a list is drawn as a list: flattening
+	 * it to a line was the app redrawing what the user wrote.
+	 */
+	it('renders a note written as a list as a list', async () => {
 		const { container } = await renderWithProviders(
-			<TimeEntryCard entry={buildEntry({ note: '<ul><li><p>Probavam</p></li></ul>' })} />
+			<TimeEntryCard entry={buildEntry({ note: '<ul><li><p>Probavam</p></li><li><p>Drugi</p></li></ul>' })} />
 		);
 
+		expect(container.querySelectorAll('ul li')).toHaveLength(2);
 		expect(screen.getByText('Probavam')).toBeInTheDocument();
-		expect(container.querySelector('ul')).toBeNull();
+		expect(screen.getByText('Drugi')).toBeInTheDocument();
+	});
+
+	it('renders emphasis as emphasis', async () => {
+		const { container } = await renderWithProviders(
+			<TimeEntryCard entry={buildEntry({ note: '<p>Paired on <strong>the parser</strong></p>' })} />
+		);
+
+		expect(container.querySelector('strong')).toHaveTextContent('the parser');
+	});
+
+	/**
+	 * The renderer fails closed: it walks a parsed document and only allowlisted tags become
+	 * elements, so nothing executable can reach the card even if the API served it. There is no
+	 * `dangerouslySetInnerHTML` in the app for it to reach through.
+	 */
+	it('drops anything executable rather than rendering it', async () => {
+		const { container } = await renderWithProviders(
+			<TimeEntryCard
+				entry={buildEntry({ note: '<p>Safe</p><script>window.pwned = 1</script><img src="x" onerror="1">' })}
+			/>
+		);
+
+		expect(screen.getByText('Safe')).toBeInTheDocument();
+		expect(container.querySelector('script')).toBeNull();
+		expect(container.querySelector('img')).toBeNull();
+	});
+
+	it('treats markup with no words in it as no description', async () => {
+		await renderWithProviders(<TimeEntryCard entry={buildEntry({ note: '<p></p>' })} />);
+
+		expect(screen.getByText('No description')).toBeInTheDocument();
 	});
 
 	it('preserves the line breaks of a multiline description', async () => {

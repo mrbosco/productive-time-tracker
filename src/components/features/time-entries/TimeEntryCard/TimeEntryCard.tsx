@@ -8,6 +8,7 @@ import {
 	DropdownMenuTrigger,
 } from '@/components/core/DropdownMenu';
 import { formatDuration } from '@/lib/duration';
+import { Note } from '@/components/features/time-entries/Note/Note';
 import { toPlainText } from '@/lib/note';
 import { cn } from '@/lib/utils';
 
@@ -31,7 +32,10 @@ function KebabIcon() {
  * ring is the only thing that arrives, which is harmless and is what the design draws.
  */
 export function TimeEntryCard({ entry }: { entry: TimeEntry }) {
-	const note = toPlainText(entry.note);
+	// `toPlainText` only to decide whether there is anything to show: a note that is all markup
+	// and no words - `<p></p>` - should read as no description rather than as an empty box. What
+	// is rendered is the markup itself (ADR-0010).
+	const hasNote = toPlainText(entry.note).trim() !== '';
 
 	return (
 		// Not focusable yet. The design gives cards a focus ring because X-2 moves between them with
@@ -47,7 +51,11 @@ export function TimeEntryCard({ entry }: { entry: TimeEntry }) {
 			</p>
 
 			<div className="flex min-w-0 flex-1 flex-col gap-1.5">
-				{note === '' ? <p className="text-list text-muted italic">No description</p> : <ClampedNote note={note} />}
+				{hasNote ? (
+					<ClampedNote note={entry.note ?? ''} />
+				) : (
+					<p className="text-list text-muted italic">No description</p>
+				)}
 
 				<p className="text-caption font-medium text-muted">
 					{entry.service?.name ?? 'Unknown service'}
@@ -102,7 +110,7 @@ export function TimeEntryCard({ entry }: { entry: TimeEntry }) {
  */
 function ClampedNote({ note }: { note: string }) {
 	const noteId = useId();
-	const noteRef = useRef<HTMLParagraphElement>(null);
+	const noteRef = useRef<HTMLDivElement>(null);
 	const [isExpanded, setIsExpanded] = useState(false);
 	const [isOverflowing, setIsOverflowing] = useState(false);
 
@@ -116,17 +124,29 @@ function ClampedNote({ note }: { note: string }) {
 	return (
 		<>
 			{/*
-			 * `whitespace-pre-line` is what preserves the line breaks `toPlainText` kept (A-9).
-			 * `line-clamp-3` is written out rather than built from a constant: Tailwind scans
-			 * source for whole class names, and an interpolated one is never generated.
+			 * `whitespace-pre-line` preserves the line breaks in a plain-text note, which is what
+			 * `Note` returns when there is no markup to render (A-9). `line-clamp-3` is written
+			 * out rather than built from a constant: Tailwind scans source for whole class names,
+			 * and an interpolated one is never generated.
+			 *
+			 * A `div`, not a `p`: a note written as a list renders `<ul>`, and a list inside a
+			 * paragraph is invalid HTML that the browser silently reparents - which breaks both
+			 * the clamp and the measurement below.
 			 */}
-			<p
+			<div
 				id={noteId}
 				ref={noteRef}
-				className={cn('text-list leading-[145%] whitespace-pre-line', !isExpanded && 'line-clamp-3')}
+				className={cn(
+					// Block layout, not flex: `line-clamp-3` works by switching `display` to
+					// `-webkit-box`, so a `flex` on the same element silently wins or loses
+					// depending on stylesheet order and the clamp stops being measurable. Blocks
+					// stack on their own; the sibling margin is all the spacing a note needs.
+					'text-list leading-[145%] whitespace-pre-line [&>*+*]:mt-1',
+					!isExpanded && 'line-clamp-3'
+				)}
 			>
-				{note}
-			</p>
+				<Note note={note} />
+			</div>
 
 			{isOverflowing && (
 				<button

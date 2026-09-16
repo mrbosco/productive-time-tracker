@@ -9,9 +9,16 @@ Full specification: [`docs/SPEC.md`](docs/SPEC.md). Decisions: [`docs/adr/`](doc
 > **Status: US-2.** Logging in and staying logged in (US-0), the day view (US-1, with the week strip
 > from X-1) and adding an entry (US-2) are in, along with the default-service setting the create
 > path needs (A-1). Editing and deleting an entry (US-3, US-4) land in the pull requests that
+> <<<<<<< HEAD
+> follow. Descriptions are rich text in both directions (ADR-0010): a list written here is stored
+> as the HTML Productive's own editor produces, and one written there renders as a list.
+> Parts of the day view are drawn but not yet wired — the timer control, the quick-add
+> \=======
 > follow. Parts of the day view are drawn but not yet wired — the timer control, the quick-add
-> line, the entry menu and `Copy from yesterday` all belong to later stories; CLAUDE.md lists
-> which.
+>
+> > > > > > > origin/main
+> > > > > > > line, the entry menu and `Copy from yesterday` all belong to later stories; CLAUDE.md lists
+> > > > > > > which.
 
 ## Requirements
 

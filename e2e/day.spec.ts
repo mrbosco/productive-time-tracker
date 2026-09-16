@@ -28,6 +28,12 @@ const LONG_PAST_DATE = '2020-01-15';
 const DAY_URL = /\/day\/\d{4}-\d{2}-\d{2}$/;
 
 /**
+ * Entries are counted as `article`, not as `listitem`. A note written as a bullet list renders real
+ * `<li>` elements of its own now (ADR-0010), so `listitem` no longer means "one entry" - the card
+ * itself is the article.
+ */
+
+/**
  * Seeds the session so each test starts on the day view rather than logging in again - US-0 has
  * its own spec. Passed as source because the e2e project compiles without the DOM lib.
  */
@@ -61,7 +67,7 @@ test.describe('the day view', () => {
 	test('lists the entries logged on the day in the URL (R-3)', async ({ page }) => {
 		await page.goto(`/day/${SEEDED_DATE}`);
 
-		await expect(page.getByRole('listitem')).toHaveCount(3);
+		await expect(page.getByRole('article')).toHaveCount(3);
 		await expect(page.getByText('Probavam')).toBeVisible();
 		await expect(page.getByText('Acquiring new clients').first()).toBeVisible();
 	});
@@ -82,7 +88,7 @@ test.describe('the day view', () => {
 	test('orders the entries by when they were logged', async ({ page }) => {
 		await page.goto(`/day/${SEEDED_DATE}`);
 
-		const durations = page.getByRole('listitem');
+		const durations = page.getByRole('article');
 
 		await expect(durations.nth(0)).toContainText('5h');
 		await expect(durations.nth(1)).toContainText('0h');
@@ -128,12 +134,17 @@ test.describe('the day view', () => {
 		await expect(page.getByText(/logged ·/)).toContainText('3 entries');
 	});
 
-	/** A-9: the recorded note is rich text and must arrive as words, not markup. */
-	test('renders a rich-text note as text', async ({ page }) => {
+	/**
+	 * A-9 as amended by ADR-0010: the recorded note is rich text and arrives with its structure.
+	 * It used to be flattened to a line, which was the app redrawing what the user wrote.
+	 */
+	test('renders a rich-text note with the structure it was written in', async ({ page }) => {
 		await page.goto(`/day/${SEEDED_DATE}`);
 
 		await expect(page.getByText('Probavam')).toBeVisible();
-		await expect(page.locator('main li ul')).toHaveCount(0);
+		await expect(page.getByRole('article').first().locator('ul li')).toHaveCount(1);
+		// Still no markup leaking through as text.
+		await expect(page.getByText('<ul>')).toHaveCount(0);
 	});
 
 	test('names the day in words', async ({ page }) => {
@@ -144,7 +155,7 @@ test.describe('the day view', () => {
 
 	test('steps to the previous day and reloads the list (R-5)', async ({ page }) => {
 		await page.goto(`/day/${SEEDED_DATE}`);
-		await expect(page.getByRole('listitem')).toHaveCount(3);
+		await expect(page.getByRole('article')).toHaveCount(3);
 
 		await page.getByRole('button', { name: 'Previous day' }).click();
 
@@ -158,7 +169,7 @@ test.describe('the day view', () => {
 		await page.getByRole('button', { name: 'Next day' }).click();
 
 		await expect(page).toHaveURL(`/day/${SEEDED_DATE}`);
-		await expect(page.getByRole('listitem')).toHaveCount(3);
+		await expect(page.getByRole('article')).toHaveCount(3);
 	});
 
 	test('jumps back to today, and then hides the way to do it', async ({ page }) => {
@@ -250,7 +261,7 @@ test.describe('the day view', () => {
 		await page.reload();
 
 		await expect(page).toHaveURL(`/day/${SEEDED_DATE}`);
-		await expect(page.getByRole('listitem')).toHaveCount(3);
+		await expect(page.getByRole('article')).toHaveCount(3);
 	});
 
 	test('moves focus to the day heading when the day changes (guidebook 18)', async ({ page }) => {
