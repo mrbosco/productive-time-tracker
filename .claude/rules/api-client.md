@@ -75,25 +75,24 @@ hand-written client; ADR-0005 rules out generating types from the OpenAPI file.
 
 ## When the notes do not answer it
 
-The Productive MCP server (`.mcp.json`, `https://mcp.productive.io/mcp`) is configured for this
-project. It is the escalation path when this repo cannot answer an API question — use it instead of
-guessing at a payload or brute-forcing routes.
-
-25. **Order of resort**: `docs/api/README.md` and `docs/api/samples/` first, since they are already
-    verified. Then the MCP, which talks to the same account and knows the schema. Then a recorded
-    `curl`. Never a guess that goes straight into code.
-26. **An MCP answer is a lead, not a citation.** It is a model reading an API, not a response this
+25. **The procedure is: record it.** An API question this repo cannot answer is settled by making a
+    real request and saving the response into `docs/api/samples/`. That path always works and needs
+    no subscription. Everything below is an accelerator on top of it, never a replacement.
+26. **The Productive MCP server is optional and often unavailable.** It is configured in `.mcp.json`
+    (`https://mcp.productive.io/mcp`, browser OAuth, no key in the file), but it requires
+    Productive's **Ultimate** plan, connects per-user and binds to one organization. This project's
+    own demo account cannot use it. Check whether it is connected before reaching for it, and if it
+    is not, do not treat that as a blocker — go straight to rule 25.
+27. **An MCP answer is a lead, not a citation.** It is a model reading an API, not a response this
     repo has seen. Confirm it with a real request and record the sample, then cite the sample. The
     stop endpoint is the cautionary tale: fifteen plausible routes 404'd and the answer
     (`PUT /timers/{id}/stop`) was a verb the path itself did not suggest — exactly the class of
-    question to ask the MCP first, and exactly the class of answer to verify before trusting.
-27. **The MCP can write.** It exposes create/update/delete across time entries, projects, invoices,
+    question worth asking, and exactly the class of answer to verify before trusting.
+28. **The MCP can write.** It exposes create/update/delete across time entries, projects, invoices,
     expenses, payments and purchase orders — far beyond this app's four endpoints. Read and lookup
     calls are free. **Never call a mutating MCP tool without the user approving that specific
-    change**, the same discipline the recorded write samples followed. A mutation here hits a real
+    change**, the same discipline the recorded write samples followed. A mutation hits a real
     organization, and nothing in the tool name will warn you.
-28. Its connection is one organization at a time and per-user, so what it reports is scoped to
-    whoever authorised it. Say which organization an answer came from if it could matter.
 
 ## Tests
 

@@ -45,6 +45,23 @@ E2E never hits the real API: it runs against MSW so CI stays deterministic and s
 ([ADR-0003](docs/adr/0003-testing.md)). The real API is exercised manually against a smoke
 checklist before release.
 
+## Optional: Productive MCP server
+
+`.mcp.json` configures [Productive's MCP server](https://help.productive.io/en/articles/14817386-mcp-server)
+so an agent working in this repo can ask the API questions directly. It is **entirely optional** and
+nothing here depends on it.
+
+- It requires Productive's **Ultimate** plan. On any other plan the connection simply will not
+  authorise, which is harmless — decline the approval prompt and carry on.
+- There is no key to add. The file holds only the server URL; authentication is a browser OAuth
+  sign-in, per user, bound to one organization.
+- Connect with `/mcp` inside Claude Code, or remove it entirely with
+  `claude mcp remove productive -s project`.
+
+API questions this repo cannot answer are settled by recording a real response into
+[`docs/api/samples/`](docs/api/samples/), which needs no subscription. The MCP only makes that
+faster.
+
 ## Conventions
 
 - Component layout, naming, hooks, a11y and testing rules:
