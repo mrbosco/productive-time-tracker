@@ -15,8 +15,10 @@ import type { WeekTotals } from '../useWeekTotals';
 interface WeekStripProps {
 	/** The selected day; the strip shows the Monday-to-Sunday week it falls in. */
 	date: string;
-	totals: WeekTotals | undefined;
+	weekTotals: WeekTotals | undefined;
 	isPending: boolean;
+	/** The week could not be read. Cells show no total rather than a zero they cannot stand behind. */
+	isError?: boolean;
 	today?: string;
 }
 
@@ -27,7 +29,9 @@ interface WeekStripProps {
  */
 function formatCellTotal(iso: string, minutes: number, today: string): string {
 	if (minutes > 0) return formatDuration(minutes);
-	if (iso > today || isWeekend(iso)) return '0h';
+	// `>=`, so today is not called out for being empty at nine in the morning. SPEC 10's dash is
+	// for a *past* workday, which today is not yet.
+	if (iso >= today || isWeekend(iso)) return '0h';
 
 	return '—';
 }
@@ -37,7 +41,9 @@ function formatCellTotal(iso: string, minutes: number, today: string): string {
  * between a mobile and a desktop label and reads as "M 14 6h 15m" either way, which is not a name;
  * this is, and it lets both visible labels be hidden from assistive technology.
  */
-function describeCell(iso: string, minutes: number): string {
+function describeCell(iso: string, minutes: number, isError: boolean): string {
+	if (isError) return `${formatDayShort(iso)}, total unavailable`;
+
 	return `${formatDayShort(iso)}, ${minutes > 0 ? `${formatDuration(minutes)} logged` : 'nothing logged'}`;
 }
 
@@ -52,9 +58,9 @@ function CellSkeleton({ className }: { className?: string }) {
  * desktop, the eighth being the week's own total. Totals are hidden while loading rather than
  * showing stale numbers.
  */
-export function WeekStrip({ date, totals, isPending, today = todayIso() }: WeekStripProps) {
+export function WeekStrip({ date, weekTotals, isPending, isError = false, today = todayIso() }: WeekStripProps) {
 	const days = weekDays(date);
-	const weekTotal = days.reduce((sum, day) => sum + (totals?.[day] ?? 0), 0);
+	const weekTotal = days.reduce((sum, day) => sum + (weekTotals?.[day] ?? 0), 0);
 
 	if (isPending) {
 		return (
@@ -70,26 +76,38 @@ export function WeekStrip({ date, totals, isPending, today = todayIso() }: WeekS
 	return (
 		// `scrollbar-none` rather than a visible bar: the strip is one row of tap targets, and the
 		// selected cell is scrolled into view rather than hunted for.
-		<div className="-mx-4 flex [scrollbar-width:none] gap-2 overflow-x-auto px-4 md:mx-0 md:grid md:grid-cols-8 md:gap-3 md:overflow-visible md:px-0">
+		<nav
+			aria-label="Week"
+			className="-mx-4 flex [scrollbar-width:none] gap-2 overflow-x-auto px-4 md:mx-0 md:grid md:grid-cols-8 md:gap-3 md:overflow-visible md:px-0"
+		>
 			{days.map((day) => {
 				const isSelected = day === date;
-				const minutes = totals?.[day] ?? 0;
+				const minutes = weekTotals?.[day] ?? 0;
 
 				return (
 					<Link
 						key={day}
 						to="/day/$date"
 						params={{ date: day }}
-						aria-label={describeCell(day, minutes)}
+						aria-label={describeCell(day, minutes, isError)}
 						// `aria-current="page"` is set by the router itself on the active link, so
 						// the selected cell is marked without this component tracking it.
 						className="duration-ui relative flex h-[68px] w-14 flex-none flex-col items-center gap-[3px] overflow-hidden rounded-input border border-line bg-surface pt-2 transition-colors ease-ui hover:bg-subtle md:h-22 md:w-auto md:items-start md:gap-1.5 md:px-3.5 md:pt-3"
 					>
-						<span className="text-micro font-medium text-muted md:hidden">{formatWeekdayInitial(day)}</span>
-						<span className="hidden text-caption font-medium text-muted md:block">{formatWeekdayAndDay(day)}</span>
-						<span className="text-list font-medium tabular-nums md:hidden">{dayOfMonth(day)}</span>
-						<span className="text-micro font-medium text-muted tabular-nums md:text-list md:text-ink">
-							{formatCellTotal(day, totals?.[day] ?? 0, today)}
+						<span aria-hidden="true" className="text-micro font-medium text-muted md:hidden">
+							{formatWeekdayInitial(day)}
+						</span>
+						<span aria-hidden="true" className="hidden text-caption font-medium text-muted md:block">
+							{formatWeekdayAndDay(day)}
+						</span>
+						<span aria-hidden="true" className="text-list font-medium tabular-nums md:hidden">
+							{dayOfMonth(day)}
+						</span>
+						<span
+							aria-hidden="true"
+							className="text-micro font-medium text-muted tabular-nums md:text-list md:text-ink"
+						>
+							{isError ? '·' : formatCellTotal(day, minutes, today)}
 						</span>
 
 						{day === today && (
@@ -103,8 +121,10 @@ export function WeekStrip({ date, totals, isPending, today = todayIso() }: WeekS
 			{/* Tinted on mobile to set it apart in a scrolling row; on desktop the grid already does that. */}
 			<div className="flex h-[68px] w-[78px] flex-none flex-col items-start justify-center gap-1 rounded-input border border-line bg-subtle px-2 md:h-22 md:w-auto md:justify-start md:bg-surface md:px-3.5 md:pt-3">
 				<span className="text-micro font-medium whitespace-nowrap text-muted md:text-caption">Week</span>
-				<span className="text-list font-medium tabular-nums">{formatDuration(weekTotal)}</span>
+				<span className="text-list font-medium tabular-nums">
+					{isError ? <span aria-label="Week total unavailable">·</span> : formatDuration(weekTotal)}
+				</span>
 			</div>
-		</div>
+		</nav>
 	);
 }
