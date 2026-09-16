@@ -1,6 +1,6 @@
 import { EditorContent, useEditor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { cn } from '@/lib/utils';
 
 /**
@@ -110,24 +110,39 @@ export function RichTextEditor({
 			// `isEmpty` rather than comparing to `<p></p>`: an empty document still serialises to
 			// a paragraph, and a caller that stored that would write markup for a note the user
 			// left blank.
-			onChange(current.isEmpty ? '' : current.getHTML());
+			const html = current.isEmpty ? '' : current.getHTML();
+			applied.current = html;
+			onChange(html);
 		},
 	});
 
+	/**
+	 * Compared against what was last applied, not against what the editor now holds.
+	 *
+	 * TipTap normalises on the way in, so `value` and `getHTML()` can differ for the same document
+	 * - and because `setContent` deliberately suppresses `onUpdate`, the parent never learns the
+	 * normalised form. Comparing the two would then never match, and the form re-renders on every
+	 * duration keystroke, so the document would be replaced and the caret thrown to the start on
+	 * each one. Remembering the string that was applied is what makes this converge.
+	 */
+	const applied = useRef(value);
+
 	useEffect(() => {
 		if (editor === null || editor.isDestroyed) return;
-		if (value === (editor.isEmpty ? '' : editor.getHTML())) return;
+		if (value === applied.current) return;
 
+		applied.current = value;
 		editor.commands.setContent(value, { emitUpdate: false });
 	}, [editor, value]);
 
 	return (
 		<div
+			data-invalid={ariaInvalid === true ? 'true' : undefined}
 			className={cn(
 				'relative min-h-28 w-full rounded-input border border-line bg-surface px-4 py-3.5',
 				'text-base leading-[1.45] text-ink transition-[color,background-color,border-color]',
 				'focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-accent',
-				'aria-invalid:border-danger',
+				'data-[invalid=true]:border-danger',
 				// The document's own typography. Tailwind's Preflight strips list markers, so the
 				// two list kinds have to ask for them back, and paragraphs are spaced rather than
 				// margined so an empty note is exactly one line tall.
@@ -137,7 +152,6 @@ export function RichTextEditor({
 				'[&_.ProseMirror]:flex [&_.ProseMirror]:flex-col [&_.ProseMirror]:gap-1',
 				className
 			)}
-			aria-invalid={ariaInvalid}
 		>
 			{/*
 			 * The placeholder is drawn rather than pulled in as another extension: it is one

@@ -70,9 +70,9 @@ describe('RichTextEditor', () => {
 	});
 
 	it('renders a note stored as a list as a list', () => {
-		const { container } = renderEditor('<ul><li><p>Probavam</p></li></ul>');
+		renderEditor('<ul><li><p>Probavam</p></li></ul>');
 
-		expect(container.querySelectorAll('.ProseMirror ul li')).toHaveLength(1);
+		expect(screen.getAllByRole('listitem')).toHaveLength(1);
 	});
 
 	/**
@@ -83,17 +83,17 @@ describe('RichTextEditor', () => {
 	it('discards anything outside its schema rather than keeping it', () => {
 		const { container } = renderEditor('<p>Safe</p><script>window.pwned = 1</script><img src="x" onerror="1">');
 
-		expect(container.querySelector('.ProseMirror')).toHaveTextContent('Safe');
+		expect(screen.getByRole('textbox', { name: 'Description' })).toHaveTextContent('Safe');
 		expect(container.querySelector('script')).toBeNull();
 		expect(container.querySelector('img')).toBeNull();
 	});
 
 	/** A note is not a document: headings would be a shape Productive's own field does not offer. */
 	it('flattens a heading into prose', () => {
-		const { container } = renderEditor('<h1>Big</h1>');
+		renderEditor('<h1>Big</h1>');
 
-		expect(container.querySelector('h1')).toBeNull();
-		expect(container.querySelector('.ProseMirror')).toHaveTextContent('Big');
+		expect(screen.queryByRole('heading')).not.toBeInTheDocument();
+		expect(screen.getByRole('textbox', { name: 'Description' })).toHaveTextContent('Big');
 	});
 
 	it('marks itself invalid when the field is', () => {

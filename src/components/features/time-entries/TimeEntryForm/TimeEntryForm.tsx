@@ -341,11 +341,25 @@ export function TimeEntryForm({ session, date, maxNoteLength = MAX_NOTE_LENGTH }
 											placeholder="What did you work on?"
 											aria-labelledby={`${fieldId}-note-label`}
 											aria-invalid={errors.note !== undefined}
-											aria-describedby={errors.note === undefined ? undefined : `${fieldId}-note-error`}
+											aria-describedby={
+												errors.note === undefined
+													? `${fieldId}-note-hint`
+													: `${fieldId}-note-hint ${fieldId}-note-error`
+											}
 											className="md:min-h-26 md:px-3.5 md:py-3 md:text-list"
 										/>
 									)}
 								/>
+								{/*
+								 * The field is rich and nothing else says so: the formatting is
+								 * reachable only through shortcuts and the `- ` rule, which a
+								 * screen-reader user would otherwise never learn about. Wired
+								 * through `aria-describedby` so it is announced with the field
+								 * rather than sitting beside it as decoration.
+								 */}
+								<p id={`${fieldId}-note-hint`} className="text-label text-muted md:text-caption">
+									Start a line with <span className="font-medium">-</span> for a list, or use Ctrl/Cmd+B for bold.
+								</p>
 								{errors.note !== undefined && (
 									<p id={`${fieldId}-note-error`} className="text-label text-danger">
 										{errors.note.message}

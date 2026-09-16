@@ -4,6 +4,10 @@ import { containsMarkup, isNonProse } from '@/lib/note';
 /**
  * A time entry's description, with the structure Productive stored (A-9, ADR-0010).
  *
+ * Filed under the feature rather than in `shared/` because it has one caller. SPEC 6.1 sets that
+ * bar for this project explicitly - the list's empty and error states stay inside `TimeEntryList`
+ * "until a second caller" - and US-4's confirm dialog is the one that will earn the promotion.
+ *
  * `toPlainText` answers "what does this say" and is still what a confirmation dialog or a document
  * title wants. This answers "what does this look like", which is what the card and the day view
  * want: an entry written as a list in Productive is drawn as a list here.

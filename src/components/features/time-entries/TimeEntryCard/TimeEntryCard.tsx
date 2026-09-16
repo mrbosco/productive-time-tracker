@@ -8,7 +8,7 @@ import {
 	DropdownMenuTrigger,
 } from '@/components/core/DropdownMenu';
 import { formatDuration } from '@/lib/duration';
-import { Note } from '@/components/shared/Note/Note';
+import { Note } from '@/components/features/time-entries/Note/Note';
 import { toPlainText } from '@/lib/note';
 import { cn } from '@/lib/utils';
 

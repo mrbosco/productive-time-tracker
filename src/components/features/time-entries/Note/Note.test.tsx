@@ -2,29 +2,38 @@ import { describe, expect, it } from 'vitest';
 import { render, screen } from '@/__tests__/test-utils';
 import { Note } from './Note';
 
+/**
+ * Rendered, not called. Invoking it as a plain function skips React entirely and would break the
+ * moment `Note` reaches for a hook; the wrapper exists only to give the assertions somewhere to
+ * look for text that is deliberately returned as a bare string.
+ */
 function renderNote(note: string) {
-	return render(<div data-testid="note">{Note({ note })}</div>);
+	return render(
+		<section aria-label="note">
+			<Note note={note} />
+		</section>
+	);
 }
 
 describe('Note', () => {
 	it('returns plain text untouched, so the common case never builds a tree', () => {
 		renderNote('Standup and time logging.');
 
-		expect(screen.getByTestId('note')).toHaveTextContent('Standup and time logging.');
-		expect(screen.getByTestId('note').querySelector('p')).toBeNull();
+		expect(screen.getByRole('region', { name: 'note' })).toHaveTextContent('Standup and time logging.');
+		expect(screen.getByRole('region', { name: 'note' }).querySelector('p')).toBeNull();
 	});
 
 	it('renders the recorded Productive note as a list', () => {
-		const { container } = renderNote('<ul><li><p>Probavam</p></li></ul>');
+		renderNote('<ul><li><p>Probavam</p></li></ul>');
 
-		expect(container.querySelectorAll('ul li')).toHaveLength(1);
+		expect(screen.getAllByRole('listitem')).toHaveLength(1);
 		expect(screen.getByText('Probavam')).toBeInTheDocument();
 	});
 
 	it('renders an ordered list as one', () => {
-		const { container } = renderNote('<ol><li><p>one</p></li><li><p>two</p></li></ol>');
+		renderNote('<ol><li><p>one</p></li><li><p>two</p></li></ol>');
 
-		expect(container.querySelectorAll('ol li')).toHaveLength(2);
+		expect(screen.getAllByRole('listitem')).toHaveLength(2);
 	});
 
 	it.each([
@@ -66,13 +75,13 @@ describe('Note', () => {
 		renderNote(note);
 
 		expect(screen.getByText('Safe')).toBeInTheDocument();
-		expect(screen.getByTestId('note')).not.toHaveTextContent(leaked);
+		expect(screen.getByRole('region', { name: 'note' })).not.toHaveTextContent(leaked);
 	});
 
 	it('keeps the words of a tag it does not render', () => {
 		renderNote('<div><h2>Heading</h2></div>');
 
-		expect(screen.getByTestId('note')).toHaveTextContent('Heading');
+		expect(screen.getByRole('region', { name: 'note' })).toHaveTextContent('Heading');
 	});
 
 	it('renders a line break', () => {
@@ -95,6 +104,6 @@ describe('Note', () => {
 	it('renders nothing for an empty note', () => {
 		renderNote('');
 
-		expect(screen.getByTestId('note')).toBeEmptyDOMElement();
+		expect(screen.getByRole('region', { name: 'note' })).toBeEmptyDOMElement();
 	});
 });
