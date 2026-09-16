@@ -25,6 +25,42 @@ import timersRunning from '../../docs/api/samples/timers-running.json';
 /** The date `time-entries-day.json` was recorded for; any other date responds empty. */
 export const SEEDED_DATE = '2026-09-15';
 
+/**
+ * Entries created during a run, so a create shows up in the list that follows it. R-9 is "list
+ * updates after success", which is not provable against handlers that answer from a fixture and
+ * forget.
+ *
+ * Module state, so it has to be cleared between tests - `server.resetHandlers()` restores which
+ * handlers are installed, not what they remember. `src/__tests__/setup.ts` calls `resetMockData`
+ * in the same `afterEach`.
+ */
+let createdEntries: (typeof timeEntriesDay.data)[number][] = [];
+let nextCreatedId = 0;
+
+export function resetMockData(): void {
+	createdEntries = [];
+	nextCreatedId = 0;
+}
+
+/** Builds the created record out of the recorded create response, so the shape stays real. */
+function toCreatedEntry(body: RequestBody, id: string) {
+	return {
+		...timeEntryCreate.data,
+		id,
+		attributes: {
+			...timeEntryCreate.data.attributes,
+			...(body.data?.attributes ?? {}),
+			// The list sorts on this (A-7), and every created entry has to sort after the
+			// recorded ones rather than after whatever the fixture was recorded at.
+			created_at: new Date().toISOString(),
+		},
+		// Pinned to the recorded entry's service whatever `serviceId` was posted. Harmless for a
+		// mock - the list only needs a service to render - but it does mean no e2e can catch the
+		// wrong service being sent; the component test asserts the request body instead.
+		relationships: timeEntriesDay.data[0].relationships,
+	} as (typeof timeEntriesDay.data)[number];
+}
+
 interface RequestBody {
 	data?: { attributes?: Record<string, unknown> };
 }
@@ -33,9 +69,6 @@ interface RequestBody {
  * Echo the submitted attributes onto the recorded envelope so a create/edit flow reads back. `id` is
  * overridden too: without it a PATCH answers with the recorded entry's ID rather than the edited
  * one, and a caller seeding its cache from the response would insert a phantom row.
- *
- * ponytail: these handlers hold no state, so a created entry does not appear in the following list
- * and a delete does not remove one. The stories that need round-tripping (US-2, US-3, US-4) add it.
  */
 function withAttributes<T extends { data: { id: string; attributes: Record<string, unknown> } }>(
 	sample: T,
@@ -91,7 +124,7 @@ export const handlers: RequestHandler[] = [
 		const after = params.get('filter[after]');
 		const before = params.get('filter[before]');
 
-		const data = timeEntriesDay.data.filter((entry) => {
+		const data = [...timeEntriesDay.data, ...createdEntries].filter((entry) => {
 			const { date } = entry.attributes;
 
 			return (after === null || date >= after) && (before === null || date <= before);
@@ -106,9 +139,16 @@ export const handlers: RequestHandler[] = [
 		});
 	}),
 
-	http.post('*/time_entries', async ({ request }) =>
-		HttpResponse.json(withAttributes(timeEntryCreate, (await request.json()) as RequestBody), { status: 201 })
-	),
+	http.post('*/time_entries', async ({ request }) => {
+		const body = (await request.json()) as RequestBody;
+		// A counter rather than a timestamp: two creates inside the same millisecond would
+		// otherwise share an ID, and React would key two rows the same.
+		nextCreatedId += 1;
+		const id = `9000000${String(nextCreatedId)}`;
+		createdEntries.push(toCreatedEntry(body, id));
+
+		return HttpResponse.json(withAttributes(timeEntryCreate, body, id), { status: 201 });
+	}),
 
 	http.patch('*/time_entries/:id', async ({ request, params }) =>
 		HttpResponse.json(withAttributes(timeEntryUpdate, (await request.json()) as RequestBody, String(params.id)))
