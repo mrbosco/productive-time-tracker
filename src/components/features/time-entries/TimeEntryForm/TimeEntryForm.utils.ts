@@ -21,8 +21,8 @@ export const MAX_NOTE_LENGTH = 10_000;
 const MAX_DURATION_MINUTES = 24 * 60;
 
 /**
- * Shared by the create route and, from US-3, the edit route - the assignment's two write surfaces
- * reject the same input for the same reasons, so the rules live in one place.
+ * Shared by the create route and the edit route - the assignment's two write surfaces reject the
+ * same input for the same reasons, so the rules live in one place.
  *
  * `maxNoteLength` is a parameter rather than a constant read from inside (guidebook 13).
  *
@@ -110,15 +110,23 @@ export function isServiceRefusal(error: unknown): boolean {
 /**
  * What to show above the buttons when the save fails. The generic wording is the design's.
  *
+ * Named for the act rather than the verb: both write surfaces fail the same four ways and say the
+ * same four things about it, so US-3's edit reuses this rather than forking a near-identical copy.
+ *
  * A 422 speaks in Productive's own words rather than ours: the API knows why it refused this
  * entry and we would only be guessing at it. Everything else is mapped, because "Failed to fetch"
  * is not something to put in front of a person.
+ *
+ * The 404 can only happen on edit, and only to someone whose entry was deleted elsewhere while
+ * this form was open - a second tab, or Productive's own UI. It says so rather than offering the
+ * generic "try again", because trying again cannot work.
  */
-export function toCreateErrorMessage(error: unknown): string {
+export function toSaveErrorMessage(error: unknown): string {
 	if (!(error instanceof ApiError)) return 'Could not save the entry. Try again.';
 
 	if (error.status === 0) return 'Network error. Try again.';
 	if (error.status === 401) return 'Your session was rejected. Log in again.';
+	if (error.status === 404) return 'This entry no longer exists.';
 	if (error.status === 422) return error.errors[0]?.detail ?? 'Could not save the entry. Try again.';
 
 	return 'Could not save the entry. Try again.';

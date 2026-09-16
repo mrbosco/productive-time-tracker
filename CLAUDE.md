@@ -2,13 +2,7 @@
 
 Client-side SPA (no server code) for managing a person's [Productive](https://www.productive.io/) time entries for a selected day: log in with an API token and organization ID, list entries for a date, create, edit and delete them. Built for the Productive Frontend Engineer take-home assignment; the PDF in `docs/assignment/` is the source of truth.
 
-<<<<<<< HEAD
-**Status: US-2 (with X-1).** Tooling and the API layer are complete; login, the session and the auth-guarded route tree are in place; the day view lists a selected date's entries with the week strip and totals around them; and the entry form creates one, against the service chosen in the settings sheet (A-1). Descriptions are rich text in both directions (A-9 as amended by ADR-0010). Edit an entry (US-3) is the next story.
-=======
-
-**Status: US-2 (with X-1).** Tooling and the API layer are complete; login, the session and the auth-guarded route tree are in place; the day view lists a selected date's entries with the week strip and totals around them; and the entry form creates one, against the service chosen in the settings sheet (A-1). Edit an entry (US-3) is the next story.
-
-> > > > > > > origin/main
+**Status: US-3 (with X-1).** Tooling and the API layer are complete; login, the session and the auth-guarded route tree are in place; the day view lists a selected date's entries with the week strip and totals around them; and the entry form both creates one, against the service chosen in the settings sheet (A-1), and edits an existing one at `/entries/$id/edit`, keeping the entry's own service. Descriptions are rich text in both directions (A-9 as amended by ADR-0010). Delete an entry (US-4) is the next story.
 
 ## Source of truth
 
@@ -17,7 +11,7 @@ Authoritative over anything inferred from code. Read before changing.
 | Document                                       | Holds                                                                                                                                                                                                                 |
 | ---------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `docs/SPEC.md`                                 | Requirements (2), domain model (3), API flows (4), assumptions (5), architecture and folder layout (6), UI (7), testing strategy (8), out of scope (9), extras (10), delivery (12)                                    |
-| `docs/adr/0001..0009`                          | Decisions and their reasoning. Do not relitigate a decided ADR in code                                                                                                                                                |
+| `docs/adr/0001..0010`                          | Decisions and their reasoning. Do not relitigate a decided ADR in code                                                                                                                                                |
 | `docs/guidebook/RULES_DRAFT.md`                | The 32 code conventions, distilled from `docs/guidebook/infinum-handbook.md`                                                                                                                                          |
 | `docs/api/README.md`                           | Productive JSON:API endpoints, auth headers, filter shape                                                                                                                                                             |
 | Claude Design project (live)                   | **Authoritative UI reference.** `Day View.dc.html` and the `TimeTracker` component it imports are the source the screens were rendered from; read them through the `DesignSync` MCP before changing a screen's markup |
@@ -35,7 +29,7 @@ IDs appear in commits, PR titles and tests. Unpadded decimal, except ADRs.
 - `UC-n` in `docs/diagrams/01-use-cases.mmd` maps 1:1 to `US-n`
 - `A-1`..`A-10` assumptions (SPEC 5)
 - `X-1`..`X-5`, `P-1`, `P-2` extra features (SPEC 10)
-- `ADR-0001`..`ADR-0009` decisions, zero-padded to four
+- `ADR-0001`..`ADR-0010` decisions, zero-padded to four
 
 ## Stack
 
@@ -82,17 +76,13 @@ e2e/            Playwright specs, one per user story
 
 `api/` is complete and is infrastructure, not a story: `client.ts` plus one typed module per resource, with MSW handlers built from the recorded responses in `docs/api/samples/`. Stories add hooks in `components/features/` that call these functions; they do not add API functions. Extending it means recording a sample first (`.claude/rules/api-client.md`).
 
-`components/shared/` and `components/features/` are specified in SPEC 6.1 and get created as stories land. `features/auth/` (session context, login form), `features/settings/useDefaultService.ts` (A-1) and `shared/layouts/AppLayout.tsx` (app bar, logout) landed with US-0. `features/time-entries/` (`useTimeEntries`, `DateNavigator`, `DaySummary`, `ServiceTotals`, `TimeEntryList`, `TimeEntryCard`), `features/week/` (X-1), `features/quick-add/`, `shared/DatePicker/` and `shared/Illustration/` landed with US-1; the list's empty and error states live inside `TimeEntryList` rather than as `shared/EmptyState` and `shared/ErrorState`, which get extracted when US-3 gives them a second caller. US-2 added `features/time-entries/TimeEntryForm/` and `useCreateTimeEntry`, `features/settings/SettingsSheet/`, `features/time-entries/DayView/` (lifted out of the day route so `/entries/new` can render the day behind its dialog), and the `Textarea`, `Select`, `Dialog`, `Sheet` and `Toast` primitives in `core/`. There is no `shared/PageHeader`: the form is a modal at both widths, so its 56px mobile bar is part of the dialog rather than a page header.
+`components/shared/` and `components/features/` are specified in SPEC 6.1 and get created as stories land. `features/auth/` (session context, login form), `features/settings/useDefaultService.ts` (A-1) and `shared/layouts/AppLayout.tsx` (app bar, logout) landed with US-0. `features/time-entries/` (`useTimeEntries`, `DateNavigator`, `DaySummary`, `ServiceTotals`, `TimeEntryList`, `TimeEntryCard`), `features/week/` (X-1), `features/quick-add/`, `shared/DatePicker/` and `shared/Illustration/` landed with US-1; the list's empty and error states live inside `TimeEntryList` rather than as `shared/EmptyState` and `shared/ErrorState`, which get extracted when US-3 gives them a second caller. US-2 added `features/time-entries/TimeEntryForm/` and `useCreateTimeEntry`, `features/settings/SettingsSheet/`, `features/time-entries/DayView/` (lifted out of the day route so `/entries/new` can render the day behind its dialog), and the `Textarea`, `Select`, `Dialog`, `Sheet` and `Toast` primitives in `core/`. There is no `shared/PageHeader`: the form is a modal at both widths, so its 56px mobile bar is part of the dialog rather than a page header. US-3 added `useTimeEntry` and `useUpdateTimeEntry` beside them, and the `entries.$id.edit` route; it added no component, because the edit screen is `TimeEntryForm` with an `entry` prop. `shared/EmptyState` and `shared/ErrorState` were expected to be extracted here and were not - the edit route's not-found state is a bare sentence and a link, not the bordered card with an illustration that `TimeEntryList` draws, so the two have no shape in common to share.
 
-Parts of the day view are **drawn but inert**, because the design puts them on this screen and a bar or card that gained a control later would reflow around it: the timer pill and the `?` sheet in the app bar, the quick-add line (it opens the form without parsing), the entry card's kebab menu, and `Copy from yesterday`. Each belongs to US-3, US-4, X-2, X-3 or X-4 and is wired there. `Default service...` was one of them and is now live (US-2).
+Parts of the day view are **drawn but inert**, because the design puts them on this screen and a bar or card that gained a control later would reflow around it: the timer pill and the `?` sheet in the app bar, the quick-add line (it opens the form without parsing), the rest of the entry card's kebab menu, and `Copy from yesterday`. Each belongs to US-4, X-2, X-3 or X-4 and is wired there. `Default service...` was one of them and is now live (US-2), as is the kebab's `Edit` (US-3). The edit form's own `Delete entry` is drawn inert for the same reason and belongs to US-4.
 
-<<<<<<< HEAD
-Descriptions are **rich text** (ADR-0010). The form's field is TipTap, trimmed to paragraphs, bold, italic, strike and the two list kinds; `components/shared/Note` renders a stored note as elements by walking the parsed DOM against an allowlist, so `dangerouslySetInnerHTML` still appears nowhere. `lib/note.ts`'s `toPlainText` stays for the places that want a line of text rather than a document. ProseMirror does not receive input under jsdom, so typing a list or bolding a word is covered in `e2e/entry-create.spec.ts` rather than in a component test - and entry cards are queried as `article`, because a note's own bullets are `listitem`s now.
+Descriptions are **rich text** (ADR-0010). The form's field is TipTap, trimmed to paragraphs, bold, italic, strike and the two list kinds; `components/features/time-entries/Note` renders a stored note as elements by walking the parsed DOM against an allowlist, so `dangerouslySetInnerHTML` still appears nowhere. `lib/note.ts`'s `toPlainText` stays for the places that want a line of text rather than a document. ProseMirror does not receive input under jsdom, so typing a list or bolding a word is covered in `e2e/entry-create.spec.ts` rather than in a component test - and entry cards are queried as `article`, because a note's own bullets are `listitem`s now.
 
-=======
-
-> > > > > > > origin/main
-> > > > > > > The entry form is a **modal at both widths** - a full screen on mobile, a 560px dialog over the day on desktop, where the design's build notes say "adding time is never worth a page change". The P-2 range toggle is deliberately absent rather than drawn inert: it is an extra, and the field it swaps is the one the form is for. `TimeEntryForm.tsx` names where its markup lives in the design source, as it does for X-4's stop-timer sheet.
+The entry form is a **modal at both widths** - a full screen on mobile, a 560px dialog over the day on desktop, where the design's build notes say "adding time is never worth a page change". The P-2 range toggle is deliberately absent rather than drawn inert: it is an extra, and the field it swaps is the one the form is for. `TimeEntryForm.tsx` names where its markup lives in the design source, as it does for X-4's stop-timer sheet.
 
 ## Environment
 

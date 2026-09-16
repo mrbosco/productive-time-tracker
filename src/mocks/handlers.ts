@@ -37,9 +37,29 @@ export const SEEDED_DATE = '2026-09-15';
 let createdEntries: (typeof timeEntriesDay.data)[number][] = [];
 let nextCreatedId = 0;
 
+/**
+ * Attributes a PATCH has changed, by entry ID.
+ *
+ * Same reason `createdEntries` exists, for the other half of the sentence: R-11 is "list reflects
+ * update", and a handler that echoed the PATCH back but answered the next `GET /time_entries` from
+ * the untouched fixture would fail an honest e2e for a reason that lives in the mock rather than in
+ * the app. It also makes "editing the date moves the entry to another day" reachable, because the
+ * list handler filters on the very attribute the edit changed.
+ */
+let editedAttributes = new Map<string, Record<string, unknown>>();
+
 export function resetMockData(): void {
 	createdEntries = [];
+	editedAttributes = new Map();
 	nextCreatedId = 0;
+}
+
+/** A recorded entry as it stands after any edits this run has made to it. */
+function withEdits<T extends { id: string; attributes: Record<string, unknown> }>(entry: T): T {
+	const edits = editedAttributes.get(entry.id);
+	if (edits === undefined) return entry;
+
+	return { ...entry, attributes: { ...entry.attributes, ...edits } };
 }
 
 /** Builds the created record out of the recorded create response, so the shape stays real. */
@@ -91,12 +111,14 @@ function withAttributes<T extends { data: { id: string; attributes: Record<strin
  * recording of this endpoint; it covers one of the three IDs and proves the envelope shape.
  */
 function showEntry(id: string) {
-	if (id === timeEntryShow.data.id) return HttpResponse.json(timeEntryShow);
+	if (id === timeEntryShow.data.id) {
+		return HttpResponse.json({ ...timeEntryShow, data: withEdits(timeEntryShow.data) });
+	}
 
-	const entry = timeEntriesDay.data.find((candidate) => candidate.id === id);
+	const entry = [...timeEntriesDay.data, ...createdEntries].find((candidate) => candidate.id === id);
 	if (entry === undefined) return HttpResponse.json(error404, { status: 404 });
 
-	return HttpResponse.json({ data: entry, included: timeEntriesDay.included, meta: {} });
+	return HttpResponse.json({ data: withEdits(entry), included: timeEntriesDay.included, meta: {} });
 }
 
 export const handlers: RequestHandler[] = [
@@ -124,7 +146,10 @@ export const handlers: RequestHandler[] = [
 		const after = params.get('filter[after]');
 		const before = params.get('filter[before]');
 
-		const data = [...timeEntriesDay.data, ...createdEntries].filter((entry) => {
+		// Edits are applied before the filter, not after: changing an entry's date has to move it
+		// off the day it was on and onto the new one, which is the behaviour SPEC 4.2's old-date
+		// invalidation exists for.
+		const data = [...timeEntriesDay.data, ...createdEntries].map(withEdits).filter((entry) => {
 			const { date } = entry.attributes;
 
 			return (after === null || date >= after) && (before === null || date <= before);
@@ -150,9 +175,16 @@ export const handlers: RequestHandler[] = [
 		return HttpResponse.json(withAttributes(timeEntryCreate, body, id), { status: 201 });
 	}),
 
-	http.patch('*/time_entries/:id', async ({ request, params }) =>
-		HttpResponse.json(withAttributes(timeEntryUpdate, (await request.json()) as RequestBody, String(params.id)))
-	),
+	http.patch('*/time_entries/:id', async ({ request, params }) => {
+		const body = (await request.json()) as RequestBody;
+		const id = String(params.id);
+
+		// Merged, not replaced: `updateTimeEntry` sends a sparse body, so a second edit that touches
+		// only the duration must not undo the first one's date.
+		editedAttributes.set(id, { ...editedAttributes.get(id), ...(body.data?.attributes ?? {}) });
+
+		return HttpResponse.json(withAttributes(timeEntryUpdate, body, id));
+	}),
 
 	http.delete('*/time_entries/:id', () => new HttpResponse(null, { status: 204 })),
 

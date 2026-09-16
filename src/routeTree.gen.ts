@@ -14,6 +14,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
 import { Route as AuthenticatedDayDateRouteImport } from './routes/_authenticated/day.$date'
 import { Route as AuthenticatedEntriesNewRouteImport } from './routes/_authenticated/entries.new'
+import { Route as AuthenticatedEntriesIdEditRouteImport } from './routes/_authenticated/entries.$id.edit'
 
 const AuthenticatedRoute = AuthenticatedRouteImport.update({
   id: '/_authenticated',
@@ -39,18 +40,26 @@ const AuthenticatedEntriesNewRoute = AuthenticatedEntriesNewRouteImport.update({
   path: '/entries/new',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedEntriesIdEditRoute =
+  AuthenticatedEntriesIdEditRouteImport.update({
+    id: '/entries/$id/edit',
+    path: '/entries/$id/edit',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
   '/login': typeof LoginRoute
   '/day/$date': typeof AuthenticatedDayDateRoute
   '/entries/new': typeof AuthenticatedEntriesNewRoute
+  '/entries/$id/edit': typeof AuthenticatedEntriesIdEditRoute
 }
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/': typeof AuthenticatedIndexRoute
   '/day/$date': typeof AuthenticatedDayDateRoute
   '/entries/new': typeof AuthenticatedEntriesNewRoute
+  '/entries/$id/edit': typeof AuthenticatedEntriesIdEditRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -59,12 +68,14 @@ export interface FileRoutesById {
   '/_authenticated/': typeof AuthenticatedIndexRoute
   '/_authenticated/day/$date': typeof AuthenticatedDayDateRoute
   '/_authenticated/entries/new': typeof AuthenticatedEntriesNewRoute
+  '/_authenticated/entries/$id/edit': typeof AuthenticatedEntriesIdEditRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/login' | '/day/$date' | '/entries/new'
+  fullPaths:
+    '/' | '/login' | '/day/$date' | '/entries/new' | '/entries/$id/edit'
   fileRoutesByTo: FileRoutesByTo
-  to: '/login' | '/' | '/day/$date' | '/entries/new'
+  to: '/login' | '/' | '/day/$date' | '/entries/new' | '/entries/$id/edit'
   id:
     | '__root__'
     | '/_authenticated'
@@ -72,6 +83,7 @@ export interface FileRouteTypes {
     | '/_authenticated/'
     | '/_authenticated/day/$date'
     | '/_authenticated/entries/new'
+    | '/_authenticated/entries/$id/edit'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -116,6 +128,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedEntriesNewRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/entries/$id/edit': {
+      id: '/_authenticated/entries/$id/edit'
+      path: '/entries/$id/edit'
+      fullPath: '/entries/$id/edit'
+      preLoaderRoute: typeof AuthenticatedEntriesIdEditRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
   }
 }
 
@@ -123,12 +142,14 @@ interface AuthenticatedRouteChildren {
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
   AuthenticatedDayDateRoute: typeof AuthenticatedDayDateRoute
   AuthenticatedEntriesNewRoute: typeof AuthenticatedEntriesNewRoute
+  AuthenticatedEntriesIdEditRoute: typeof AuthenticatedEntriesIdEditRoute
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
   AuthenticatedDayDateRoute: AuthenticatedDayDateRoute,
   AuthenticatedEntriesNewRoute: AuthenticatedEntriesNewRoute,
+  AuthenticatedEntriesIdEditRoute: AuthenticatedEntriesIdEditRoute,
 }
 
 const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(

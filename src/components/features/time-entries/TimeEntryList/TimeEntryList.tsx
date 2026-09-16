@@ -45,8 +45,13 @@ function CardSkeleton() {
  *
  * ponytail: `empty` and `error` are states of this component rather than `shared/EmptyState` and
  * `shared/ErrorState`, which SPEC 6.1 names - the design's own component sheet captions them
- * `TimeEntryList · empty / error / loading`, and each would have exactly one caller today. US-3's
- * "this entry no longer exists" is the second caller that earns the extraction.
+ * `TimeEntryList · empty / error / loading`, and each would have exactly one caller today.
+ *
+ * US-3 was expected to be the second caller and turned out not to be. Its "this entry no longer
+ * exists" is a bare centred sentence and a link on the page background
+ * (`04-edit-entry-mobile-notfound.png`), where these are a bordered card with an illustration, a
+ * sentence and a button - sharing a component between them would mean a prop for every part that
+ * differs, which is all of them. It stays here until something wants *this* shape.
  */
 export function TimeEntryList({ entries, isPending, isRetrying = false, onRetry, date }: TimeEntryListProps) {
 	if (isPending) {
