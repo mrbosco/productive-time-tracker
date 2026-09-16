@@ -4,6 +4,14 @@ import { cn } from '@/lib/utils';
 /** The design's dismissal delay (`TimeTracker.dc.html`). */
 const TOAST_DURATION_MS = 2600;
 
+/**
+ * Longer for a failure. A confirmation can go once it has been read - the thing it describes stays
+ * on screen. A failure is the opposite: it reports something that did not happen, it is the only
+ * report of it where there is no banner to carry one (SPEC 4.2), and the screen behind it looks
+ * exactly as it did before the attempt.
+ */
+const ERROR_TOAST_DURATION_MS = 6000;
+
 function CheckIcon() {
 	return (
 		<svg width="18" height="18" viewBox="0 0 20 20" aria-hidden="true" className="flex-none text-success">
@@ -13,10 +21,20 @@ function CheckIcon() {
 	);
 }
 
+function AlertIcon() {
+	return (
+		<svg width="18" height="18" viewBox="0 0 20 20" aria-hidden="true" className="flex-none text-danger">
+			<circle cx="10" cy="10" r="8" fill="currentColor" />
+			<path d="M9.1 5.2h1.8v6H9.1v-6Zm0 7.2h1.8v1.8H9.1v-1.8Z" fill="#fff" />
+		</svg>
+	);
+}
+
 interface ToastProps {
 	children: string;
 	onDismiss: () => void;
 	durationMs?: number;
+	variant?: 'success' | 'error';
 }
 
 /**
@@ -27,14 +45,17 @@ interface ToastProps {
  * app is raised by the screen the user is standing on - the day view, after a create returns to it
  * or a delete completes in place - so the state is local, which is what SPEC 6.3 asks for.
  *
- * Only the success variant exists. The design's error toast is drawn, but its own build notes call
- * it redundant with the form's error banner and say to ship one: the banner, which stays on screen
- * and keeps the failed values beside it.
+ * Two variants, which is what the design's component sheet draws. The build notes preferred a
+ * form's error banner to an error toast, and where there is a form that still holds - the entry
+ * form reports its own failures inline, beside the values that failed. The day view has no banner:
+ * a delete that fails there has nowhere else to be said, and SPEC 4.2 asks for it in as many words.
  *
- * `role="status"` rather than `alert`: this is confirmation of something the user just did, so it
- * is announced politely instead of interrupting.
+ * `role="status"` for a success, because it confirms something the user just did and can be
+ * announced politely. An error is `role="alert"`: it reports that what they asked for did not
+ * happen, which is worth interrupting for.
  */
-export function Toast({ children, onDismiss, durationMs = TOAST_DURATION_MS }: ToastProps) {
+export function Toast({ children, onDismiss, durationMs, variant = 'success' }: ToastProps) {
+	const delay = durationMs ?? (variant === 'error' ? ERROR_TOAST_DURATION_MS : TOAST_DURATION_MS);
 	/**
 	 * The timer is keyed on the message and the delay, never on `onDismiss`.
 	 *
@@ -52,23 +73,23 @@ export function Toast({ children, onDismiss, durationMs = TOAST_DURATION_MS }: T
 	useEffect(() => {
 		const timer = setTimeout(() => {
 			dismiss.current();
-		}, durationMs);
+		}, delay);
 
 		return () => {
 			clearTimeout(timer);
 		};
-	}, [durationMs, children]);
+	}, [delay, children]);
 
 	return (
 		<div
-			role="status"
+			role={variant === 'success' ? 'status' : 'alert'}
 			className={cn(
 				'pointer-events-none fixed inset-x-0 bottom-25 z-40 flex justify-center px-5',
 				'md:inset-x-auto md:right-8 md:bottom-8 md:px-0'
 			)}
 		>
 			<div className="flex animate-sheet-up items-center gap-2.5 rounded-input border border-line bg-surface px-4 py-3 shadow-menu">
-				<CheckIcon />
+				{variant === 'success' ? <CheckIcon /> : <AlertIcon />}
 				<span className="text-meta font-medium">{children}</span>
 			</div>
 		</div>

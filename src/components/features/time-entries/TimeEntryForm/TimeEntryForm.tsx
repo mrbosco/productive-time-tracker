@@ -9,7 +9,9 @@ import { Input } from '@/components/core/Input';
 import { RichTextEditor } from '@/components/core/RichTextEditor/RichTextEditor';
 import { SettingsSheet } from '@/components/features/settings/SettingsSheet/SettingsSheet';
 import { useDefaultService, useServiceLabel } from '@/components/features/settings/useDefaultService';
+import { TimeEntryDeleteDialog } from '@/components/features/time-entries/TimeEntryDeleteDialog/TimeEntryDeleteDialog';
 import { useCreateTimeEntry } from '@/components/features/time-entries/useCreateTimeEntry';
+import { useDeleteTimeEntry } from '@/components/features/time-entries/useDeleteTimeEntry';
 import { useUpdateTimeEntry } from '@/components/features/time-entries/useUpdateTimeEntry';
 import { UnsavedChangesDialog } from '@/components/features/time-entries/TimeEntryForm/UnsavedChangesDialog';
 import {
@@ -100,10 +102,18 @@ export function TimeEntryForm({ session, date, entry, maxNoteLength = MAX_NOTE_L
 	const entryServiceLabel = useServiceLabel(session, entry?.service ?? null);
 	const createEntry = useCreateTimeEntry(session);
 	const updateEntry = useUpdateTimeEntry(session);
+	const deleteEntry = useDeleteTimeEntry(session);
 
 	const [errorMessage, setErrorMessage] = useState<string | null>(null);
 	const [isUnsavedOpen, setIsUnsavedOpen] = useState(false);
 	const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+	const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState(false);
+	/**
+	 * A delete in flight or already done. Separate from `isConfirmDeleteOpen` because it has to
+	 * outlive the dialog: it is what tells the blocker below that the navigation which follows is
+	 * not someone walking away from a draft.
+	 */
+	const [isDeleting, setIsDeleting] = useState(false);
 	const fieldId = useId();
 
 	/** What the fields start from: blank for a new entry, the entry's own values for an edit. */
@@ -185,8 +195,13 @@ export function TimeEntryForm({ session, date, entry, maxNoteLength = MAX_NOTE_L
 	 * In-app back, which never reaches `beforeunload`: the browser button walks the router's own
 	 * history rather than unloading the page, so the same question is asked in the same dialog.
 	 */
+	/*
+	 * `isDeleting` belongs in this condition and `isSubmitting` does not cover it: a delete is not a
+	 * form submit, so react-hook-form never sees it. Without it, deleting an entry on a form that
+	 * had been edited would ask whether to save the changes to the entry being deleted.
+	 */
 	const blocker = useBlocker({
-		shouldBlockFn: () => isDirty && !isSubmitting && !isUnsavedOpen,
+		shouldBlockFn: () => isDirty && !isSubmitting && !isUnsavedOpen && !isDeleting,
 		enableBeforeUnload: false,
 		withResolver: true,
 	});
@@ -217,6 +232,29 @@ export function TimeEntryForm({ session, date, entry, maxNoteLength = MAX_NOTE_L
 
 	function discard() {
 		void navigate({ to: '/day/$date', params: { date: dayDate } });
+	}
+
+	/**
+	 * R-12 from the edit form. Awaited rather than navigating straight away: the day view deletes
+	 * optimistically because it is watching the row go, but here the entry is what the screen is
+	 * *for* - so a failure is reported in the banner already on this form, beside the values, and
+	 * the form stays open. Leaving first and raising the failure on another screen would tell
+	 * someone their entry is gone and then, elsewhere, that it is not.
+	 */
+	async function confirmDelete() {
+		if (entry === undefined) return;
+
+		setIsConfirmDeleteOpen(false);
+		setIsDeleting(true);
+		setErrorMessage(null);
+
+		try {
+			await deleteEntry.mutateAsync({ id: entry.id, date: entry.date, minutes: entry.minutes });
+			await navigate({ to: '/day/$date', params: { date: entry.date }, state: { toast: 'Entry deleted' } });
+		} catch {
+			setIsDeleting(false);
+			setErrorMessage('Could not delete the entry. Try again.');
+		}
 	}
 
 	async function submit(values: TimeEntryFormOutput) {
@@ -488,20 +526,20 @@ export function TimeEntryForm({ session, date, entry, maxNoteLength = MAX_NOTE_L
 							)}
 
 							{/*
-							 * US-4 wires this, and it is drawn here now for the reason the day view's
-							 * kebab is: the design puts it at the end of this form, and a bar that
-							 * gained a destructive control later would reflow the buttons under a
-							 * thumb already reaching for Save. Disabled rather than hidden, and it
-							 * says which story owns it - a `Delete` that takes focus and does nothing
-							 * is worse than one that is visibly not ready (guidebook 18).
+							 * At the end of the fields rather than in the button bar (design brief
+							 * 3.4): a destructive control next to Save is one mis-tap from the thing
+							 * it undoes. It asks before it acts, like the day view's menu does.
 							 */}
 							{isEditing && (
 								<button
 									type="button"
-									disabled
+									disabled={isDeleting}
+									onClick={() => {
+										setIsConfirmDeleteOpen(true);
+									}}
 									className="self-start rounded-input text-base font-medium text-danger underline underline-offset-[3px] disabled:opacity-60 md:text-meta"
 								>
-									Delete entry (US-4)
+									Delete entry
 								</button>
 							)}
 						</div>
@@ -545,6 +583,19 @@ export function TimeEntryForm({ session, date, entry, maxNoteLength = MAX_NOTE_L
 			 * takes focus while it is up and hands it back to the form on close.
 			 */}
 			<SettingsSheet session={session} open={isSettingsOpen} onOpenChange={setIsSettingsOpen} />
+
+			{/*
+			 * A third layer over the form, on the same stacking `SettingsSheet` and the unsaved
+			 * prompt already use. The day view's dialog, because it is the same question about the
+			 * same entry (design brief 4).
+			 */}
+			<TimeEntryDeleteDialog
+				entry={isConfirmDeleteOpen ? (entry ?? null) : null}
+				onOpenChange={setIsConfirmDeleteOpen}
+				onConfirm={() => {
+					void confirmDelete();
+				}}
+			/>
 
 			<UnsavedChangesDialog
 				open={isUnsavedOpen || blocker.status === 'blocked'}

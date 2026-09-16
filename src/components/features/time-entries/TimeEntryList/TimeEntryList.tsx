@@ -13,6 +13,8 @@ interface TimeEntryListProps {
 	onRetry: () => void;
 	/** The day being shown, so the empty state's `Add entry` lands on the right date. */
 	date: string;
+	/** Asks the day view to confirm a delete (R-12). The dialog and the toast belong to the screen. */
+	onRequestDelete: (entry: TimeEntry) => void;
 }
 
 /** The card the empty and error states share, so the list never collapses to nothing. */
@@ -53,7 +55,14 @@ function CardSkeleton() {
  * sentence and a button - sharing a component between them would mean a prop for every part that
  * differs, which is all of them. It stays here until something wants *this* shape.
  */
-export function TimeEntryList({ entries, isPending, isRetrying = false, onRetry, date }: TimeEntryListProps) {
+export function TimeEntryList({
+	entries,
+	isPending,
+	isRetrying = false,
+	onRetry,
+	date,
+	onRequestDelete,
+}: TimeEntryListProps) {
 	if (isPending) {
 		return (
 			<div className="flex flex-col gap-3">
@@ -128,7 +137,12 @@ export function TimeEntryList({ entries, isPending, isRetrying = false, onRetry,
 		<ul className="flex flex-col gap-3">
 			{entries.map((entry) => (
 				<li key={entry.id}>
-					<TimeEntryCard entry={entry} />
+					<TimeEntryCard
+						entry={entry}
+						onRequestDelete={() => {
+							onRequestDelete(entry);
+						}}
+					/>
 				</li>
 			))}
 		</ul>

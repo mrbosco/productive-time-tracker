@@ -595,11 +595,87 @@ describe('TimeEntryForm, editing an entry', () => {
 		});
 	});
 
-	/** Drawn because the design puts it at the end of this form; US-4 wires it (guidebook 18). */
-	it('draws the delete action without arming it', async () => {
+	/** R-12 from this form: it asks first, like the day view's menu does (A-10). */
+	it('asks before deleting rather than deleting on the first press (R-12, A-10)', async () => {
+		const user = userEvent.setup();
 		await renderEditForm();
 
-		expect(await screen.findByRole('button', { name: /^Delete entry/ })).toBeDisabled();
+		await user.click(await screen.findByRole('button', { name: 'Delete entry' }));
+
+		const dialog = await screen.findByRole('dialog', { name: 'Delete this entry?' });
+		// The entry it is asking about, so the question is answerable without dismissing it.
+		expect(dialog).toHaveTextContent('1h 30m');
+		expect(dialog).toHaveTextContent('Standup and time logging.');
+	});
+
+	it('deletes the entry and returns to its day (R-12)', async () => {
+		const user = userEvent.setup();
+		const { router } = await renderEditForm();
+
+		await user.click(await screen.findByRole('button', { name: 'Delete entry' }));
+		await user.click(await screen.findByRole('button', { name: 'Delete' }));
+
+		await waitFor(() => {
+			expect(router.state.location.pathname).toBe(`/day/${DATE}`);
+		});
+		expect(router.state.location.state.toast).toBe('Entry deleted');
+	});
+
+	it('leaves the entry alone when the question is declined', async () => {
+		const deleted = vi.fn();
+		server.use(
+			http.delete('*/time_entries/:id', () => {
+				deleted();
+
+				return new HttpResponse(null, { status: 204 });
+			})
+		);
+		const user = userEvent.setup();
+		const { router } = await renderEditForm();
+
+		await user.click(await screen.findByRole('button', { name: 'Delete entry' }));
+		await user.click(await screen.findByRole('button', { name: 'Cancel' }));
+
+		expect(deleted).not.toHaveBeenCalled();
+		expect(router.state.location.pathname).toBe('/entries/162903873/edit');
+	});
+
+	/**
+	 * The banner rather than a toast, and the form rather than the day: the values are still here,
+	 * and so is the person looking at them. The day view has no banner, which is why its own delete
+	 * says so in a toast instead.
+	 */
+	it('stays on the form and says so when the delete fails (R-12)', async () => {
+		server.use(http.delete('*/time_entries/:id', () => new HttpResponse(null, { status: 500 })));
+		const user = userEvent.setup();
+		const { router } = await renderEditForm();
+
+		await user.click(await screen.findByRole('button', { name: 'Delete entry' }));
+		await user.click(await screen.findByRole('button', { name: 'Delete' }));
+
+		expect(await screen.findByText('Could not delete the entry. Try again.')).toBeInTheDocument();
+		expect(router.state.location.pathname).toBe('/entries/162903873/edit');
+	});
+
+	/**
+	 * A delete is not a form submit, so react-hook-form's `isSubmitting` never covers it. Without
+	 * the blocker knowing, deleting an entry someone had edited would ask whether to save the
+	 * changes to the entry being deleted.
+	 */
+	it('does not ask about unsaved changes on the way out of a delete', async () => {
+		const user = userEvent.setup();
+		await renderEditForm();
+
+		await user.clear(await screen.findByRole('textbox', { name: 'Duration' }));
+		await user.type(screen.getByRole('textbox', { name: 'Duration' }), '4h');
+
+		await user.click(screen.getByRole('button', { name: 'Delete entry' }));
+		await user.click(await screen.findByRole('button', { name: 'Delete' }));
+
+		await waitFor(() => {
+			expect(screen.queryByRole('dialog', { name: 'Delete this entry?' })).not.toBeInTheDocument();
+		});
+		expect(screen.queryByRole('dialog', { name: 'Save your changes?' })).not.toBeInTheDocument();
 	});
 
 	it('has no delete action on the New entry form', async () => {

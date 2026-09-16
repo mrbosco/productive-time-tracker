@@ -32,7 +32,7 @@ function KebabIcon() {
  * The card is focusable because X-2 moves between cards with the arrow keys; until then the focus
  * ring is the only thing that arrives, which is harmless and is what the design draws.
  */
-export function TimeEntryCard({ entry }: { entry: TimeEntry }) {
+export function TimeEntryCard({ entry, onRequestDelete }: { entry: TimeEntry; onRequestDelete: () => void }) {
 	// `toPlainText` only to decide whether there is anything to show: a note that is all markup
 	// and no words - `<p></p>` - should read as no description rather than as an empty box. What
 	// is rendered is the markup itself (ADR-0010).
@@ -79,14 +79,20 @@ export function TimeEntryCard({ entry }: { entry: TimeEntry }) {
 				</DropdownMenuTrigger>
 
 				{/*
-				 * `Edit` is live from US-3; the rest belong to later stories and stay `disabled`
-				 * saying so - a `Delete` that reads as destructive, takes focus and then does
-				 * nothing is worse than one that is visibly not ready (guidebook 18).
+				 * `Edit` is live from US-3 and `Delete` from US-4; the two between them belong to
+				 * later stories and stay `disabled` saying so - an item that reads as live, takes
+				 * focus and then does nothing is worse than one visibly not ready (guidebook 18).
 				 *
-				 * A `Link`, never an import of the form. ADR-0010 measured TipTap at 404 kB raw and
-				 * `autoCodeSplitting` keeps it out of the day's chunk; pulling the form in here to
-				 * open it would drag the whole ProseMirror tree onto the screen SPEC 4.2 requires to
-				 * render on one request.
+				 * `Edit` is a `Link`, never an import of the form. ADR-0010 measured TipTap at 404 kB
+				 * raw and `autoCodeSplitting` keeps it out of the day's chunk; pulling the form in
+				 * here to open it would drag the whole ProseMirror tree onto the screen SPEC 4.2
+				 * requires to render on one request.
+				 *
+				 * `Delete` is a handler rather than a link for the same reason read the other way:
+				 * it asks its question on this screen and stays here (design brief 5), so there is
+				 * no route to send anyone to. The dialog it opens lives on the day view, not on this
+				 * card - the toast that follows belongs to the screen, and X-2's Delete key will
+				 * want the same opening from the list rather than from a menu.
 				 */}
 				<DropdownMenuContent align="end" className="w-[210px]">
 					<DropdownMenuItem asChild>
@@ -97,8 +103,8 @@ export function TimeEntryCard({ entry }: { entry: TimeEntry }) {
 					<DropdownMenuItem disabled>Continue timer (X-4)</DropdownMenuItem>
 					<DropdownMenuItem disabled>Duplicate (X-3)</DropdownMenuItem>
 					<DropdownMenuSeparator />
-					<DropdownMenuItem disabled variant="destructive">
-						Delete (US-4)
+					<DropdownMenuItem variant="destructive" onSelect={onRequestDelete}>
+						Delete
 					</DropdownMenuItem>
 				</DropdownMenuContent>
 			</DropdownMenu>

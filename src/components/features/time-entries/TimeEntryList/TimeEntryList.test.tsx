@@ -22,6 +22,7 @@ const baseProps = {
 	isPending: false,
 	onRetry: vi.fn(),
 	date: '2026-09-15',
+	onRequestDelete: vi.fn(),
 };
 
 describe('TimeEntryList', () => {
