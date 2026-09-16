@@ -11,4 +11,6 @@ test-results
 
 # Claude Code local/personal settings (project settings.json is checked in)
 .claude/settings.local.json
+# Git worktrees created under the project (`git worktree add .claude/worktrees/<branch>`)
+.claude/worktrees/
 .tanstack
