@@ -18,6 +18,8 @@ export default defineConfig({
 		},
 	},
 	test: {
+		// No .env is present in a fresh clone; src/api reads this, so pin it for the run.
+		env: { VITE_API_BASE_URL: 'https://api.productive.io/api/v2' },
 		environment: 'jsdom',
 		globals: true,
 		setupFiles: ['./src/__tests__/setup.ts'],
