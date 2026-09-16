@@ -6,23 +6,27 @@ sequenceDiagram
     participant API as Productive API
 
     U->>App: Enter API token + organization ID
-    App->>API: GET /organization_memberships (X-Auth-Token, X-Organization-Id)
-    alt 401 / 403 / network error
+    Note over App,API: include=person is mandatory: without it the person<br/>relationship carries no data and no ID at all
+    App->>API: GET /organization_memberships?include=person
+    alt 401 invalid_auth_token
         API-->>App: errors[]
+        App-->>U: "Check your API token"
+    else 403 no_person
+        API-->>App: errors[]
+        App-->>U: "That token has no person in organization X"
+    else network error
         App-->>U: Inline error on login form
     else 200
-        API-->>App: memberships[] (+ person relationship)
-        App->>App: find membership where organization.id == entered ID
-        alt no match
-            App-->>U: "Token is valid but not a member of organization X"
-        else match
-            App->>API: GET /services (person-scoped) to resolve default service
-            App->>LS: save { token, organizationId, personId, defaultServiceId }
-            App-->>U: redirect to /day/today
-        end
+        API-->>App: membership + included person
+        App->>App: read relationships.person.data.id
+        Note over App,API: /services is organization-wide; filter[person_id]<br/>is silently ignored (A-1)
+        App->>API: GET /services?filter[time_tracking_enabled]=true (sparse, page[size]=200)
+        App->>App: sort by name, take the first as default service
+        App->>LS: save { token, organizationId, personId, defaultServiceId }
+        App-->>U: redirect to /day/today
     end
 
-    Note over App,LS: On refresh: read LS, re-validate with one GET /organization_memberships
+    Note over App,LS: On refresh: read LS, re-validate with one<br/>GET /organization_memberships?include=person
     U->>App: Logout
     App->>LS: clear key
     App->>App: clear query cache, redirect /login

@@ -1,0 +1,258 @@
+{
+  "data": {
+    "id": "163018789",
+    "type": "time_entries",
+    "attributes": {
+      "draft": false,
+      "date": "2026-09-16",
+      "created_at": "2026-09-16T11:54:45.717+02:00",
+      "time": 1,
+      "billable_time": 0,
+      "recognized_time": 0,
+      "note": null,
+      "track_method_id": 2,
+      "started_at": null,
+      "timer_started_at": null,
+      "timer_stopped_at": "2026-09-16T11:56:12.000+02:00",
+      "approved": true,
+      "approved_at": "2026-09-16T11:54:45.000+02:00",
+      "updated_at": "2026-09-16T11:56:12.084+02:00",
+      "calendar_event_id": null,
+      "calendar_event_recurring_id": null,
+      "invoice_attribution_id": null,
+      "invoiced": false,
+      "overhead": true,
+      "overtime": false,
+      "overtime_cost_multiplier": "1.0",
+      "rejected": false,
+      "rejected_reason": null,
+      "rejected_at": null,
+      "last_activity_at": "2026-09-16T11:54:45.833+02:00",
+      "submitted": false,
+      "currency": "USD",
+      "currency_default": "USD",
+      "currency_normalized": "USD",
+      "cost": 0,
+      "cost_default": 0,
+      "cost_normalized": 0,
+      "work_cost": 0,
+      "work_cost_default": 0,
+      "work_cost_normalized": 0,
+      "overhead_cost": 0,
+      "overhead_cost_default": 0,
+      "overhead_cost_normalized": 0,
+      "internal_overhead_cost": 0,
+      "internal_overhead_cost_default": 0,
+      "internal_overhead_cost_normalized": 0,
+      "facility_overhead_cost": 0,
+      "facility_overhead_cost_default": 0,
+      "facility_overhead_cost_normalized": 0
+    },
+    "relationships": {
+      "organization": {
+        "data": {
+          "type": "organizations",
+          "id": "999999"
+        }
+      },
+      "person": {
+        "meta": {
+          "included": false
+        }
+      },
+      "service": {
+        "data": {
+          "type": "services",
+          "id": "16887825"
+        }
+      },
+      "task": {
+        "meta": {
+          "included": false
+        }
+      },
+      "approver": {
+        "meta": {
+          "included": false
+        }
+      },
+      "updater": {
+        "meta": {
+          "included": false
+        }
+      },
+      "rejecter": {
+        "meta": {
+          "included": false
+        }
+      },
+      "creator": {
+        "meta": {
+          "included": false
+        }
+      },
+      "last_actor": {
+        "meta": {
+          "included": false
+        }
+      },
+      "person_subsidiary": {
+        "meta": {
+          "included": false
+        }
+      },
+      "deal_subsidiary": {
+        "meta": {
+          "included": false
+        }
+      },
+      "timesheet": {
+        "meta": {
+          "included": false
+        }
+      },
+      "invoice_attribution": {
+        "meta": {
+          "included": false
+        }
+      },
+      "approval_statuses": {
+        "meta": {
+          "included": false
+        }
+      }
+    }
+  },
+  "included": [
+    {
+      "id": "16887825",
+      "type": "services",
+      "attributes": {
+        "name": "Acquiring new clients",
+        "position": 1,
+        "deleted_at": null,
+        "external_id": null,
+        "billable": false,
+        "description": null,
+        "time_tracking_enabled": true,
+        "expense_tracking_enabled": true,
+        "booking_tracking_enabled": true,
+        "origin_service_id": null,
+        "initial_service_id": 16887825,
+        "budget_cap_enabled": false,
+        "editor_config": null,
+        "custom_fields": null,
+        "billing_type_id": 3,
+        "worked_time": 601,
+        "billable_time": 0,
+        "estimated_time": 1200,
+        "budgeted_time": 1200,
+        "profit_margin": 0.0,
+        "booked_time": 0,
+        "unit_id": 1,
+        "future_booked_time": 0,
+        "tentative_booked_time": 0,
+        "future_tentative_booked_time": 0,
+        "markup": null,
+        "discount": null,
+        "discount_type": "percentage",
+        "quantity": "20.0",
+        "currency": "USD",
+        "currency_default": "USD",
+        "currency_normalized": "USD",
+        "profit": -23809.52381,
+        "profit_default": -23809.52381,
+        "profit_normalized": -23809.52381,
+        "work_cost": 23809.52381,
+        "work_cost_default": 23809.52381,
+        "work_cost_normalized": 23809.52381,
+        "future_cost": 0.0,
+        "future_cost_default": 0.0,
+        "future_cost_normalized": 0.0,
+        "cost": 23809.52381,
+        "cost_default": 23809.52381,
+        "cost_normalized": 23809.52381,
+        "price": 10000.0,
+        "price_default": 10000.0,
+        "price_normalized": 10000.0,
+        "estimated_cost": 0.0,
+        "estimated_cost_default": 0.0,
+        "estimated_cost_normalized": 0.0,
+        "revenue": 0.0,
+        "revenue_default": 0.0,
+        "revenue_normalized": 0.0,
+        "projected_revenue": 0.0,
+        "projected_revenue_default": 0.0,
+        "projected_revenue_normalized": 0.0,
+        "expense_amount": 0.0,
+        "expense_amount_default": 0.0,
+        "expense_amount_normalized": 0.0,
+        "expense_billable_amount": 0.0,
+        "expense_billable_amount_default": 0.0,
+        "expense_billable_amount_normalized": 0.0,
+        "budget_total": 200000.0,
+        "budget_total_default": 200000.0,
+        "budget_total_normalized": 200000.0,
+        "budget_used": 100166.666667,
+        "budget_used_default": 100166.666667,
+        "budget_used_normalized": 100166.666667,
+        "future_revenue": 0.0,
+        "future_revenue_default": 0.0,
+        "future_revenue_normalized": 0.0,
+        "future_budget_used": 0.0,
+        "future_budget_used_default": 0.0,
+        "future_budget_used_normalized": 0.0,
+        "discount_amount": 0.0,
+        "discount_amount_default": 0.0,
+        "discount_amount_normalized": 0.0,
+        "markup_amount": 0.0,
+        "markup_amount_default": 0.0,
+        "markup_amount_normalized": 0.0
+      },
+      "relationships": {
+        "organization": {
+          "data": {
+            "type": "organizations",
+            "id": "999999"
+          }
+        },
+        "service_type": {
+          "meta": {
+            "included": false
+          }
+        },
+        "deal": {
+          "meta": {
+            "included": false
+          }
+        },
+        "person": {
+          "meta": {
+            "included": false
+          }
+        },
+        "section": {
+          "meta": {
+            "included": false
+          }
+        },
+        "import": {
+          "meta": {
+            "included": false
+          }
+        },
+        "custom_field_people": {
+          "meta": {
+            "included": false
+          }
+        },
+        "custom_field_attachments": {
+          "meta": {
+            "included": false
+          }
+        }
+      }
+    }
+  ],
+  "meta": {}
+}

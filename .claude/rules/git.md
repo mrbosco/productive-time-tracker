@@ -29,9 +29,9 @@ Feature scopes, one per domain in `src/components/features/` (SPEC 6.1):
 
 Infrastructure scopes:
 
-`scaffold` · `api` · `router` · `ui` · `lib` · `mocks` · `e2e` · `ci` · `deps` · `docs` · `claude` · `release`
+`scaffold` · `api` · `router` · `ui` · `lib` · `mocks` · `e2e` · `ci` · `deps` · `docs` · `spec` · `claude` · `release`
 
-`scaffold` covers build/tooling config (Vite, TypeScript, ESLint, Prettier, Husky, Changesets). `ui` covers `components/core/` and `components/shared/`. `router` covers `src/routes/` and router setup. `claude` covers `.claude/` and `CLAUDE.md`. `release` is for version bumps and tags.
+`scaffold` covers build/tooling config (Vite, TypeScript, ESLint, Prettier, Husky, Changesets). `ui` covers `components/core/` and `components/shared/`. `router` covers `src/routes/` and router setup. `spec` covers `docs/SPEC.md`, the ADRs and the diagrams; `docs` covers the rest of `docs/`. `claude` covers `.claude/` and `CLAUDE.md`. `release` is for version bumps and tags.
 
 > This list is duplicated in `commitlint.config.mjs` as `SCOPES`. **Adding or renaming a scope means editing both files in the same commit**, or the rule and the enforcement drift apart.
 

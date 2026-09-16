@@ -72,7 +72,9 @@ src/
 e2e/            Playwright specs, one per user story
 ```
 
-Only `components/core/`, `lib/`, `mocks/`, `routes/`, `styles/` and `__tests__/` exist today. `api/`, `components/shared/` and `components/features/` are specified in SPEC 6.1 and get created as stories land.
+`api/` is complete and is infrastructure, not a story: `client.ts` plus one typed module per resource, with MSW handlers built from the recorded responses in `docs/api/samples/`. Stories add hooks in `components/features/` that call these functions; they do not add API functions. Extending it means recording a sample first (`.claude/rules/api-client.md`).
+
+`components/shared/` and `components/features/` are specified in SPEC 6.1 and get created as stories land.
 
 ## Environment
 
@@ -86,6 +88,7 @@ Credentials are never in `.env`, the repo or the build. The token and organizati
 ## Rules, skills, agents
 
 - `.claude/rules/guidebook.md`, code conventions, scoped to `src/**`
+- `.claude/rules/api-client.md`, JSON:API client constraints and how to settle an unanswered API question, scoped to `src/api/**`
 - `.claude/rules/git.md`, commit and PR format, unscoped
 - `.claude/rules/testing.md`, scoped to test files and `e2e/`
 - Skills: `feature` (build a story), `pr` (open one), `release` (cut one through the version PR)
@@ -99,4 +102,5 @@ Credentials are never in `.env`, the repo or the build. The token and organizati
 - Every behaviour change adds a changeset; CI enforces this on `feat/`, `fix/` and `perf/` branches
 - Releases go through the Version Packages PR that `.github/workflows/release.yml` opens; merging it tags `vX.Y.Z`. See the `release` skill
 - Do not add a dependency without an ADR. `docs/adr/0005-scope-cuts.md` lists what was deliberately rejected
+- An unanswered API question is settled by recording a real response into `docs/api/samples/`; that is the procedure and it needs nothing extra. The Productive MCP server in `.mcp.json` is an **optional accelerator on top of it** — it needs Productive's Ultimate plan, which this project's demo account does not have, so expect it to be unavailable and do not block on it. `.claude/rules/api-client.md` rules 25-28 cover it, including that it can write to a real organization and so needs per-change approval
 - MCP servers irrelevant to this project (`adloop`, `chrome-devtools`) are disabled per project, not globally; re-enable either with `/mcp` if you need it here

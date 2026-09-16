@@ -1,0 +1,14 @@
+{
+  "data": [],
+  "links": {
+    "first": "https://api.productive.io/api/v2/time_entries?filter%5Bafter%5D=2026-09-15&filter%5Bbefore%5D=2026-09-15&filter%5Bperson_id%5D=999999999&page%5Bnumber%5D=1&page%5Bsize%5D=30",
+    "last": "https://api.productive.io/api/v2/time_entries?filter%5Bafter%5D=2026-09-15&filter%5Bbefore%5D=2026-09-15&filter%5Bperson_id%5D=999999999&page%5Bnumber%5D=0&page%5Bsize%5D=30"
+  },
+  "meta": {
+    "current_page": 1,
+    "total_pages": 0,
+    "total_count": 0,
+    "page_size": 30,
+    "max_page_size": 200
+  }
+}

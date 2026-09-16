@@ -19,7 +19,7 @@ You answer questions about the **Productive.io JSON:API** - an external third-pa
 Say so plainly rather than filling the gap with a plausible guess:
 
 - **`api-master.yaml` (the OpenAPI 3.1 source) is not in the repo** - it was excluded for size. You cannot verify a field that the README does not mention.
-- **`docs/api/samples/` does not exist.** The README lists it as a Phase 4 deliverable. There are no captured response bodies.
+- **`docs/api/samples/` now exists** and holds recorded response bodies. Prefer it over the README prose when the two could disagree: the samples are what the API actually sent.
 - Anything marked "to verify in Phase 4" in the README is unverified. Flag it as such.
 
 ## Report format
@@ -33,4 +33,12 @@ Lead with the answer. Then, as applicable:
 - **Payload**: attributes and relationships, marking which are required on create
 - **Caveats**: unverified fields, discrepancies between the documented table and the observed-traffic section, and anything the SPEC's efficiency rules (4.2) constrain
 
-Quote the source line and cite the file when the answer is subtle. If the notes genuinely do not cover the question, say which file would need to be extended and stop there.
+Quote the source line and cite the file when the answer is subtle.
+
+If the notes genuinely do not cover the question, do not guess. Say so, name the file that would
+need extending, and hand back **the exact question to put to the Productive MCP server**
+(`https://mcp.productive.io/mcp`, configured in `.mcp.json`) — you cannot call it yourself, but the
+caller can. Phrase it as a single answerable question, e.g. "which HTTP verb does
+`/timers/{id}/stop` accept?", not "how do timers work". Remind the caller that an MCP answer still
+has to be confirmed with a real request and recorded into `docs/api/samples/` before anything is
+built on it.

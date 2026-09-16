@@ -26,6 +26,7 @@ const SCOPES = [
 	'ci',
 	'deps',
 	'docs',
+	'spec',
 	'claude',
 	'release',
 ];

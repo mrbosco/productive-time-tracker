@@ -1,0 +1,9 @@
+sort= support on GET /time_entries, one request per value.
+
+SORT             HTTP   DETAIL / RESULT
+date             200    ok, 3 rows
+-date            200    ok, 3 rows
+created_at       400    Sort by 'created_at' is not supported on this endpoint.
+started_at       400    Sort by 'started_at' is not supported on this endpoint.
+id               400    Sort by 'id' is not supported on this endpoint.
+-created_at      400    Sort by '-created_at' is not supported on this endpoint.

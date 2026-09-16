@@ -1,0 +1,29 @@
+Timer routes, every method/path tried against the live API on 2026-09-16.
+The answer is PUT /timers/{id}/stop. It is not discoverable by guessing the verb:
+POST on the same path 404s, so the path alone is not enough.
+
+REQUEST                                        HTTP   RESULT
+GET /timers                                    200    index
+GET /timers/{id}                               200    show
+POST /timers                                   201    create, starts a timer
+PUT /timers/{id}/stop                          200    STOPS THE TIMER
+PATCH /timers/{id}/stop                        409    route exists; timer_already_stopped
+POST /timers/{id}/stop                         404    route_not_found
+POST /timers/{id}/stop_timer                   404    route_not_found
+POST /timers/{id}/stop-timer                   404    route_not_found
+POST /timers/stop                              404    route_not_found
+PATCH /timers/{id}                             404    route_not_found
+PUT /timers/{id}                               404    route_not_found
+DELETE /timers/{id}                            404    route_not_found
+POST /time_entries/{id}/stop                   404    route_not_found
+POST /time_entries/{id}/stop_timer             404    route_not_found
+PATCH /time_entries/{id} timer_stopped_at      200    accepted, silently ignored (read-only)
+GET /timer_logs                                404    route_not_found
+
+Verified sequence (timer 14335645, 2026-09-16 11:54:45 -> 11:56:12):
+  1. POST /timers {relationships: service, person} -> 201, and a time_entry is
+     auto-created with time 0 for today, linked via the timer's time_entry relationship.
+  2. PUT /timers/{id}/stop with body {} -> 200, sets stopped_at and total_time (minutes).
+  3. The linked entry's time becomes those minutes: 87s elapsed -> total_time 1 -> time 1.
+     Whole minutes only; the remainder is dropped.
+  4. Stopping again -> 409 timer_already_stopped.

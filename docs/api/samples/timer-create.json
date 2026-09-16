@@ -1,0 +1,26 @@
+{
+  "data": {
+    "id": "14335645",
+    "type": "timers",
+    "attributes": {
+      "person_id": 1448639,
+      "started_at": "2026-09-16T11:54:45.000+02:00",
+      "stopped_at": null,
+      "total_time": 0
+    },
+    "relationships": {
+      "organization": {
+        "data": {
+          "type": "organizations",
+          "id": "999999"
+        }
+      },
+      "time_entry": {
+        "meta": {
+          "included": false
+        }
+      }
+    }
+  },
+  "meta": {}
+}

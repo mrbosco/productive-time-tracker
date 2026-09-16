@@ -1,0 +1,12 @@
+{
+  "errors": [
+    {
+      "status": "401",
+      "code": "invalid_auth_token",
+      "title": "Unauthenticated",
+      "detail": "You are not authenticated",
+      "meta": {},
+      "source": {}
+    }
+  ]
+}

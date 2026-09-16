@@ -4,20 +4,35 @@ erDiagram
     OrganizationMembership ||--|| Person : "has one"
     Person ||--o{ TimeEntry : "has many"
     Service ||--o{ TimeEntry : "tracked against (required by API)"
+    Deal ||--o{ Service : "has many"
 
     TimeEntry {
         string id
         date date "YYYY-MM-DD"
-        int time "minutes"
-        string note "multiline description"
+        int time "minutes, may be 0"
+        string note "nullable, may contain HTML (A-9)"
+        datetime created_at "day list sorts on this, client-side (A-7)"
+        boolean draft "independent of time being 0"
     }
     Person {
         string id
         string first_name
         string last_name
+        string email
     }
     OrganizationMembership {
         string id
-        string organization_id
-        string person_id
     }
+    Service {
+        string id
+        string name "not unique"
+    }
+    Deal {
+        string id
+        string name "not unique either"
+    }
+
+%% OrganizationMembership exposes person and organization as relationships only.
+%% There is no organization_id or person_id attribute: an un-included relationship
+%% serialises as {"meta":{"included":false}} with no data and no id, so the person
+%% is reachable only via ?include=person. See docs/api/README.md.
