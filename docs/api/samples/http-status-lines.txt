@@ -22,3 +22,8 @@ error-404.json                               404
 error-422-missing-service.json               422
 timers-running.json                          200
 error-422-timer-requires-service.json        422
+timer-create.json                            201
+timer-stop.json                              404
+timers-running.json                          200
+time-entry-from-timer.json                   200
+error-409-timer-already-stopped.json         200

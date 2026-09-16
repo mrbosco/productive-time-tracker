@@ -1,11 +1,11 @@
 {
   "data": [
     {
-      "id": "14325906",
+      "id": "14335645",
       "type": "timers",
       "attributes": {
         "person_id": 1448639,
-        "started_at": "2026-09-15T17:41:48.000+02:00",
+        "started_at": "2026-09-16T11:54:45.000+02:00",
         "stopped_at": null,
         "total_time": 0
       },
@@ -19,7 +19,7 @@
         "time_entry": {
           "data": {
             "type": "time_entries",
-            "id": "162921872"
+            "id": "163018789"
           }
         }
       }
@@ -27,23 +27,23 @@
   ],
   "included": [
     {
-      "id": "162921872",
+      "id": "163018789",
       "type": "time_entries",
       "attributes": {
         "draft": false,
-        "date": "2026-09-15",
-        "created_at": "2026-09-15T17:41:30.013+02:00",
-        "time": 240,
+        "date": "2026-09-16",
+        "created_at": "2026-09-16T11:54:45.717+02:00",
+        "time": 0,
         "billable_time": 0,
         "recognized_time": 0,
         "note": null,
-        "track_method_id": 4,
-        "started_at": "2026-09-15T17:41:29.699+02:00",
-        "timer_started_at": "2026-09-15T17:41:48.000+02:00",
-        "timer_stopped_at": "2026-09-15T17:41:45.000+02:00",
+        "track_method_id": 2,
+        "started_at": null,
+        "timer_started_at": "2026-09-16T11:54:45.000+02:00",
+        "timer_stopped_at": null,
         "approved": true,
-        "approved_at": "2026-09-15T17:41:30.000+02:00",
-        "updated_at": "2026-09-15T17:41:59.640+02:00",
+        "approved_at": "2026-09-16T11:54:45.000+02:00",
+        "updated_at": "2026-09-16T11:54:45.833+02:00",
         "calendar_event_id": null,
         "calendar_event_recurring_id": null,
         "invoice_attribution_id": null,
@@ -54,7 +54,7 @@
         "rejected": false,
         "rejected_reason": null,
         "rejected_at": null,
-        "last_activity_at": "2026-09-15T17:41:48.054+02:00",
+        "last_activity_at": "2026-09-16T11:54:45.717+02:00",
         "submitted": false,
         "currency": "USD",
         "currency_default": "USD",

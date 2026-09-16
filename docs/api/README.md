@@ -207,36 +207,37 @@ will throw. `time-entry-delete.txt` is the captured response head.
 
 ## Timers
 
-`GET /timers?filter[person_id]=P&filter[stopped_at][eq]=&include=time_entry&page[size]=1`
-returns the running timer (`timers-running.json`):
+The timer resource is where the API is least guessable, so the whole flow is recorded.
+`timer-stop-endpoint-probes.txt` holds the full route matrix; fifteen plausible paths 404.
 
-```json
-{ "person_id": 1448639, "started_at": "…", "stopped_at": null, "total_time": 0 }
-```
+| Step         | Call                                                     | Sample                                 |
+| ------------ | -------------------------------------------------------- | -------------------------------------- |
+| Start        | `POST /timers`                                           | `timer-create.json`                    |
+| Poll running | `GET /timers?filter[person_id]=P&filter[stopped_at][eq]=&include=time_entry` | `timers-running.json` |
+| Stop         | `PUT /timers/{id}/stop`, body `{}`                       | `timer-stop.json`                      |
+| Entry after  | `GET /time_entries/{linked id}`                          | `time-entry-from-timer.json`           |
+| Stop twice   | 409 `timer_already_stopped`                              | `error-409-timer-already-stopped.json` |
 
-Note `person_id` is a plain **attribute** here, an integer, in addition to the relationships — the
-only endpoint observed doing that.
+Start takes `service` and `person` as **relationships**, no attributes. Despite that, the validation
+error for a malformed start points at `data/attributes/service`
+(`error-422-timer-requires-service.json`) — the pointer names a field shape the endpoint does not
+actually accept, so do not build anything on it.
 
-`POST /timers` **is reachable and writable with a normal API token** — a request with a deliberately
-wrong resource type answers 422, not 401 or 403 — and the validation error points at
-`data/attributes/service`, so a timer is created against a service
-(`error-422-timer-requires-service.json`). That probe could not create anything, and the account's
-running timer was confirmed untouched afterwards.
+A timer's `person_id` is a plain integer **attribute** as well as a relationship — the only endpoint
+observed doing that.
 
-**There is no stop endpoint at any conventional path.** Every candidate was tried against the live
-API and recorded in `timer-stop-endpoint-probes.txt`: `POST /timers/{id}/stop`, `/stop_timer` and
-`/stop-timer` all answer 404 `route_not_found`, as do `PATCH` and `PUT` on `/timers/{id}` — while
-`GET /timers/{id}` returns 200, so member routes do exist and it is specifically mutation that is
-missing. `PATCH /time_entries/{id}` with `timer_stopped_at` answers 200 but silently ignores the
-field, which is read-only.
+Three things worth knowing:
 
-`DELETE /timers/{id}` is the only untried candidate and was not attempted: it is destructive against
-a timer that is not ours. Until it is tried, **do not start a timer through this API** — you would
-not be able to stop it. The account has had one running since 2026-09-15 for exactly that reason.
-
-So the `POST /timers` body, the stop mechanism and whether stopping writes `time` onto the linked
-entry all remain unverified. SPEC 10 X-4 previously claimed these were "verified in Phase 4"; it now
-records what is and is not known.
+1. **`PUT`, not `POST`.** `POST /timers/{id}/stop` is a 404, as are `/stop_timer`, `/stop-timer`,
+   `PATCH`/`PUT`/`DELETE` on `/timers/{id}`, and `POST /time_entries/{id}/stop`. `PATCH` on
+   `/timers/{id}/stop` does work, which is how the path was confirmed before the verb was.
+   `PATCH /time_entries/{id}` with `timer_stopped_at` returns 200 and silently ignores it.
+2. **Starting a timer creates a time entry**, dated today with `time: 0`, linked through the timer's
+   `time_entry` relationship. A running timer is therefore already visible in the day list as a `0h`
+   row. Anything stopping a timer must update that entry, not create another.
+3. **Stopping writes the elapsed whole minutes onto the linked entry.** 87 seconds of runtime gave
+   `total_time: 1` on the timer and `time: 1` on the entry; the sub-minute remainder is dropped.
+   A second stop is 409 `timer_already_stopped` — treat it as "already stopped", not as a failure.
 
 ## Verified findings
 
@@ -247,7 +248,7 @@ records what is and is not known.
 | 3   | How to list trackable services; 422 body when `service_id` missing  | `filter[time_tracking_enabled]=true` (29 → 26), disagreeing with the attribute. `filter[person_id]` is ignored — the list is org-wide. 422 is `invalid_attribute_value` / "person cannot track on this service". | `services-unfiltered.json`, `services.json`, `error-422-missing-service.json` | **Breaks A-1** — "first service the person can track on" is not resolvable from this endpoint, so A-1 needs a new rule, not just a deal name in the selector |
 | 4   | 401 vs 403 bodies                                                   | 401 `invalid_auth_token` (bad token); 403 `no_person` (valid token, wrong organization).                                                                                                                      | `error-401.json`, `error-403.json`                                          | Login error copy can distinguish the two                                                                                    |
 | 5   | `after`/`before` ≡ `date[gt_eq]`/`[lt_eq]`? `page[size]` or `per_page`? | Filter forms are equivalent (identical ID sets). **Both** pagination params work identically; use `page[size]`.                                                                                             | `time-entries-day-date-operators.json`, `time-entries-page-size.json`, `time-entries-per-page.json` | **Changes SPEC 4.2** — the key names are as SPEC assumed, but the guard is not: an empty day is `total_pages: 0`, so `total_pages > 1` is the wrong test |
-| 6   | `POST /timers` body, `/timers/{id}/stop`, does stopping write `time`? | **Unresolved.** GET verified; writes skipped to avoid stopping the live timer already running on the account.                                                                                                 | `timers-running.json`                                                       | **Contradicts SPEC 10 X-4**, which claims these were verified                                                               |
+| 6   | `POST /timers` body, `/timers/{id}/stop`, does stopping write `time`? | **Resolved.** Start posts `service` and `person` as relationships and auto-creates a `time: 0` entry. Stop is `PUT /timers/{id}/stop` with `{}`, and it writes the elapsed whole minutes onto that entry. | `timer-create.json`, `timer-stop.json`, `time-entry-from-timer.json`        | **Fixes SPEC 10 X-4** — the endpoints are now recorded rather than assumed                                                  |
 | 7   | Does `note` from the UI contain HTML?                               | **Yes.** A UI-created entry's note is `"<ul><li><p>Probavam</p></li></ul>"`. `note` is also nullable. Plain text with `\n` round-trips unchanged.                                                              | `time-entries-day.json`, `time-entry-create.json`                           | **Confirms A-9** with evidence — strip tags on render, write plain text                                                     |
 
 ### Found while verifying (not among the original seven)
@@ -267,7 +268,12 @@ records what is and is not known.
 
 ## Reproducing
 
-`docs/api/samples/` was recorded with a throwaway entry that was created, read, updated and then
-deleted; the account was verified back to zero entries for that date afterwards. Credentials came
+`docs/api/samples/` was recorded with throwaway records that were created, read, updated and then
+deleted, and the account was checked back to zero afterwards each time.
+
+Two caveats about replaying these against the live account. The timer verification stopped a timer
+that had been running since 2026-09-15, which wrote 1332 minutes onto entry `162921872`; that entry
+was then deleted, so `time-entries-day.json` records three entries where the day now holds two.
+And `time-entry-show.json` is entry `162903873`, which still exists. Credentials came
 from a gitignored `.env.local` sourced by the shell and never written to disk or logs. Never use
 `curl -v`: it echoes request headers, and the token is a request header.

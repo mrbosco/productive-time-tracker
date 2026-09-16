@@ -1,0 +1,11 @@
+{
+  "errors": [
+    {
+      "status": "409",
+      "code": "timer_already_stopped",
+      "title": "Conflict error",
+      "meta": {},
+      "source": {}
+    }
+  ]
+}

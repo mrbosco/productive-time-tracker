@@ -2,7 +2,9 @@ import { http, HttpResponse } from 'msw';
 import { describe, expect, it } from 'vitest';
 import timersRunning from '../../docs/api/samples/timers-running.json';
 import { server } from '../mocks/node';
-import { getRunningTimer } from './timers';
+import timerCreate from '../../docs/api/samples/timer-create.json';
+import timerStop from '../../docs/api/samples/timer-stop.json';
+import { getRunningTimer, startTimer, stopTimer } from './timers';
 
 const auth = { token: 'test-token', organizationId: '999999' };
 
@@ -10,8 +12,9 @@ describe('getRunningTimer', () => {
 	it('reads the running timer, resolving person_id from the plain attribute', async () => {
 		const timer = await getRunningTimer(auth, '1448639');
 
-		expect(timer).toMatchObject({ id: '14325906', personId: '1448639', stoppedAt: null });
-		expect(timer?.timeEntryId).toBe('162921872');
+		expect(timer).toMatchObject({ id: '14335645', personId: '1448639', stoppedAt: null });
+		// Starting a timer auto-creates this entry, which is why it is linked while still running.
+		expect(timer?.timeEntryId).toBe('163018789');
 	});
 
 	it('narrows the payload instead of pulling the whole linked time entry', async () => {
@@ -51,5 +54,61 @@ describe('getRunningTimer', () => {
 		server.use(http.get('*/timers', () => HttpResponse.json({ data: [], meta: { total_pages: 0 } })));
 
 		await expect(getRunningTimer(auth, '1448639')).resolves.toBeNull();
+	});
+});
+
+describe('startTimer', () => {
+	it('sends service and person as relationships', async () => {
+		let body: unknown;
+		server.use(
+			http.post('*/timers', async ({ request }) => {
+				body = await request.json();
+
+				return HttpResponse.json(timerCreate, { status: 201 });
+			})
+		);
+
+		const timer = await startTimer(auth, '1448639', '16887825');
+
+		expect(body).toMatchObject({
+			data: {
+				type: 'timers',
+				relationships: {
+					service: { data: { type: 'services', id: '16887825' } },
+					person: { data: { type: 'people', id: '1448639' } },
+				},
+			},
+		});
+		expect(timer).toMatchObject({ id: '14335645', stoppedAt: null, totalTime: 0 });
+	});
+});
+
+describe('stopTimer', () => {
+	it('stops with PUT, which is the only verb this path accepts', async () => {
+		let method: string | undefined;
+		server.use(
+			http.put('*/timers/:id/stop', ({ request }) => {
+				method = request.method;
+
+				return HttpResponse.json(timerStop);
+			})
+		);
+
+		const timer = await stopTimer(auth, '14335645');
+
+		expect(method).toBe('PUT');
+		expect(timer.stoppedAt).not.toBeNull();
+		// Elapsed whole minutes, which the API also writes onto the linked time entry.
+		expect(timer.totalTime).toBe(1);
+	});
+
+	it('surfaces a second stop as a 409 rather than pretending it worked', async () => {
+		server.use(
+			http.put('*/timers/:id/stop', () =>
+				HttpResponse.json({ errors: [{ status: '409', code: 'timer_already_stopped' }] }, { status: 409 })
+			)
+		);
+
+		await expect(stopTimer(auth, '14335645')).rejects.toMatchObject({ status: 409, code: 'timer_already_stopped' });
 	});
 });

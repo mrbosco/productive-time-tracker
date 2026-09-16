@@ -7,6 +7,8 @@ import timeEntriesEmptyDay from '../../docs/api/samples/time-entries-empty-day.j
 import timeEntryCreate from '../../docs/api/samples/time-entry-create.json';
 import timeEntryShow from '../../docs/api/samples/time-entry-show.json';
 import timeEntryUpdate from '../../docs/api/samples/time-entry-update.json';
+import timerCreate from '../../docs/api/samples/timer-create.json';
+import timerStop from '../../docs/api/samples/timer-stop.json';
 import timersRunning from '../../docs/api/samples/timers-running.json';
 
 /**
@@ -87,4 +89,9 @@ export const handlers: RequestHandler[] = [
 	http.delete('*/time_entries/:id', () => new HttpResponse(null, { status: 204 })),
 
 	http.get('*/timers', () => HttpResponse.json(timersRunning)),
+
+	http.post('*/timers', () => HttpResponse.json(timerCreate, { status: 201 })),
+
+	// PUT, not POST: every other verb on this path 404s against the real API.
+	http.put('*/timers/:id/stop', () => HttpResponse.json(timerStop)),
 ];
