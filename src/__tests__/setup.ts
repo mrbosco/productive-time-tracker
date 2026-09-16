@@ -8,6 +8,49 @@ import { server } from '@/mocks/node';
 // navigation in a test writes a "Not implemented" block to the console and buries real output.
 window.scrollTo = () => undefined;
 
+/**
+ * jsdom lays nothing out, so it ships no `getClientRects` on `Range`. ProseMirror asks for one
+ * every time it scrolls a selection into view (ADR-0010), and the throw lands outside any test's
+ * call stack - so the suite reports every test passing and still exits non-zero, which is how this
+ * reached CI.
+ *
+ * An empty list is the honest answer here: there are no rectangles, because there is no layout.
+ * Anything that actually depends on geometry is an e2e test.
+ */
+const EMPTY_RECT = {
+	x: 0,
+	y: 0,
+	top: 0,
+	left: 0,
+	right: 0,
+	bottom: 0,
+	width: 0,
+	height: 0,
+	toJSON: () => ({}),
+} as DOMRect;
+
+const EMPTY_RECT_LIST = Object.assign([] as DOMRect[], {
+	item: () => null,
+}) as unknown as DOMRectList;
+
+// `in` rather than `??=`: reading a prototype method to test it is the unbound-method access the
+// lint rule exists to catch, and the write itself is what is wanted.
+if (!('getClientRects' in Range.prototype)) {
+	Range.prototype.getClientRects = () => EMPTY_RECT_LIST;
+}
+if (!('getBoundingClientRect' in Range.prototype)) {
+	Range.prototype.getBoundingClientRect = () => EMPTY_RECT;
+}
+if (!('getClientRects' in Element.prototype)) {
+	Element.prototype.getClientRects = () => EMPTY_RECT_LIST;
+}
+
+// Same reason: ProseMirror maps a mousedown back to a document position, and jsdom has no point
+// to hit. Returning nothing is correct - a click in a laid-out-less document lands on nothing.
+if (!('elementFromPoint' in document)) {
+	document.elementFromPoint = () => null;
+}
+
 // `error` on unhandled requests: a test that hits an unmocked endpoint is a test
 // that would hit the real API in CI. Fail loudly instead.
 beforeAll(() => {
