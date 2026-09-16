@@ -21,16 +21,21 @@ function createTestQueryClient() {
 }
 
 /**
+ * Every destination the app navigates to or links at, so a `<Link>` rendered by a component under
+ * test resolves instead of falling into the not-found branch and losing the assertion. Add a path
+ * here when a new route becomes a link target, rather than re-wiring providers in one test file
+ * (testing.md rule 1).
+ */
+const TEST_ROUTE_PATHS = ['/', '/login', '/day/$date', '/entries/new'];
+
+/**
  * A throwaway router whose every route renders the component under test, so anything that
  * navigates or renders a `<Link>` works without the component knowing it is in a test. Asserting
  * on `router.state.location.pathname` is then how a test checks where a component sent the user.
- *
- * `/login` and `/` exist because those are the two destinations the auth feature navigates to;
- * a route that does not exist would resolve to the not-found branch and lose the assertion.
  */
 function createTestRouter(ui: ReactElement, initialEntry: string) {
 	const rootRoute = createRootRoute();
-	const routes = ['/', '/login'].map((path) =>
+	const routes = TEST_ROUTE_PATHS.map((path) =>
 		createRoute({ getParentRoute: () => rootRoute, path, component: () => ui })
 	);
 
