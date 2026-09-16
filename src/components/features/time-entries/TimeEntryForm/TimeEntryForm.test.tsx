@@ -146,11 +146,10 @@ describe('TimeEntryForm', () => {
 		const { router } = await renderForm();
 
 		await user.type(screen.getByRole('textbox', { name: 'Duration' }), '1h');
-		await user.type(screen.getByRole('textbox', { name: 'Description' }), 'Worth keeping');
 		await user.click(await saveButton());
 
 		expect(await screen.findByRole('alert')).toHaveTextContent('Could not save the entry. Try again.');
-		expect(screen.getByRole('textbox', { name: 'Description' })).toHaveValue('Worth keeping');
+		expect(screen.getByRole('textbox', { name: 'Duration' })).toHaveValue('1h');
 		expect(router.state.location.pathname).not.toBe(`/day/${DATE}`);
 	});
 
@@ -194,6 +193,21 @@ describe('TimeEntryForm', () => {
 		await renderForm();
 
 		expect(await screen.findByRole('alert')).toHaveTextContent('no services with time tracking enabled');
+	});
+
+	/**
+	 * The description is a rich-text editor now (ADR-0010), and ProseMirror does not receive input
+	 * under jsdom - it listens for `beforeinput` and composition events jsdom does not implement.
+	 * What is asserted here is the wiring; typing a list and bolding a word are covered in
+	 * `e2e/entry-create.spec.ts`, in a browser that runs the editor for real.
+	 */
+	it('gives the description editor a name and a multiline role', async () => {
+		await renderForm();
+
+		const description = screen.getByRole('textbox', { name: 'Description' });
+
+		expect(description).toHaveAttribute('contenteditable', 'true');
+		expect(description).toHaveAttribute('aria-multiline', 'true');
 	});
 
 	/** The preview is the confirmation that `1.5h` was read as ninety minutes - for everyone. */
@@ -260,18 +274,21 @@ describe('TimeEntryForm', () => {
 		expect(await screen.findByRole('dialog', { name: 'Save your changes?' })).toBeInTheDocument();
 	});
 
-	/** The prompt names the work rather than asking in the abstract. */
+	/**
+	 * The prompt names the work rather than asking in the abstract. Every wording permutation is
+	 * covered against `summariseUnsavedEntry` in the utils test; this asserts the sentence is
+	 * actually built from it.
+	 */
 	it('names what would be lost', async () => {
 		const user = userEvent.setup();
 		await renderForm();
 
 		await user.type(screen.getByRole('textbox', { name: 'Duration' }), '1h 45m');
-		await user.type(screen.getByRole('textbox', { name: 'Description' }), 'Paired on the parser');
 		await user.click(screen.getByRole('button', { name: 'Cancel' }));
 
 		const prompt = await screen.findByRole('dialog', { name: 'Save your changes?' });
 
-		expect(prompt).toHaveTextContent('1h 45m and a description would be lost.');
+		expect(prompt).toHaveTextContent('1h 45m would be lost.');
 	});
 
 	it('returns to the form, still filled, on Continue editing', async () => {

@@ -1,11 +1,11 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useBlocker, useNavigate } from '@tanstack/react-router';
 import { useEffect, useId, useState } from 'react';
-import { useForm, useWatch } from 'react-hook-form';
+import { Controller, useForm, useWatch } from 'react-hook-form';
 import { Button } from '@/components/core/Button';
 import { Dialog, DialogContent, DialogTitle } from '@/components/core/Dialog';
 import { Input } from '@/components/core/Input';
-import { Textarea } from '@/components/core/Textarea';
+import { RichTextEditor } from '@/components/core/RichTextEditor/RichTextEditor';
 import { SettingsSheet } from '@/components/features/settings/SettingsSheet/SettingsSheet';
 import { useDefaultService } from '@/components/features/settings/useDefaultService';
 import { useCreateTimeEntry } from '@/components/features/time-entries/useCreateTimeEntry';
@@ -323,17 +323,28 @@ export function TimeEntryForm({ session, date, maxNoteLength = MAX_NOTE_LENGTH }
 							</div>
 
 							<div className="flex flex-col gap-1.5">
-								<label htmlFor={`${fieldId}-note`} className="text-label font-medium text-muted">
+								{/*
+								 * A span, not a `<label htmlFor>`: the editor is a contenteditable
+								 * div, which is not a labelable element, so the name is attached
+								 * the same way the Date button's is.
+								 */}
+								<span id={`${fieldId}-note-label`} className="text-label font-medium text-muted">
 									Description
-								</label>
-								<Textarea
-									id={`${fieldId}-note`}
-									rows={4}
-									placeholder="What did you work on?"
-									aria-invalid={errors.note !== undefined}
-									aria-describedby={errors.note === undefined ? undefined : `${fieldId}-note-error`}
-									className="md:min-h-26 md:px-3.5 md:py-3 md:text-list"
-									{...register('note')}
+								</span>
+								<Controller
+									control={control}
+									name="note"
+									render={({ field }) => (
+										<RichTextEditor
+											value={field.value}
+											onChange={field.onChange}
+											placeholder="What did you work on?"
+											aria-labelledby={`${fieldId}-note-label`}
+											aria-invalid={errors.note !== undefined}
+											aria-describedby={errors.note === undefined ? undefined : `${fieldId}-note-error`}
+											className="md:min-h-26 md:px-3.5 md:py-3 md:text-list"
+										/>
+									)}
 								/>
 								{errors.note !== undefined && (
 									<p id={`${fieldId}-note-error`} className="text-label text-danger">

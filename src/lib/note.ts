@@ -19,7 +19,7 @@
  * So the test is a *closing* tag or a void element. Markup that needs stripping always has one -
  * Productive's editor emits `<p>`, `<ul>`, `<li>` pairs - and prose almost never does.
  */
-const PRODUCTIVE_MARKUP =
+export const PRODUCTIVE_MARKUP =
 	/<\/(?:p|div|span|ul|ol|li|a|b|i|u|s|em|strong|code|pre|blockquote|h[1-6]|table|thead|tbody|tr|td|th|script|style)>|<(?:br|hr|img)\b[^>]*\/?>/i;
 
 /** Elements whose text content is code, not prose, and must not be rendered as the note. */
@@ -89,9 +89,14 @@ function collectText(node: Node, out: string[]): void {
  * execute scripts or fetch resources for the document it builds, and it gets nesting right where
  * a regex would not.
  */
+/** Whether a note carries markup, as distinct from prose containing an angle bracket. */
+export function containsMarkup(note: string): boolean {
+	return PRODUCTIVE_MARKUP.test(note);
+}
+
 export function toPlainText(note: string | null | undefined): string {
 	if (note === null || note === undefined) return '';
-	if (!PRODUCTIVE_MARKUP.test(note)) return note;
+	if (!containsMarkup(note)) return note;
 
 	const { body } = new DOMParser().parseFromString(note, 'text/html');
 	const out: string[] = [];

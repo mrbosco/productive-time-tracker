@@ -79,7 +79,7 @@ test.describe('adding a time entry', () => {
 		await expect(page).toHaveURL(new RegExp(`/day/${SEEDED_DATE}$`));
 		await expect(page.getByRole('status')).toHaveText('Entry saved');
 		await expect(page.getByText('Mapped the time_entries payload')).toBeVisible();
-		await expect(page.getByRole('listitem')).toHaveCount(4);
+		await expect(page.getByRole('article')).toHaveCount(4);
 	});
 
 	/** A-2: the preview is the only confirmation that what was typed was read as intended. */
@@ -148,8 +148,51 @@ test.describe('adding a time entry', () => {
 		await page.getByRole('button', { name: 'Discard changes' }).click();
 
 		await expect(page).toHaveURL(new RegExp(`/day/${SEEDED_DATE}$`));
-		await expect(page.getByRole('listitem')).toHaveCount(3);
+		await expect(page.getByRole('article')).toHaveCount(3);
 		await expect(page.getByRole('status')).toHaveCount(0);
+	});
+
+	/**
+	 * ADR-0010, and the reason these live here rather than in a component test: ProseMirror listens
+	 * for `beforeinput` and composition events jsdom does not implement, so the editor only really
+	 * runs in a browser.
+	 */
+	test('starts a list from a dash, and saves it as one', async ({ page }) => {
+		await openForm(page);
+
+		await page.getByRole('textbox', { name: 'Duration' }).fill('30m');
+		const description = page.getByRole('textbox', { name: 'Description' });
+		await description.click();
+		await page.keyboard.type('- first');
+		await page.keyboard.press('Enter');
+		await page.keyboard.type('second');
+
+		await expect(description.locator('ul li')).toHaveCount(2);
+
+		await page.getByRole('button', { name: 'Save entry' }).click();
+
+		// And the day renders it as a list too, rather than flattening it back to lines.
+		await expect(page).toHaveURL(new RegExp(`/day/${SEEDED_DATE}$`));
+		await expect(page.getByRole('article').last().locator('ul li')).toHaveCount(2);
+	});
+
+	test('bolds the selection with the usual shortcut', async ({ page }) => {
+		await openForm(page);
+
+		const description = page.getByRole('textbox', { name: 'Description' });
+		await description.click();
+		await page.keyboard.type('plain ');
+		await page.keyboard.press('ControlOrMeta+b');
+		await page.keyboard.type('bold');
+
+		await expect(description.locator('strong')).toHaveText('bold');
+	});
+
+	/** An entry Productive stored as a list opens as one, rather than being flattened on save. */
+	test('opens an existing rich-text note without flattening it', async ({ page }) => {
+		await page.goto(`/day/${SEEDED_DATE}`);
+
+		await expect(page.getByRole('article').first().locator('ul li')).toHaveCount(1);
 	});
 
 	test('closes an untouched form without asking', async ({ page }) => {
