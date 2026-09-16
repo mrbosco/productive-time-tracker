@@ -1,4 +1,5 @@
 import { Link } from '@tanstack/react-router';
+import { useEffect, useRef } from 'react';
 import {
 	dayOfMonth,
 	formatDayShort,
@@ -61,6 +62,31 @@ function CellSkeleton({ className }: { className?: string }) {
 export function WeekStrip({ date, weekTotals, isPending, isError = false, today = todayIso() }: WeekStripProps) {
 	const days = weekDays(date);
 	const weekTotal = days.reduce((sum, day) => sum + (weekTotals?.[day] ?? 0), 0);
+	const stripRef = useRef<HTMLElement>(null);
+	const selectedRef = useRef<HTMLAnchorElement>(null);
+
+	/**
+	 * Bring the selected day into view (design brief 3.2: "with the selected cell centered").
+	 *
+	 * Seven 56px cells plus the week's own come to roughly 460px, which does not fit a 390px screen,
+	 * and the row always starts at Monday - so choosing a Friday scrolls the cell that was just
+	 * chosen off the edge, and the strip then shows a week with no visible selection in it.
+	 *
+	 * Conditioned on the row actually overflowing rather than on a breakpoint: the desktop grid never
+	 * does, so one check covers both widths and everything between them. `block: 'nearest'` keeps it
+	 * to the horizontal axis - without it the page itself scrolls to put the strip in view on load.
+	 *
+	 * `isPending` is a dependency because the skeleton branch below renders no cells at all: the refs
+	 * are attached on the render after the week lands, and the date has not changed by then.
+	 */
+	useEffect(() => {
+		const strip = stripRef.current;
+		const selected = selectedRef.current;
+		if (strip === null || selected === null) return;
+		if (strip.scrollWidth <= strip.clientWidth) return;
+
+		selected.scrollIntoView({ block: 'nearest', inline: 'center' });
+	}, [date, isPending]);
 
 	if (isPending) {
 		return (
@@ -75,8 +101,10 @@ export function WeekStrip({ date, weekTotals, isPending, isError = false, today 
 
 	return (
 		// `scrollbar-none` rather than a visible bar: the strip is one row of tap targets, and the
-		// selected cell is scrolled into view rather than hunted for.
+		// effect above is what puts the selected cell in front of you rather than leaving it to be
+		// hunted for.
 		<nav
+			ref={stripRef}
 			aria-label="Week"
 			className="-mx-4 flex [scrollbar-width:none] gap-2 overflow-x-auto px-4 md:mx-0 md:grid md:grid-cols-8 md:gap-3 md:overflow-visible md:px-0"
 		>
@@ -87,6 +115,7 @@ export function WeekStrip({ date, weekTotals, isPending, isError = false, today 
 				return (
 					<Link
 						key={day}
+						ref={isSelected ? selectedRef : undefined}
 						to="/day/$date"
 						params={{ date: day }}
 						aria-label={describeCell(day, minutes, isError)}

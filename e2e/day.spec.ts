@@ -126,6 +126,21 @@ test.describe('the day view', () => {
 		await expect(page.getByText('Nothing logged for this day yet.')).toBeVisible();
 	});
 
+	/**
+	 * X-1, design brief 3.2: "with the selected cell centered". Seven cells and the week's own do
+	 * not fit a 390px screen and the row starts at Monday, so on Pixel 5 a Sunday is off the right
+	 * edge unless something scrolls it back. Asserted as geometry rather than as a scroll offset,
+	 * because "you can see the day you picked" is the behaviour and the offset is one way to get
+	 * there. On desktop the grid never overflows and this holds without anything scrolling.
+	 */
+	test('keeps the selected day on screen at the end of the week (X-1)', async ({ page }) => {
+		await page.goto('/day/2026-09-20');
+
+		// `ratio: 1` is the whole point: the default passes on a single visible pixel, which is
+		// exactly the state this is meant to catch.
+		await expect(page.getByRole('link', { name: /^Sun 20 Sep/ })).toBeInViewport({ ratio: 1 });
+	});
+
 	test('totals the day', async ({ page }) => {
 		await page.goto(`/day/${SEEDED_DATE}`);
 

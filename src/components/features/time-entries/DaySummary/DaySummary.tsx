@@ -5,8 +5,9 @@ import { calculateDayTotal } from '../totals.utils';
 /**
  * `3h 45m logged · 3 entries` (design brief 3.2).
  *
- * X-1 adds the totals-grouped-by-service card beside it on desktop; until then this one line is
- * the whole summary, which is why the day view is single-column at every width.
+ * This one line is the whole summary on mobile. X-1's `ServiceTotals` carries the same total, and
+ * the breakdown by service with it, in the right-hand column from `md` - where the two are not a
+ * repetition because one is the list's own caption and the other is the day read as a whole.
  */
 export function DaySummary({ entries }: { entries: TimeEntry[] }) {
 	const total = formatDuration(calculateDayTotal(entries));
