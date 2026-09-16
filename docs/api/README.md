@@ -79,6 +79,11 @@ exercised, so "required" is proven for `service` alone (`error-422-missing-servi
   **`draft: false`** (`time-entries-day-all-fields.json`, the same day recorded without a field
   list) — zero-minute entries are not merely unfinished drafts, so rendering must tolerate them even
   though the create form rejects 0 (A-8).
+- **Open question on the `draft` label.** A-8 renders a zero-minute entry as `0h` with a muted
+  `draft` label, but `draft` is a real API attribute and the one recorded zero-minute entry has
+  `draft: false`. On this evidence the label describes duration, not the API's flag, and the two can
+  disagree. Either render the label from `attributes.draft` (then request it in the field list) or
+  rename it so it does not claim to mirror the API.
 - **POST and PATCH responses carry only the `organization` relationship** — not `person` or
   `service` (`time-entry-create.json`). Re-fetch with `include`, or reuse what you already had, if
   the mutation response must render a service name.
@@ -181,6 +186,7 @@ Transport statuses for all of these are in `http-status-lines.txt`.
 | 403  | `no_person`               | Access Denied           | Valid token, wrong org      | `error-403.json`                  |
 | 404  | `record_not_found`        | Record Not Found        | Unknown ID                  | `error-404.json`                  |
 | 422  | `invalid_attribute_value` | Invalid Attribute Value | Person can't track service  | `error-422-missing-service.json`  |
+| 422  | `invalid_attribute_value` | Invalid Attribute Value | Timer sent with no service  | `error-422-timer-requires-service.json` |
 
 Three things to know:
 
@@ -212,11 +218,17 @@ returns the running timer (`timers-running.json`):
 Note `person_id` is a plain **attribute** here, an integer, in addition to the relationships — the
 only endpoint observed doing that.
 
-`POST /timers` and `POST /timers/{id}/stop` were deliberately **not** exercised: a live timer was
-already running on the test account, and Productive permits one running timer per person, so
-starting another risked stopping the user's. Whether stopping a timer writes `time` onto the linked
-entry is therefore still unknown. **SPEC 10 X-4 states these were "verified in Phase 4"; they were
-not.**
+`POST /timers` **is reachable and writable with a normal API token** — a request with a deliberately
+wrong resource type answers 422, not 401 or 403 — and the validation error points at
+`data/attributes/service`, so a timer is created against a service
+(`error-422-timer-requires-service.json`). That probe could not create anything, and the account's
+running timer was confirmed untouched afterwards.
+
+The exact `POST /timers` body, the stop endpoint and whether stopping writes `time` onto the linked
+entry remain **unverified**. Productive permits one running timer per person and the test account
+has had one running since 2026-09-15, so starting a test timer would stop it and write ~18 hours
+onto entry `162921872`. That is the owner's data, so the flow was not run. SPEC 10 X-4 previously
+claimed these were "verified in Phase 4"; it now records what is and is not known.
 
 ## Verified findings
 

@@ -21,3 +21,4 @@ error-403.json                               403
 error-404.json                               404
 error-422-missing-service.json               422
 timers-running.json                          200
+error-422-timer-requires-service.json        422
