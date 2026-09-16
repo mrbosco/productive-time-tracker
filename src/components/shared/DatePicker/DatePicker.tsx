@@ -1,0 +1,47 @@
+import { type ReactNode, useState } from 'react';
+import { Calendar } from '@/components/core/Calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/core/Popover';
+import { parseIsoDate, toIsoDate } from '@/lib/date';
+
+interface DatePickerProps {
+	/** The selected calendar day, `YYYY-MM-DD`. */
+	value: string;
+	onSelect: (date: string) => void;
+	/** The control that opens the calendar. Rendered as the popover trigger itself, via `asChild`. */
+	children: ReactNode;
+}
+
+/**
+ * A calendar popover over an ISO date string (A-3, A-6). Used by the day navigator's label and,
+ * from US-2, by the entry form's date field.
+ *
+ * `Date` never leaves this component: everything above it speaks `YYYY-MM-DD`, so there is one
+ * place where a calendar day is turned into a `Date` and back, and it is the one that never
+ * crosses UTC.
+ */
+export function DatePicker({ value, onSelect, children }: DatePickerProps) {
+	const [isOpen, setIsOpen] = useState(false);
+	const selected = parseIsoDate(value);
+
+	return (
+		<Popover open={isOpen} onOpenChange={setIsOpen}>
+			<PopoverTrigger asChild>{children}</PopoverTrigger>
+
+			<PopoverContent align="center" aria-label="Choose a date">
+				<Calendar
+					mode="single"
+					required
+					selected={selected}
+					// Without this the calendar opens on the current month rather than the
+					// selected one, so stepping back a few months and reopening loses the place.
+					defaultMonth={selected}
+					onSelect={(date: Date) => {
+						onSelect(toIsoDate(date));
+						setIsOpen(false);
+					}}
+					autoFocus
+				/>
+			</PopoverContent>
+		</Popover>
+	);
+}
