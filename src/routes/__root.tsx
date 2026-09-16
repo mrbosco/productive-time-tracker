@@ -41,7 +41,17 @@ function useFocusHeadingOnNavigation() {
 		// `onRendered`, not `onResolved`: the latter fires while the new matches are still being
 		// committed, so the heading being focused can be the one leaving the screen.
 		return router.subscribe('onRendered', () => {
-			document.querySelector<HTMLElement>('h1[tabindex="-1"]')?.focus();
+			const heading = document.querySelector<HTMLElement>('h1[tabindex="-1"]');
+
+			// Not while a modal is up. A route that renders a screen behind its dialog - the entry
+			// form does, because the design keeps the day visible on desktop - still has that
+			// screen's `h1` in the document, but Radix has marked the subtree `aria-hidden` and
+			// focus belongs inside the dialog. Racing focus into hidden content would undo the
+			// trap that guidebook 18 asks for.
+			if (heading === null) return;
+			if (heading.closest('[aria-hidden="true"]') !== null) return;
+
+			heading.focus();
 		});
 	}, [router]);
 }

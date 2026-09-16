@@ -49,13 +49,14 @@ describe('AppLayout', () => {
 		expect(await screen.findByText('ada.lovelace@example.com')).toBeInTheDocument();
 	});
 
-	it('shows the default-service sheet beside logout, marked as not yet wired', async () => {
+	it('opens the default-service sheet from the account menu (A-1)', async () => {
 		const user = userEvent.setup();
 		await renderWithProviders(<AppLayout session={session}>content</AppLayout>, { session });
 
 		await user.click(screen.getByRole('button', { name: 'Account menu' }));
+		await user.click(await screen.findByRole('menuitem', { name: 'Default service...' }));
 
-		expect(await screen.findByRole('menuitem', { name: /^Default service/ })).toHaveAttribute('aria-disabled', 'true');
+		expect(await screen.findByRole('dialog', { name: 'Default service' })).toBeInTheDocument();
 	});
 
 	/**

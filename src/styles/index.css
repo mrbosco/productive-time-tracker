@@ -72,12 +72,28 @@
 	--ease-ui: cubic-bezier(0.2, 0.8, 0.2, 1);
 	--duration-ui: 140ms; /* colour and background only */
 
-	/* The one animation the design specifies: the spinner inside a submitting button. */
+	/* Motion. The spinner inside a submitting button, and the two entrances the design gives
+	   overlays: a dialog fades, a sheet or toast rises. `TimeTracker.dc.html` names them
+	   `tt-spin`, `tt-in` and `tt-up`. Nothing else in the design moves. */
 	--animate-spinner: spinner 0.7s linear infinite;
+	--animate-overlay-in: overlay-in 0.12s var(--ease-ui);
+	--animate-sheet-up: sheet-up 0.18s var(--ease-ui);
 
 	@keyframes spinner {
 		to {
 			transform: rotate(360deg);
+		}
+	}
+
+	@keyframes overlay-in {
+		from {
+			opacity: 0;
+		}
+	}
+
+	@keyframes sheet-up {
+		from {
+			transform: translateY(14px);
 		}
 	}
 }

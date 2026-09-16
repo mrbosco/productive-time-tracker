@@ -1,31 +1,44 @@
-import { createFileRoute, Link } from '@tanstack/react-router';
+import { createFileRoute } from '@tanstack/react-router';
 import { z } from 'zod';
+import { DayView } from '@/components/features/time-entries/DayView/DayView';
+import { TimeEntryForm } from '@/components/features/time-entries/TimeEntryForm/TimeEntryForm';
+import { timeEntriesQueryOptions } from '@/components/features/time-entries/useTimeEntries';
+import { weekTotalsQueryOptions } from '@/components/features/week/useWeekTotals';
 import { isoDateSchema, todayIso } from '@/lib/date';
 
-/**
- * Placeholder. US-2 fills in the entry form; what is here is the route itself, because R-7's
- * empty state has to offer a working `Add entry` and a typed `<Link>` cannot point at a route that
- * does not exist yet.
- */
 export const Route = createFileRoute('/_authenticated/entries/new')({
 	// A-5: the day being logged travels in the search param, so the form opens on the date the
 	// user was looking at. Validated here for the same reason `/day/$date` validates its param.
 	validateSearch: z.object({ date: isoDateSchema.catch(todayIso) }),
+
+	// The same two requests the day route starts, because the same day is rendered underneath the
+	// form. Arriving here from the day view they are already cached; opening the URL directly is
+	// what this covers.
+	loaderDeps: ({ search }) => ({ date: search.date }),
+	loader: ({ context, deps }) => {
+		void context.queryClient.prefetchQuery(timeEntriesQueryOptions(context.session, deps.date));
+		void context.queryClient.prefetchQuery(weekTotalsQueryOptions(context.session, deps.date));
+	},
+
 	component: NewEntryRoute,
 });
 
+/**
+ * Adding an entry (US-2, R-9).
+ *
+ * The day renders underneath rather than being replaced: on desktop the design puts the form in a
+ * dialog over it, and on mobile the same dialog fills the screen, so the day is there to return to
+ * the moment it closes. Radix hides it from assistive technology while the form is open, so what
+ * is behind is decoration in both senses.
+ */
 function NewEntryRoute() {
+	const { session } = Route.useRouteContext();
 	const { date } = Route.useSearch();
 
 	return (
-		<main className="mx-4 flex flex-col items-start gap-4 py-6 md:mx-12">
-			<h1 tabIndex={-1} className="text-title font-bold tracking-tight">
-				New entry
-			</h1>
-			<p className="text-list text-muted">The entry form arrives with US-2.</p>
-			<Link to="/day/$date" params={{ date }} className="text-list text-accent hover:underline">
-				Back to the day
-			</Link>
-		</main>
+		<>
+			<DayView session={session} date={date} />
+			<TimeEntryForm session={session} date={date} />
+		</>
 	);
 }

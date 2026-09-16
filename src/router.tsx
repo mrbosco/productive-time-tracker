@@ -27,4 +27,16 @@ declare module '@tanstack/react-router' {
 	interface Register {
 		router: ReturnType<typeof createAppRouter>;
 	}
+
+	/**
+	 * History state, which travels with a navigation but never appears in the URL.
+	 *
+	 * `toast` is how a write tells the screen it returns to that it succeeded: the entry form
+	 * navigates to the day and the day raises the confirmation. Keeping it out of the URL keeps it
+	 * out of anything the user shares; the day view spends it once shown, because history state
+	 * itself does survive a reload.
+	 */
+	interface HistoryState {
+		toast?: string;
+	}
 }

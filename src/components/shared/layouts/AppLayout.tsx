@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import type { ReactNode } from 'react';
+import { type ReactNode, useState } from 'react';
 import logoUrl from '@/assets/logo-productive.svg';
 import {
 	DropdownMenu,
@@ -9,6 +9,7 @@ import {
 	DropdownMenuTrigger,
 } from '@/components/core/DropdownMenu';
 import { sessionQueryOptions, useLogout } from '@/components/features/auth/useSession';
+import { SettingsSheet } from '@/components/features/settings/SettingsSheet/SettingsSheet';
 import type { Session } from '@/lib/storage';
 
 /** "Ada Lovelace" -> "AL". One letter when there is only one word, empty when the name is. */
@@ -65,6 +66,7 @@ function TimerButton() {
  */
 export function AppLayout({ session, children }: { session: Session; children: ReactNode }) {
 	const logout = useLogout();
+	const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 	const { data: memberships } = useQuery(sessionQueryOptions(session));
 	const email = memberships?.find((membership) => membership.personId === session.personId)?.person?.email ?? null;
 	const initials = toInitials(session.personName);
@@ -111,14 +113,22 @@ export function AppLayout({ session, children }: { session: Session; children: R
 							{email !== null && <p className="mt-[3px] text-caption text-muted">{email}</p>}
 						</div>
 						<DropdownMenuSeparator />
-						{/* A-1's settings sheet, which US-2 needs and this screen does not. */}
-						<DropdownMenuItem disabled>Default service... (US-2)</DropdownMenuItem>
+						{/* A-1: the service every new entry and timer is logged against. */}
+						<DropdownMenuItem
+							onSelect={() => {
+								setIsSettingsOpen(true);
+							}}
+						>
+							Default service...
+						</DropdownMenuItem>
 						<DropdownMenuItem onSelect={logout}>Log out</DropdownMenuItem>
 					</DropdownMenuContent>
 				</DropdownMenu>
 			</header>
 
 			{children}
+
+			<SettingsSheet session={session} open={isSettingsOpen} onOpenChange={setIsSettingsOpen} />
 		</div>
 	);
 }
