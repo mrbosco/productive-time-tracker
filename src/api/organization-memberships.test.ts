@@ -99,9 +99,12 @@ describe('findMembershipForOrganization', () => {
 	});
 
 	it('finds nothing for an organization the token is not in', () => {
-		// Recorded live: an unknown organization is answered with 200 and the token's own
-		// memberships, not with 403, so this is the only thing standing between a typo and a
-		// session against the wrong organization.
+		// Recorded live against `X-Organization-Id: 1234`, which came back 200 with the token's own
+		// memberships rather than 403 - see the row for this sample in `http-status-lines.txt`,
+		// where the status and that header are the whole finding. The body is byte-identical to the
+		// matching-organization recording, which is exactly the point: nothing in the response says
+		// which organization was asked for, so this match is the only thing standing between a typo
+		// and a session against the wrong organization.
 		const parsed = parseOrganizationMemberships(unknownOrganization);
 
 		expect(parsed).toHaveLength(1);

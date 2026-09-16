@@ -25,14 +25,6 @@ import timersRunning from '../../docs/api/samples/timers-running.json';
 /** The date `time-entries-day.json` was recorded for; any other date responds empty. */
 export const SEEDED_DATE = '2026-09-15';
 
-/**
- * The organization the recorded membership belongs to. Logging in against any other ID fails here
- * exactly as it does against the live API, because `X-Organization-Id` does not scope the
- * membership collection: an unknown organization returns 200 and the token's own memberships
- * (`organization-memberships-unknown-organization.json`), leaving the app to find the match.
- * Answering unconditionally would make mock mode accept any organization anyone typed.
- */
-export const SEEDED_ORGANIZATION_ID = '999999';
 interface RequestBody {
 	data?: { attributes?: Record<string, unknown> };
 }
@@ -75,8 +67,13 @@ function showEntry(id: string) {
 }
 
 export const handlers: RequestHandler[] = [
-	// Deliberately ignores `X-Organization-Id`, which is what the live API does: the recorded
-	// membership comes back whatever organization was requested, and the app does the matching.
+	/**
+	 * Deliberately ignores `X-Organization-Id`, which is what the live API does: an unknown
+	 * organization is answered 200 with the token's own memberships
+	 * (`organization-memberships-unknown-organization.json`), and the app finds the match. The
+	 * recorded membership belongs to organization 999999, so logging in against anything else
+	 * fails here exactly as it does in production.
+	 */
 	http.get('*/organization_memberships', () => HttpResponse.json(memberships)),
 
 	http.get('*/services', () => HttpResponse.json(services)),

@@ -2,20 +2,15 @@ import { QueryClient } from '@tanstack/react-query';
 import { isRedirect } from '@tanstack/react-router';
 import { http, HttpResponse } from 'msw';
 import { describe, expect, it, vi } from 'vitest';
+import { testSession } from '@/__tests__/test-utils';
 import error401 from '../../docs/api/samples/error-401.json';
 import error403 from '../../docs/api/samples/error-403.json';
 import memberships from '../../docs/api/samples/organization-memberships-include-organization.json';
 import unknownOrganization from '../../docs/api/samples/organization-memberships-unknown-organization.json';
-import type { Session } from '@/lib/storage';
 import { server } from '@/mocks/node';
 import { Route } from './_authenticated';
 
-const session: Session = {
-	token: 'test-token',
-	organizationId: '999999',
-	personId: '1448639',
-	personName: 'Ada Lovelace',
-};
+const session = testSession;
 
 /**
  * The loader is called directly rather than through a rendered router: what matters is the

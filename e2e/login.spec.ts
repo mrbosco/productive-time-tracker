@@ -102,6 +102,32 @@ test.describe('login and session', () => {
 		await expect(page).toHaveURL('/');
 	});
 
+	test('drops a stored session whose organization the token is not in', async ({ page }) => {
+		// The whole redirect path R-2 depends on, driven through the real router: the loader
+		// rejects the session, logs it out from inside a loader, and the /login guard has to see
+		// the cleared session rather than bounce back. The mock answers for organization 999999
+		// whatever is asked, exactly as the live API does, so no per-test override is needed.
+		// Passed as source rather than a function: the e2e project compiles without the DOM lib
+		// (it shares `tsconfig.node.json` with the config files), so `localStorage` has no type
+		// in here.
+		await page.addInitScript({
+			content: `localStorage.setItem(${JSON.stringify(SESSION_STORAGE_KEY)}, ${JSON.stringify(
+				JSON.stringify({
+					token: 'test-token',
+					organizationId: '1234',
+					personId: '1448639',
+					personName: 'Ada Lovelace',
+				})
+			)})`,
+		});
+
+		await page.goto('/');
+
+		await expect(page).toHaveURL('/login');
+		await expect(page.getByRole('heading', { name: 'Productive Time Tracker' })).toBeVisible();
+		expect(await readStoredSession(page)).toBeUndefined();
+	});
+
 	test('logging out clears the stored credentials', async ({ page }) => {
 		await page.goto('/login');
 		await logIn(page);

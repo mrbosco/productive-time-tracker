@@ -1,16 +1,11 @@
 import { http, HttpResponse } from 'msw';
 import { describe, expect, it } from 'vitest';
-import { renderHookWithProviders, waitFor } from '@/__tests__/test-utils';
-import type { Session } from '@/lib/storage';
+import { renderHookWithProviders, testSession, waitFor } from '@/__tests__/test-utils';
 import { server } from '@/mocks/node';
+import type { Session } from '@/lib/storage';
 import { useDefaultService } from './useDefaultService';
 
-const session: Session = {
-	token: 'test-token',
-	organizationId: '999999',
-	personId: '1448639',
-	personName: 'Ada Lovelace',
-};
+const session = testSession;
 
 function renderDefaultService(current: Session = session) {
 	return renderHookWithProviders(() => useDefaultService(current));

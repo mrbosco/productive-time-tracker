@@ -170,9 +170,4 @@
 	h1[tabindex='-1']:focus-visible {
 		@apply outline-none;
 	}
-
-	/* Durations are compared down a column; proportional digits make them jump. */
-	.tabular {
-		font-variant-numeric: tabular-nums;
-	}
 }

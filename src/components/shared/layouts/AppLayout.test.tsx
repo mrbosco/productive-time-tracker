@@ -1,14 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { renderWithProviders, screen, userEvent, waitFor } from '@/__tests__/test-utils';
-import { SESSION_STORAGE_KEY, type Session } from '@/lib/storage';
+import { renderWithProviders, screen, testSession, userEvent, waitFor } from '@/__tests__/test-utils';
+import { SESSION_STORAGE_KEY } from '@/lib/storage';
 import { AppLayout, toInitials } from './AppLayout';
 
-const session: Session = {
-	token: 'test-token',
-	organizationId: '999999',
-	personId: '1448639',
-	personName: 'Ada Lovelace',
-};
+const session = testSession;
 
 describe('toInitials', () => {
 	it('takes the first and last word', () => {

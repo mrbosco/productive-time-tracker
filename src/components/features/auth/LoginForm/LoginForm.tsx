@@ -102,8 +102,15 @@ export function LoginForm() {
 			// step the assignment describes on page two. Taking the first membership instead would
 			// sign the user in against an organization they never typed.
 			const membership = findMembershipForOrganization(memberships, organizationId);
-			if (membership?.person == null || membership.personId === null) {
+			if (membership === undefined) {
 				setErrorMessage(`This token is not a member of organization ${organizationId}.`);
+
+				return;
+			}
+			// A membership with no person is a broken response, not a wrong organization, and
+			// saying "not a member" here would send someone to check an ID that was correct.
+			if (membership.person == null || membership.personId === null) {
+				setErrorMessage('Productive returned a membership with no person. Try again.');
 
 				return;
 			}
@@ -212,7 +219,7 @@ export function LoginForm() {
 							placeholder="1234"
 							aria-invalid={errors.organizationId !== undefined}
 							aria-describedby={errors.organizationId === undefined ? undefined : 'organization-error'}
-							className="tabular h-13"
+							className="h-13 tabular-nums"
 							{...register('organizationId')}
 							onChange={(event) => {
 								// Digits only, as typed: the field takes an ID, and letting other

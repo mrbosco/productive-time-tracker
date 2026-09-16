@@ -28,7 +28,7 @@ function createTestQueryClient() {
  * `/login` and `/` exist because those are the two destinations the auth feature navigates to;
  * a route that does not exist would resolve to the not-found branch and lose the assertion.
  */
-function createTestRouter(ui: ReactElement) {
+function createTestRouter(ui: ReactElement, initialEntry: string) {
 	const rootRoute = createRootRoute();
 	const routes = ['/', '/login'].map((path) =>
 		createRoute({ getParentRoute: () => rootRoute, path, component: () => ui })
@@ -36,13 +36,26 @@ function createTestRouter(ui: ReactElement) {
 
 	return createRouter({
 		routeTree: rootRoute.addChildren(routes),
-		history: createMemoryHistory({ initialEntries: ['/'] }),
+		history: createMemoryHistory({ initialEntries: [initialEntry] }),
 	});
 }
+
+/** The session the fixtures describe: Ada Lovelace, person 1448639, organization 999999. */
+export const testSession: Session = {
+	token: 'test-token',
+	organizationId: '999999',
+	personId: '1448639',
+	personName: 'Ada Lovelace',
+};
 
 interface Options extends Omit<RenderOptions, 'wrapper'> {
 	/** Seeds `localStorage` before the provider reads it, as a real logged-in browser would be. */
 	session?: Session;
+	/**
+	 * Where the throwaway router starts. Worth setting whenever a test asserts on where the
+	 * component navigated: starting on the destination makes the assertion pass without it.
+	 */
+	initialEntry?: string;
 }
 
 /**
@@ -53,11 +66,11 @@ interface Options extends Omit<RenderOptions, 'wrapper'> {
  * rendering before that paints an empty document, which surfaces as every query failing to find
  * anything.
  */
-export async function renderWithProviders(ui: ReactElement, { session, ...options }: Options = {}) {
+export async function renderWithProviders(ui: ReactElement, { session, initialEntry = '/', ...options }: Options = {}) {
 	if (session !== undefined) writeSession(session);
 
 	const queryClient = createTestQueryClient();
-	const router = createTestRouter(ui);
+	const router = createTestRouter(ui, initialEntry);
 	await router.load();
 
 	function Wrapper({ children }: { children: ReactNode }) {

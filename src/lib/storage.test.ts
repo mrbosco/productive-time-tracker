@@ -1,12 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { clearSession, readSession, SESSION_STORAGE_KEY, type Session, writeSession } from './storage';
+import { testSession } from '@/__tests__/test-utils';
+import { clearSession, readSession, SESSION_STORAGE_KEY, writeSession } from './storage';
 
-const session: Session = {
-	token: 'test-token',
-	organizationId: '999999',
-	personId: '1448639',
-	personName: 'Ada Lovelace',
-};
+const session = testSession;
 
 describe('session storage', () => {
 	beforeEach(() => {

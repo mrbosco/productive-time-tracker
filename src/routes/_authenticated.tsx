@@ -82,7 +82,9 @@ function AuthenticatedLayout() {
 /** Shown only while a stored session is re-checked on a cold load, so never after a navigation. */
 function RevalidatingSession() {
 	return (
-		<div className="flex min-h-dvh items-center justify-center">
+		// `role="status"` so the wait is announced: without a live region the check happens in
+		// silence for anyone not watching the spinner.
+		<div role="status" className="flex min-h-dvh items-center justify-center">
 			<span className="size-6 animate-spinner rounded-pill border-2 border-line border-t-accent" />
 			<span className="sr-only">Checking your saved credentials</span>
 		</div>
