@@ -36,6 +36,35 @@ describe('AppLayout', () => {
 		expect(await screen.findByText('Ada Lovelace')).toBeInTheDocument();
 	});
 
+	/**
+	 * Read from the membership the session was already re-validated against, rather than stored as
+	 * another field on the session.
+	 */
+	it('shows the person email in the account menu', async () => {
+		const user = userEvent.setup();
+		await renderWithProviders(<AppLayout session={session}>content</AppLayout>, { session });
+
+		await user.click(screen.getByRole('button', { name: 'Account menu' }));
+
+		expect(await screen.findByText('ada.lovelace@example.com')).toBeInTheDocument();
+	});
+
+	it('offers the default-service sheet beside logout', async () => {
+		const user = userEvent.setup();
+		await renderWithProviders(<AppLayout session={session}>content</AppLayout>, { session });
+
+		await user.click(screen.getByRole('button', { name: 'Account menu' }));
+
+		expect(await screen.findByRole('menuitem', { name: 'Default service...' })).toBeInTheDocument();
+	});
+
+	/** X-4 owns starting one; the bar carries the control so it does not move when that lands. */
+	it('carries the timer control on every authenticated screen', async () => {
+		await renderWithProviders(<AppLayout session={session}>content</AppLayout>, { session });
+
+		expect(screen.getByRole('button', { name: 'Start timer' })).toBeInTheDocument();
+	});
+
 	it('clears the stored session and the cache on logout', async () => {
 		const user = userEvent.setup();
 		const { queryClient, router } = await renderWithProviders(<AppLayout session={session}>content</AppLayout>, {
