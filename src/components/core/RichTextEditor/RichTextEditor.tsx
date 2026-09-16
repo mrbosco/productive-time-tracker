@@ -15,7 +15,7 @@ import { cn } from '@/lib/utils';
  * sanitiser: content is parsed into the nodes below and everything else is discarded, so pasting
  * a page of markup yields prose and nothing executable ever enters the document.
  */
-const EXTENSIONS = [
+export const EDITOR_EXTENSIONS = [
 	StarterKit.configure({
 		heading: false,
 		blockquote: false,
@@ -26,6 +26,33 @@ const EXTENSIONS = [
 		underline: false,
 	}),
 ];
+
+const FOCUSABLE =
+	'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+/**
+ * Tab means "the next control", not "indent this list".
+ *
+ * The editor is a field inside a form, and a list's own Tab binding would otherwise trap a
+ * keyboard user between the bullets and Save (guidebook 18). ProseMirror consults `handleKeyDown`
+ * before any keymap, but only stops if the handler claims the event - so claiming it means taking
+ * responsibility for moving focus, which is what this does. Lists are still made with `- ` and
+ * Enter, which is how they are made in the first place.
+ */
+function moveFocusOut(from: HTMLElement, backwards: boolean): void {
+	const focusable = [...document.querySelectorAll<HTMLElement>(FOCUSABLE)].filter(
+		(element) => element.offsetParent !== null || element === from
+	);
+	const next = focusable.filter((element) => {
+		const where = from.compareDocumentPosition(element);
+
+		return backwards
+			? (where & Node.DOCUMENT_POSITION_PRECEDING) !== 0
+			: (where & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
+	});
+
+	(backwards ? next.at(-1) : next.at(0))?.focus();
+}
 
 interface RichTextEditorProps {
 	/** HTML, as the API stores it. */
@@ -56,9 +83,16 @@ export function RichTextEditor({
 	'aria-invalid': ariaInvalid,
 }: RichTextEditorProps) {
 	const editor = useEditor({
-		extensions: EXTENSIONS,
+		extensions: EDITOR_EXTENSIONS,
 		content: value,
 		editorProps: {
+			handleKeyDown: (view, event) => {
+				if (event.key !== 'Tab') return false;
+
+				moveFocusOut(view.dom, event.shiftKey);
+
+				return true;
+			},
 			attributes: {
 				// Stated, not inferred. `contenteditable` alone is not a role - assistive
 				// technology and the testing tools that model it both need to be told this is a

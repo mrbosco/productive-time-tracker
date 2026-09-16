@@ -9,7 +9,7 @@ A-9 recorded that `note` may contain HTML, because notes written in Productive's
 That decision has two costs, and both are now visible in the running app:
 
 1. **A list is not rendered as a list.** `toPlainText` flattens `<ul><li><p>Probavam</p></li></ul>` to a bare line. Productive says the entry is a list; the app draws a paragraph. R-6 asks the entry to show its description, and a description whose structure has been removed is not the one the user wrote.
-2. **A list cannot be written.** The entry form is a `<textarea>`, so there is no way to start a list or bold a word - and, worse, opening an existing rich-text entry in the edit form and saving it **silently flattens** what was there. A-9 called that out and accepted it ("saving overwrites with plain text, which is documented"); documented data loss is still data loss.
+2. **A list cannot be written.** The entry form is a `<textarea>`, so there is no way to start a list or bold a word. A-9 accepted the consequence in advance - "editing such an entry shows the stripped text; saving overwrites with plain text, which is documented" - and documented data loss is still data loss. **The edit form does not exist yet (US-3)**, so nothing has been degraded in practice; this is the defect US-3 would otherwise have shipped with, fixed before it can happen rather than after.
 
 So A-9 is amended: the app now reads and writes the same rich text Productive does. This ADR records the dependency that takes, because CLAUDE.md requires one before any dependency is added.
 
@@ -28,7 +28,7 @@ in : <ul><li><p>Probavam</p></li></ul>
 out: <ul><li><p>Probavam</p></li></ul>
 ```
 
-That is not a coincidence - ProseMirror's list item wraps a paragraph, and so does whatever editor Productive ships. It means the app writes the shape the API already stores, rather than a second dialect that Productive's own UI would then have to cope with. `src/lib/note.test.ts` asserts that round trip, so a TipTap upgrade that changed it would fail the suite rather than quietly start writing a different shape.
+That is not a coincidence - ProseMirror's list item wraps a paragraph, and so does whatever editor Productive ships. It means the app writes the shape the API already stores, rather than a second dialect that Productive's own UI would then have to cope with. `src/components/core/RichTextEditor/RichTextEditor.test.tsx` asserts that round trip against the exported extension list, so a TipTap upgrade that changed the shape fails the suite rather than quietly starting to write a different one.
 
 The second reason is the XSS boundary. A rich-text feature normally means "render HTML you did not write", which is the one door ADR-0004 left itself the job of keeping shut. TipTap does not open it: content is parsed **into the editor's schema**, and anything the schema does not define is discarded. Measured on the way in:
 
@@ -37,7 +37,7 @@ in : <p>hi</p><script>alert(1)</script><img src=x onerror=alert(1)>
 out: <p>hi</p>
 ```
 
-So the editor is also the sanitiser, and `dangerouslySetInnerHTML` still appears nowhere in the app - reading is done by mapping the parsed DOM onto React elements for an allowlisted set of tags (`src/lib/note.tsx`), which fails closed on anything else.
+So the editor is also the sanitiser, and `dangerouslySetInnerHTML` still appears nowhere in the app - reading is done by mapping the parsed DOM onto React elements for an allowlisted set of tags (`src/components/shared/Note/Note.tsx`), which fails closed on anything else.
 
 ## Rejected: markdown-ish in the existing textarea
 
@@ -60,4 +60,4 @@ The credible alternative, with a smaller core. Rejected because the matching-out
 - If that weight ever needs to come down, the lever is Lexical or a smaller custom ProseMirror build, not a smaller TipTap - the StarterKit is already trimmed to seven nodes and marks.
 - A-9 is amended rather than deleted: `note` is still nullable, still may contain HTML, and the app still never uses `dangerouslySetInnerHTML`. What changes is that the HTML is preserved instead of flattened.
 - `lib/note.ts` keeps `toPlainText`, which is still the right thing for a one-line summary - the delete confirmation (US-4) and the `document.title` (X-4) both want text, not markup.
-- Editing an entry written in Productive no longer degrades it, which removes the caveat A-9 had to document.
+- US-3's edit form will not degrade an entry written in Productive, which removes the caveat A-9 had to document before that form exists to carry it.

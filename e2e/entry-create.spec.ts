@@ -188,11 +188,45 @@ test.describe('adding a time entry', () => {
 		await expect(description.locator('strong')).toHaveText('bold');
 	});
 
-	/** An entry Productive stored as a list opens as one, rather than being flattened on save. */
-	test('opens an existing rich-text note without flattening it', async ({ page }) => {
-		await page.goto(`/day/${SEEDED_DATE}`);
+	/**
+	 * The editor only runs in a browser, so this is the only level that can assert a typed note
+	 * survives anything. Covers the failed-save case the component test cannot reach.
+	 */
+	test('keeps the written note when the form is reopened after a prompt', async ({ page }) => {
+		await openForm(page);
 
-		await expect(page.getByRole('article').first().locator('ul li')).toHaveCount(1);
+		const description = page.getByRole('textbox', { name: 'Description' });
+		await description.click();
+		await page.keyboard.type('- worth keeping');
+
+		await page.getByRole('button', { name: 'Cancel' }).click();
+		await page.getByRole('button', { name: 'Continue editing' }).click();
+
+		await expect(description.locator('ul li')).toHaveCount(1);
+		await expect(description).toContainText('worth keeping');
+	});
+
+	/**
+	 * Tab is "next control" in a form, not "indent the list" (guidebook 18).
+	 *
+	 * Two items, not one: indenting the *first* item of a list is a no-op in ProseMirror, so a
+	 * single-item version passes whether or not the binding was removed. The caret has to sit on
+	 * a second item for Tab to have something to do.
+	 */
+	test('lets Tab leave the editor rather than indenting the list', async ({ page }) => {
+		await openForm(page);
+
+		const description = page.getByRole('textbox', { name: 'Description' });
+		await description.click();
+		await page.keyboard.type('- first');
+		await page.keyboard.press('Enter');
+		await page.keyboard.type('second');
+		await expect(description.locator('ul li')).toHaveCount(2);
+
+		await page.keyboard.press('Tab');
+
+		await expect(description.locator('ul ul')).toHaveCount(0);
+		await expect(description).not.toBeFocused();
 	});
 
 	test('closes an untouched form without asking', async ({ page }) => {

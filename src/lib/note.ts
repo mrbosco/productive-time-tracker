@@ -3,8 +3,13 @@
  * editor come back as markup, and a recorded one reads `<ul><li><p>Probavam</p></li></ul>`
  * (A-9, `docs/api/samples/time-entries-day.json`).
  *
- * The app renders it as text and writes plain text back. `dangerouslySetInnerHTML` is never used:
- * it is the one XSS door ADR-0004 leaves itself the job of keeping shut, and nothing here needs it.
+ * This module supplies the *text* of a note, for the callers that want a line rather than a
+ * document: whether there is a description at all, and later a confirmation dialog or a window
+ * title. Rendering a note with the structure it was written in is `components/shared/Note`
+ * (ADR-0010, which superseded A-9's original "strip it all to text").
+ *
+ * `dangerouslySetInnerHTML` is never used by either: it is the one XSS door ADR-0004 leaves itself
+ * the job of keeping shut, and neither path needs it.
  */
 
 /**
@@ -19,11 +24,37 @@
  * So the test is a *closing* tag or a void element. Markup that needs stripping always has one -
  * Productive's editor emits `<p>`, `<ul>`, `<li>` pairs - and prose almost never does.
  */
-export const PRODUCTIVE_MARKUP =
+const PRODUCTIVE_MARKUP =
 	/<\/(?:p|div|span|ul|ol|li|a|b|i|u|s|em|strong|code|pre|blockquote|h[1-6]|table|thead|tbody|tr|td|th|script|style)>|<(?:br|hr|img)\b[^>]*\/?>/i;
 
-/** Elements whose text content is code, not prose, and must not be rendered as the note. */
-const NON_PROSE_TAGS = new Set(['SCRIPT', 'STYLE', 'TEMPLATE', 'TITLE']);
+/**
+ * Elements whose text is not prose and must never be rendered as the note.
+ *
+ * Exported because `components/shared/Note` walks the same document for elements rather than for
+ * text, and two copies of this list would drift - which is exactly what happened once: the
+ * renderer learned about foreign namespaces and this one did not, so the card decided it had a
+ * description from text the renderer then refused to draw.
+ *
+ * `SVG` and `MATH` are skipped whole. Inside a foreign namespace `tagName` keeps its authored
+ * case, so their children arrive lower case and slip past a comparison written in upper case -
+ * see `isNonProse`.
+ */
+export const NON_PROSE_TAGS = new Set([
+	'SCRIPT',
+	'STYLE',
+	'TEMPLATE',
+	'TITLE',
+	'IFRAME',
+	'OBJECT',
+	'EMBED',
+	'SVG',
+	'MATH',
+]);
+
+/** The one place either walker decides an element carries no prose. */
+export function isNonProse(element: Element): boolean {
+	return NON_PROSE_TAGS.has(element.tagName.toUpperCase());
+}
 
 /** Tags whose boundaries are a line break once the markup is gone. */
 const BLOCK_TAGS = new Set([
@@ -66,14 +97,14 @@ function collectText(node: Node, out: string[]): void {
 		// Skipped whole, not recursed into: `<script>window.x = 1;</script>` would otherwise
 		// print its body as the description. Nothing is ever executed - `DOMParser` builds an
 		// inert document - but the text does not belong on the card either.
-		if (NON_PROSE_TAGS.has(child.tagName)) continue;
+		if (isNonProse(child)) continue;
 
 		if (child.tagName === 'BR') {
 			pushBreak(out);
 			continue;
 		}
 
-		const isBlock = BLOCK_TAGS.has(child.tagName);
+		const isBlock = BLOCK_TAGS.has(child.tagName.toUpperCase());
 		if (isBlock) pushBreak(out);
 		collectText(child, out);
 		if (isBlock) pushBreak(out);

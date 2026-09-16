@@ -1,5 +1,5 @@
 import { Fragment, type ReactNode } from 'react';
-import { containsMarkup } from '@/lib/note';
+import { containsMarkup, isNonProse } from '@/lib/note';
 
 /**
  * A time entry's description, with the structure Productive stored (A-9, ADR-0010).
@@ -24,9 +24,6 @@ const INLINE_TAGS = new Map<string, 'strong' | 'em' | 's' | 'code'>([
 	['CODE', 'code'],
 ]);
 
-/** Elements whose text is code, not prose, and must not be rendered as the note. */
-const NON_PROSE_TAGS = new Set(['SCRIPT', 'STYLE', 'TEMPLATE', 'TITLE', 'IFRAME', 'OBJECT', 'EMBED', 'SVG', 'MATH']);
-
 function renderChildren(node: Node): ReactNode[] {
 	const out: ReactNode[] = [];
 
@@ -46,8 +43,9 @@ function renderChildren(node: Node): ReactNode[] {
 		 * execute either way - the parsed nodes are never inserted anywhere, only read - but it
 		 * would put the source on screen as text.
 		 */
+		if (isNonProse(child)) return;
+
 		const tag = child.tagName.toUpperCase();
-		if (NON_PROSE_TAGS.has(tag)) return;
 
 		const key = `${tag}-${String(index)}`;
 

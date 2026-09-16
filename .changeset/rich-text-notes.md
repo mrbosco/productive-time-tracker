@@ -5,7 +5,8 @@
 Write descriptions the way Productive does.
 
 The description field is a real editor now. Start a line with `- ` and it becomes a bullet list,
-`1. ` an ordered one, and Ctrl/Cmd+B, I and Shift+X bold, italicise and strike the selection. What
+`1. ` an ordered one, and Ctrl/Cmd+B, Ctrl/Cmd+I and Ctrl/Cmd+Shift+S bold, italicise and strike
+the selection. What
 you write is stored as the same HTML Productive's own editor produces, so an entry written here
 opens unchanged there.
 

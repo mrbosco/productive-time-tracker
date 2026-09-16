@@ -33,23 +33,17 @@ const EMPTY_RECT_LIST = Object.assign([] as DOMRect[], {
 	item: () => null,
 }) as unknown as DOMRectList;
 
-// `in` rather than `??=`: reading a prototype method to test it is the unbound-method access the
-// lint rule exists to catch, and the write itself is what is wanted.
-if (!('getClientRects' in Range.prototype)) {
-	Range.prototype.getClientRects = () => EMPTY_RECT_LIST;
-}
-if (!('getBoundingClientRect' in Range.prototype)) {
-	Range.prototype.getBoundingClientRect = () => EMPTY_RECT;
-}
-if (!('getClientRects' in Element.prototype)) {
-	Element.prototype.getClientRects = () => EMPTY_RECT_LIST;
-}
+// Assigned outright rather than guarded. Reading a prototype method to test for it is the unbound
+// access the lint rule exists to catch, and an `in` check narrows the negative branch to `never`
+// because the DOM types say these exist. Overriding unconditionally states the fact directly:
+// under this environment there is no layout, whatever jsdom does or does not implement.
+Range.prototype.getClientRects = () => EMPTY_RECT_LIST;
+Range.prototype.getBoundingClientRect = () => EMPTY_RECT;
+Element.prototype.getClientRects = () => EMPTY_RECT_LIST;
 
 // Same reason: ProseMirror maps a mousedown back to a document position, and jsdom has no point
 // to hit. Returning nothing is correct - a click in a laid-out-less document lands on nothing.
-if (!('elementFromPoint' in document)) {
-	document.elementFromPoint = () => null;
-}
+document.elementFromPoint = () => null;
 
 // `error` on unhandled requests: a test that hits an unmocked endpoint is a test
 // that would hit the real API in CI. Fail loudly instead.
