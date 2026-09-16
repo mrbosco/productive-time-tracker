@@ -1,0 +1,31 @@
+flowchart LR
+    actor(["👤 Person (agency employee)"])
+
+    subgraph app["Productive Time Tracker"]
+        UC0["UC-0 Log in with API token + organization ID"]
+        UC0b["UC-0b Log out"]
+        UC1["UC-1 View time entries for a day"]
+        UC1a["UC-1a Change selected date"]
+        UC2["UC-2 Add a time entry"]
+        UC3["UC-3 Edit a time entry (own route)"]
+        UC4["UC-4 Delete a time entry (with confirmation)"]
+    end
+
+    actor --> UC0
+    actor --> UC0b
+    actor --> UC1
+    actor --> UC2
+    actor --> UC3
+    actor --> UC4
+    UC1 -.includes.-> UC1a
+    UC2 -.includes.-> UC1
+    UC3 -.includes.-> UC1
+    UC4 -.includes.-> UC1
+    UC1 -.requires.-> UC0
+
+    api[("Productive API")]
+    UC0 --> api
+    UC1 --> api
+    UC2 --> api
+    UC3 --> api
+    UC4 --> api

@@ -1,0 +1,39 @@
+sequenceDiagram
+    autonumber
+    actor U as User
+    participant R as Router
+    participant Q as TanStack Query cache
+    participant API as Productive API
+
+    U->>R: open /day/2026-09-15
+    R->>Q: useTimeEntries(personId, date)
+    alt cache fresh
+        Q-->>R: entries (no request)
+    else
+        Q->>API: GET /time_entries?filter[person_id]&filter[after]&filter[before]
+        API-->>Q: data[] + meta
+        Q-->>R: entries
+    end
+    R-->>U: list | empty state | error state
+
+    U->>R: /entries/new?date=2026-09-15, submit form
+    R->>API: POST /time_entries { date, time, note, person, service }
+    API-->>R: 201 entry | 422 errors[]
+    R->>Q: invalidate ['time-entries', personId, date]
+    R-->>U: back to /day/:date, toast
+
+    U->>R: /entries/:id/edit
+    R->>Q: useTimeEntry(id) (cache or GET /time_entries/:id)
+    U->>R: save
+    R->>API: PATCH /time_entries/:id
+    R->>Q: invalidate old date + new date lists
+
+    U->>R: delete -> ConfirmDialog
+    R->>Q: optimistic remove
+    R->>API: DELETE /time_entries/:id
+    alt 204
+        R-->>U: toast "Deleted"
+    else error
+        R->>Q: rollback
+        R-->>U: error toast
+    end

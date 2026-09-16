@@ -1,0 +1,10 @@
+flowchart TD
+    login["/login"] -->|success| day["/day/:date"]
+    day -->|prev / next / picker| day
+    day -->|"+ Add"| new["/entries/new?date="]
+    day -->|"Edit"| edit["/entries/:id/edit"]
+    day -->|"Delete → confirm"| day
+    new -->|save / cancel| day
+    edit -->|save / cancel| day
+    day -->|logout| login
+    any["any protected route, no session"] --> login

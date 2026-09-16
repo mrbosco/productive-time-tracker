@@ -1,0 +1,23 @@
+erDiagram
+    User ||--o{ OrganizationMembership : "has many"
+    OrganizationMembership }o--|| Organization : "has one"
+    OrganizationMembership ||--|| Person : "has one"
+    Person ||--o{ TimeEntry : "has many"
+    Service ||--o{ TimeEntry : "tracked against (required by API)"
+
+    TimeEntry {
+        string id
+        date date "YYYY-MM-DD"
+        int time "minutes"
+        string note "multiline description"
+    }
+    Person {
+        string id
+        string first_name
+        string last_name
+    }
+    OrganizationMembership {
+        string id
+        string organization_id
+        string person_id
+    }
