@@ -397,6 +397,14 @@
       "type": "deals",
       "attributes": {
         "name": "Administration"
+      },
+      "relationships": {
+        "company": {
+          "data": {
+            "type": "companies",
+            "id": "1523286"
+          }
+        }
       }
     },
     {
@@ -404,6 +412,14 @@
       "type": "deals",
       "attributes": {
         "name": "Mobile banking app [SAMPLE]"
+      },
+      "relationships": {
+        "company": {
+          "data": {
+            "type": "companies",
+            "id": "1523289"
+          }
+        }
       }
     },
     {
@@ -411,6 +427,14 @@
       "type": "deals",
       "attributes": {
         "name": "Development"
+      },
+      "relationships": {
+        "company": {
+          "data": {
+            "type": "companies",
+            "id": "1523289"
+          }
+        }
       }
     },
     {
@@ -418,6 +442,14 @@
       "type": "deals",
       "attributes": {
         "name": "Sonic Game [SAMPLE]"
+      },
+      "relationships": {
+        "company": {
+          "data": {
+            "type": "companies",
+            "id": "1523288"
+          }
+        }
       }
     },
     {
@@ -425,6 +457,14 @@
       "type": "deals",
       "attributes": {
         "name": "Skin self-care app [SAMPLE]"
+      },
+      "relationships": {
+        "company": {
+          "data": {
+            "type": "companies",
+            "id": "1523290"
+          }
+        }
       }
     },
     {
@@ -432,6 +472,14 @@
       "type": "deals",
       "attributes": {
         "name": "Monthly retainer"
+      },
+      "relationships": {
+        "company": {
+          "data": {
+            "type": "companies",
+            "id": "1523288"
+          }
+        }
       }
     },
     {
@@ -439,18 +487,54 @@
       "type": "deals",
       "attributes": {
         "name": "Development"
+      },
+      "relationships": {
+        "company": {
+          "data": {
+            "type": "companies",
+            "id": "1523290"
+          }
+        }
+      }
+    },
+    {
+      "id": "1523286",
+      "type": "companies",
+      "attributes": {
+        "name": "Example Agency"
+      }
+    },
+    {
+      "id": "1523289",
+      "type": "companies",
+      "attributes": {
+        "name": "Company B [SAMPLE]"
+      }
+    },
+    {
+      "id": "1523288",
+      "type": "companies",
+      "attributes": {
+        "name": "Company A [SAMPLE]"
+      }
+    },
+    {
+      "id": "1523290",
+      "type": "companies",
+      "attributes": {
+        "name": "Company C [SAMPLE]"
       }
     }
   ],
   "links": {
-    "first": "https://api.productive.io/api/v2/services?fields%5Bdeals%5D=name&fields%5Bservices%5D=name%2Cdeal&filter%5Btime_tracking_enabled%5D=true&include=deal&page%5Bnumber%5D=1&page%5Bsize%5D=50",
-    "last": "https://api.productive.io/api/v2/services?fields%5Bdeals%5D=name&fields%5Bservices%5D=name%2Cdeal&filter%5Btime_tracking_enabled%5D=true&include=deal&page%5Bnumber%5D=1&page%5Bsize%5D=50"
+    "first": "https://api.productive.io/api/v2/services?fields%5Bcompanies%5D=name&fields%5Bdeals%5D=name%2Ccompany&fields%5Bservices%5D=name%2Cdeal&filter%5Btime_tracking_enabled%5D=true&include=deal.company&page%5Bnumber%5D=1&page%5Bsize%5D=200",
+    "last": "https://api.productive.io/api/v2/services?fields%5Bcompanies%5D=name&fields%5Bdeals%5D=name%2Ccompany&fields%5Bservices%5D=name%2Cdeal&filter%5Btime_tracking_enabled%5D=true&include=deal.company&page%5Bnumber%5D=1&page%5Bsize%5D=200"
   },
   "meta": {
     "current_page": 1,
     "total_pages": 1,
     "total_count": 26,
-    "page_size": 50,
+    "page_size": 200,
     "max_page_size": 200
   }
 }

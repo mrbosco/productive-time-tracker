@@ -79,11 +79,10 @@ exercised, so "required" is proven for `service` alone (`error-422-missing-servi
   **`draft: false`** (`time-entries-day-all-fields.json`, the same day recorded without a field
   list) — zero-minute entries are not merely unfinished drafts, so rendering must tolerate them even
   though the create form rejects 0 (A-8).
-- **Open question on the `draft` label.** A-8 renders a zero-minute entry as `0h` with a muted
-  `draft` label, but `draft` is a real API attribute and the one recorded zero-minute entry has
-  `draft: false`. On this evidence the label describes duration, not the API's flag, and the two can
-  disagree. Either render the label from `attributes.draft` (then request it in the field list) or
-  rename it so it does not claim to mirror the API.
+- **`draft` is independent of duration.** The recorded zero-minute entry has `draft: false`, so a
+  zero-minute entry is not a draft. A-8 renders the `draft` label from `attributes.draft` only, and
+  `draft` is part of the day list's field set for that reason. Zero-minute entries render as `0h`
+  with no extra label.
 - **POST and PATCH responses carry only the `organization` relationship** — not `person` or
   `service` (`time-entry-create.json`). Re-fetch with `include`, or reuse what you already had, if
   the mutation response must render a service name.
@@ -224,11 +223,20 @@ wrong resource type answers 422, not 401 or 403 — and the validation error poi
 (`error-422-timer-requires-service.json`). That probe could not create anything, and the account's
 running timer was confirmed untouched afterwards.
 
-The exact `POST /timers` body, the stop endpoint and whether stopping writes `time` onto the linked
-entry remain **unverified**. Productive permits one running timer per person and the test account
-has had one running since 2026-09-15, so starting a test timer would stop it and write ~18 hours
-onto entry `162921872`. That is the owner's data, so the flow was not run. SPEC 10 X-4 previously
-claimed these were "verified in Phase 4"; it now records what is and is not known.
+**There is no stop endpoint at any conventional path.** Every candidate was tried against the live
+API and recorded in `timer-stop-endpoint-probes.txt`: `POST /timers/{id}/stop`, `/stop_timer` and
+`/stop-timer` all answer 404 `route_not_found`, as do `PATCH` and `PUT` on `/timers/{id}` — while
+`GET /timers/{id}` returns 200, so member routes do exist and it is specifically mutation that is
+missing. `PATCH /time_entries/{id}` with `timer_stopped_at` answers 200 but silently ignores the
+field, which is read-only.
+
+`DELETE /timers/{id}` is the only untried candidate and was not attempted: it is destructive against
+a timer that is not ours. Until it is tried, **do not start a timer through this API** — you would
+not be able to stop it. The account has had one running since 2026-09-15 for exactly that reason.
+
+So the `POST /timers` body, the stop mechanism and whether stopping writes `time` onto the linked
+entry all remain unverified. SPEC 10 X-4 previously claimed these were "verified in Phase 4"; it now
+records what is and is not known.
 
 ## Verified findings
 

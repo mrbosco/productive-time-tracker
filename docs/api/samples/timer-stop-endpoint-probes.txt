@@ -1,0 +1,15 @@
+Stopping a timer: every route tried against the live API on 2026-09-16, timer 14325906.
+
+REQUEST                                        HTTP   RESULT
+GET /timers/{id}                               200    ok - member routes do exist
+POST /timers/{id}/stop                         404    route_not_found
+POST /timers/{id}/stop_timer                   404    route_not_found
+POST /timers/{id}/stop-timer                   404    route_not_found
+PATCH /timers/{id} {stopped_at}                404    route_not_found
+PUT /timers/{id} {stopped_at}                  404    route_not_found
+PATCH /time_entries/{id} {timer_stopped_at}    200    accepted but ignored - field is read-only
+DELETE /timers/{id}                            -      not attempted (destructive; needs owner approval)
+
+POST /timers with a wrong resource type answers 422 pointing at data/attributes/service,
+so the collection is reachable and writable and a timer is created against a service.
+The stop mechanism remains unknown; DELETE /timers/{id} is the only untried candidate.
