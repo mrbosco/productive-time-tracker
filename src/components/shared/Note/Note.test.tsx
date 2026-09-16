@@ -54,6 +54,21 @@ describe('Note', () => {
 		expect(container.querySelector(tag)).toBeNull();
 	});
 
+	/**
+	 * `tagName` keeps its authored case inside a foreign namespace, so these arrive lower case and
+	 * would walk past an upper-case comparison. Nothing could execute either way - the parsed
+	 * nodes are never inserted, only read - but the source would land on screen as text.
+	 */
+	it.each([
+		['<p>Safe</p><svg><script>window.pwned = 1</script></svg>', 'window.pwned'],
+		['<p>Safe</p><math><mtext>hidden</mtext></math>', 'hidden'],
+	])('drops the foreign-namespace element in %s', (note, leaked) => {
+		renderNote(note);
+
+		expect(screen.getByText('Safe')).toBeInTheDocument();
+		expect(screen.getByTestId('note')).not.toHaveTextContent(leaked);
+	});
+
 	it('keeps the words of a tag it does not render', () => {
 		renderNote('<div><h2>Heading</h2></div>');
 

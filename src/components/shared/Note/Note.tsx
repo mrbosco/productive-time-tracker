@@ -25,7 +25,7 @@ const INLINE_TAGS = new Map<string, 'strong' | 'em' | 's' | 'code'>([
 ]);
 
 /** Elements whose text is code, not prose, and must not be rendered as the note. */
-const NON_PROSE_TAGS = new Set(['SCRIPT', 'STYLE', 'TEMPLATE', 'TITLE', 'IFRAME', 'OBJECT', 'EMBED']);
+const NON_PROSE_TAGS = new Set(['SCRIPT', 'STYLE', 'TEMPLATE', 'TITLE', 'IFRAME', 'OBJECT', 'EMBED', 'SVG', 'MATH']);
 
 function renderChildren(node: Node): ReactNode[] {
 	const out: ReactNode[] = [];
@@ -37,17 +37,27 @@ function renderChildren(node: Node): ReactNode[] {
 			return;
 		}
 
-		if (!(child instanceof Element) || NON_PROSE_TAGS.has(child.tagName)) return;
+		if (!(child instanceof Element)) return;
 
-		const key = `${child.tagName}-${String(index)}`;
+		/*
+		 * Upper-cased rather than compared raw. `tagName` is upper case for HTML elements but
+		 * keeps its authored case inside a foreign namespace, so an `<svg><script>` arrives as
+		 * `script` and would walk straight past a check against `SCRIPT`. Nothing here can
+		 * execute either way - the parsed nodes are never inserted anywhere, only read - but it
+		 * would put the source on screen as text.
+		 */
+		const tag = child.tagName.toUpperCase();
+		if (NON_PROSE_TAGS.has(tag)) return;
 
-		if (child.tagName === 'BR') {
+		const key = `${tag}-${String(index)}`;
+
+		if (tag === 'BR') {
 			out.push(<br key={key} />);
 
 			return;
 		}
 
-		const inline = INLINE_TAGS.get(child.tagName);
+		const inline = INLINE_TAGS.get(tag);
 		if (inline !== undefined) {
 			const Inline = inline;
 			out.push(<Inline key={key}>{renderChildren(child)}</Inline>);
@@ -55,7 +65,7 @@ function renderChildren(node: Node): ReactNode[] {
 			return;
 		}
 
-		if (child.tagName === 'UL') {
+		if (tag === 'UL') {
 			out.push(
 				<ul key={key} className="list-outside list-disc pl-5">
 					{renderChildren(child)}
@@ -65,7 +75,7 @@ function renderChildren(node: Node): ReactNode[] {
 			return;
 		}
 
-		if (child.tagName === 'OL') {
+		if (tag === 'OL') {
 			out.push(
 				<ol key={key} className="list-outside list-decimal pl-5">
 					{renderChildren(child)}
@@ -75,7 +85,7 @@ function renderChildren(node: Node): ReactNode[] {
 			return;
 		}
 
-		if (child.tagName === 'LI') {
+		if (tag === 'LI') {
 			out.push(<li key={key}>{renderChildren(child)}</li>);
 
 			return;
@@ -83,8 +93,8 @@ function renderChildren(node: Node): ReactNode[] {
 
 		// A paragraph inside a list item is how both Productive and TipTap wrap list text; drawing
 		// it as a block there would put every bullet on its own double-spaced line.
-		if (child.tagName === 'P') {
-			const isInsideListItem = child.parentElement?.tagName === 'LI';
+		if (tag === 'P') {
+			const isInsideListItem = child.parentElement?.tagName.toUpperCase() === 'LI';
 			out.push(
 				isInsideListItem ? (
 					<Fragment key={key}>{renderChildren(child)}</Fragment>
