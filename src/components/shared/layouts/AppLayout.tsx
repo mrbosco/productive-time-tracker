@@ -46,7 +46,9 @@ function TimerButton() {
 	return (
 		<button
 			type="button"
-			className="duration-ui flex h-10 flex-none items-center gap-[7px] rounded-pill border border-line bg-surface px-3.5 text-label font-medium transition-colors ease-ui hover:bg-subtle md:gap-2 md:px-4"
+			disabled
+			title="Starting a timer arrives with X-4"
+			className="duration-ui flex h-10 flex-none items-center gap-[7px] rounded-pill border border-line bg-surface px-3.5 text-label font-medium transition-colors ease-ui hover:bg-subtle disabled:opacity-60 disabled:hover:bg-surface md:gap-2 md:px-4"
 		>
 			<PlayIcon />
 			Start timer
@@ -80,7 +82,9 @@ export function AppLayout({ session, children }: { session: Session; children: R
 				<button
 					type="button"
 					aria-label="Keyboard shortcuts"
-					className="duration-ui hidden size-10 flex-none place-items-center rounded-pill border border-line bg-surface text-meta font-medium text-muted transition-colors ease-ui hover:bg-subtle md:grid"
+					disabled
+					title="The shortcuts sheet arrives with X-2"
+					className="duration-ui hidden size-10 flex-none place-items-center rounded-pill border border-line bg-surface text-meta font-medium text-muted transition-colors ease-ui hover:bg-subtle disabled:opacity-60 disabled:hover:bg-surface md:grid"
 				>
 					?
 				</button>
@@ -108,7 +112,7 @@ export function AppLayout({ session, children }: { session: Session; children: R
 						</div>
 						<DropdownMenuSeparator />
 						{/* A-1's settings sheet, which US-2 needs and this screen does not. */}
-						<DropdownMenuItem>Default service...</DropdownMenuItem>
+						<DropdownMenuItem disabled>Default service... (US-2)</DropdownMenuItem>
 						<DropdownMenuItem onSelect={logout}>Log out</DropdownMenuItem>
 					</DropdownMenuContent>
 				</DropdownMenu>

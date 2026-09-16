@@ -49,20 +49,32 @@ describe('AppLayout', () => {
 		expect(await screen.findByText('ada.lovelace@example.com')).toBeInTheDocument();
 	});
 
-	it('offers the default-service sheet beside logout', async () => {
+	it('shows the default-service sheet beside logout, marked as not yet wired', async () => {
 		const user = userEvent.setup();
 		await renderWithProviders(<AppLayout session={session}>content</AppLayout>, { session });
 
 		await user.click(screen.getByRole('button', { name: 'Account menu' }));
 
-		expect(await screen.findByRole('menuitem', { name: 'Default service...' })).toBeInTheDocument();
+		expect(await screen.findByRole('menuitem', { name: /^Default service/ })).toHaveAttribute('aria-disabled', 'true');
 	});
 
-	/** X-4 owns starting one; the bar carries the control so it does not move when that lands. */
-	it('carries the timer control on every authenticated screen', async () => {
+	/**
+	 * X-4 owns starting one; the bar carries the control so it does not move when that lands, and
+	 * says it is not ready rather than taking focus and doing nothing.
+	 */
+	it('carries the timer control on every authenticated screen, disabled until X-4', async () => {
 		await renderWithProviders(<AppLayout session={session}>content</AppLayout>, { session });
 
-		expect(screen.getByRole('button', { name: 'Start timer' })).toBeInTheDocument();
+		expect(screen.getByRole('button', { name: 'Start timer' })).toBeDisabled();
+	});
+
+	it('keeps logging out working', async () => {
+		const user = userEvent.setup();
+		await renderWithProviders(<AppLayout session={session}>content</AppLayout>, { session });
+
+		await user.click(screen.getByRole('button', { name: 'Account menu' }));
+
+		expect(await screen.findByRole('menuitem', { name: 'Log out' })).not.toHaveAttribute('aria-disabled');
 	});
 
 	it('clears the stored session and the cache on logout', async () => {
