@@ -163,11 +163,4 @@ test.describe('editing a time entry', () => {
 		await expect(page).toHaveURL(new RegExp(`/day/${SEEDED_DATE}$`));
 		await expect(page.getByRole('dialog', { name: 'Save your changes?' })).toHaveCount(0);
 	});
-
-	/** US-4 wires it; until then it is drawn and inert, like the menu items beside it. */
-	test('draws the delete action without arming it', async ({ page }) => {
-		await openEditForm(page);
-
-		await expect(page.getByRole('button', { name: /^Delete entry/ })).toBeDisabled();
-	});
 });

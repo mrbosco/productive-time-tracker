@@ -13,6 +13,21 @@ describe('Toast', () => {
 		expect(screen.getByRole('status')).toHaveTextContent('Entry saved');
 	});
 
+	/**
+	 * A failure is not a confirmation: it reports that what the user asked for did not happen, and
+	 * `role="status"` would let a screen reader finish its sentence first (SPEC 4.2).
+	 */
+	it('interrupts for a failure rather than waiting its turn', () => {
+		render(
+			<Toast variant="error" onDismiss={() => undefined}>
+				Could not delete the entry.
+			</Toast>
+		);
+
+		expect(screen.getByRole('alert')).toHaveTextContent('Could not delete the entry.');
+		expect(screen.queryByRole('status')).not.toBeInTheDocument();
+	});
+
 	it('dismisses itself once the message has had time to be read', () => {
 		vi.useFakeTimers();
 		const onDismiss = vi.fn();
