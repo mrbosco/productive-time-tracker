@@ -69,7 +69,7 @@ Entry list
 
 States (each is a separate file)
 - `loading`: 3 skeleton cards and a skeleton week strip. File `02-day-mobile-loading.png`.
-- `empty`: one sentence "Nothing logged for this day yet." plus `Add entry` button plus, when yesterday has entries, a secondary link `Copy from yesterday`. No illustration alone. File `02-day-mobile-empty.png`.
+- `empty`: an illustration, one sentence "Nothing logged for this day yet.", the `Add entry` button and a secondary `Copy from yesterday` link. Never the illustration alone. File `02-day-mobile-empty.png`.
 - `error`: message "Could not load entries." plus `Retry`. File `02-day-mobile-error.png`.
 - `data`: three entries, one with a long multiline note. Files `02-day-mobile-data.png`, `02-day-desktop-data.png`.
 - `timer running` with the activity banner (X-5) above the list: soft amber, icon, "The timer is running but we have not seen activity for 15 minutes." Buttons `Pause and discard idle time` (primary) and `Keep running` (ghost). Dismiss icon. File `02-day-mobile-timer-banner.png`.
@@ -102,4 +102,9 @@ AppBar (idle timer, running timer) · TimerButton (idle, running, stopping) · D
 `login → day → (new | edit) → day`; delete stays on day behind the dialog; timer stop opens the stop-timer sheet on the current route.
 
 ## 6. Out of scope
-Timesheet grid, calendar view, projects and tasks, approvals, multiple organizations, dark mode, illustrations.
+Timesheet grid, calendar view, projects and tasks, approvals, multiple organizations, dark mode.
+
+> **Superseded, 2026-09-16.** Illustrations were on this list and are no longer: the Claude Design
+> project adds an isometric set, and the day view's empty and error states each carry one. R-7 is
+> unaffected - the rule was never "no illustration", it was "never an illustration alone", and both
+> states still lead with a sentence and an action.

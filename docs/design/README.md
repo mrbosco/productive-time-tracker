@@ -113,7 +113,7 @@ compact rows. Take the height from the screen being built rather than from a sin
 | `01-login-desktop.png`                               | Same card centred on the 1440 canvas                                                                 | —                                                 |
 | `02-day-mobile-data.png`                             | Full day layout, order of blocks, entry card anatomy                                                 | Entries, services, person, 3h 45m totals          |
 | `02-day-mobile-loading.png`                          | 3 skeleton cards + skeleton week strip; no strip totals while loading                                | —                                                 |
-| `02-day-mobile-empty.png`                            | One sentence + `Add entry` + `Copy from yesterday`; no illustration                                  | Presence of yesterday's entries (drives the link) |
+| `02-day-mobile-empty.png`                            | Illustration + one sentence + `Add entry` + `Copy from yesterday`                                    | Presence of yesterday's entries (drives the link) |
 | `02-day-mobile-error.png`                            | Message + `Retry`                                                                                    | —                                                 |
 | `02-day-mobile-timer-banner.png`                     | Amber activity banner above the list, two actions + dismiss; running timer pill                      | 15-minute threshold copy                          |
 | `02-day-mobile-menu.png`                             | Kebab menu items and the separated destructive item                                                  | —                                                 |
@@ -166,7 +166,7 @@ compact rows. Take the height from the screen being built rather than from a sin
 ## 4. Not designed
 
 - Timesheet grid, calendar view, projects and tasks, approvals, multiple organizations,
-  dark mode, illustrations (out of scope in the brief).
+  dark mode. Illustrations were out of scope in the brief and are now in: see the note in BRIEF.md 6.
 - Service picker itself: the default-service select shows the closed control only; the option
   list, search and `Project · Service` tree are not designed.
 - Calendar popover month navigation, keyboard grid behaviour and out-of-month days.
