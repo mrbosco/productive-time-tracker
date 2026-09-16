@@ -4,7 +4,8 @@ import { http, HttpResponse } from 'msw';
 import { describe, expect, it, vi } from 'vitest';
 import error401 from '../../docs/api/samples/error-401.json';
 import error403 from '../../docs/api/samples/error-403.json';
-import memberships from '../../docs/api/samples/organization-memberships-include-person.json';
+import memberships from '../../docs/api/samples/organization-memberships-include-organization.json';
+import unknownOrganization from '../../docs/api/samples/organization-memberships-unknown-organization.json';
 import type { Session } from '@/lib/storage';
 import { server } from '@/mocks/node';
 import { Route } from './_authenticated';
@@ -80,6 +81,16 @@ describe('the authenticated layout loader', () => {
 
 		await expect(result).resolves.toBeUndefined();
 		expect(login).not.toHaveBeenCalled();
+	});
+
+	it('rejects a stored session whose organization the token is not in', async () => {
+		// The organization goes out as a header on every later request, so a session carrying one
+		// the token has no membership in must not survive a reload either.
+		server.use(http.get('*/organization_memberships', () => HttpResponse.json(unknownOrganization)));
+		const { logout, result } = runLoader({ stored: { ...session, organizationId: '1234' } });
+
+		await expect(result).rejects.toSatisfy(isRedirect);
+		expect(logout).toHaveBeenCalledTimes(1);
 	});
 
 	it('rejects a response carrying no person at all', async () => {

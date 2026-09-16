@@ -25,6 +25,13 @@ export interface OrganizationMembership {
 	/** null when the response was fetched without `include=person` - never "has no person". */
 	personId: string | null;
 	person: Person | null;
+	/**
+	 * The organization this membership is in, which is not necessarily the one that was asked for:
+	 * `X-Organization-Id` does not scope the collection. Null only when the response was fetched
+	 * without `include=organization`.
+	 */
+	organizationId: string | null;
+	organizationName: string | null;
 }
 
 export interface TimeEntry {

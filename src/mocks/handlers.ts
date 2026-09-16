@@ -1,6 +1,6 @@
 import { http, HttpResponse, type RequestHandler } from 'msw';
 import error404 from '../../docs/api/samples/error-404.json';
-import memberships from '../../docs/api/samples/organization-memberships-include-person.json';
+import memberships from '../../docs/api/samples/organization-memberships-include-organization.json';
 import services from '../../docs/api/samples/services.json';
 import timeEntriesDay from '../../docs/api/samples/time-entries-day.json';
 import timeEntriesEmptyDay from '../../docs/api/samples/time-entries-empty-day.json';
@@ -24,6 +24,15 @@ import timersRunning from '../../docs/api/samples/timers-running.json';
 
 /** The date `time-entries-day.json` was recorded for; any other date responds empty. */
 export const SEEDED_DATE = '2026-09-15';
+
+/**
+ * The organization the recorded membership belongs to. Logging in against any other ID fails here
+ * exactly as it does against the live API, because `X-Organization-Id` does not scope the
+ * membership collection: an unknown organization returns 200 and the token's own memberships
+ * (`organization-memberships-unknown-organization.json`), leaving the app to find the match.
+ * Answering unconditionally would make mock mode accept any organization anyone typed.
+ */
+export const SEEDED_ORGANIZATION_ID = '999999';
 interface RequestBody {
 	data?: { attributes?: Record<string, unknown> };
 }
@@ -66,6 +75,8 @@ function showEntry(id: string) {
 }
 
 export const handlers: RequestHandler[] = [
+	// Deliberately ignores `X-Organization-Id`, which is what the live API does: the recorded
+	// membership comes back whatever organization was requested, and the app does the matching.
 	http.get('*/organization_memberships', () => HttpResponse.json(memberships)),
 
 	http.get('*/services', () => HttpResponse.json(services)),

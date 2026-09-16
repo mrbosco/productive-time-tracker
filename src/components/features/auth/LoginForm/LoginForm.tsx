@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { ApiError } from '@/api/client';
-import { listOrganizationMemberships } from '@/api/organization-memberships';
+import { findMembershipForOrganization, listOrganizationMemberships } from '@/api/organization-memberships';
 import brandmarkUrl from '@/assets/brandmark.svg';
 import { Button } from '@/components/core/Button';
 import { Input } from '@/components/core/Input';
@@ -97,12 +97,11 @@ export function LoginForm() {
 		try {
 			const memberships = await listOrganizationMemberships({ token, organizationId });
 
-			// `X-Organization-Id` decides which organization the call answers for, so there is no
-			// membership to pick here: a token with no person in it fails 403 rather than
-			// returning a list to search. The person is only present at all because the request
-			// asked for `include=person`, so a missing one means a broken response, not a person
-			// who does not exist.
-			const membership = memberships.find((candidate) => candidate.person !== null);
+			// The call answers with every membership the token owns, whatever organization was
+			// asked for, so the one for the entered organization has to be found among them - the
+			// step the assignment describes on page two. Taking the first membership instead would
+			// sign the user in against an organization they never typed.
+			const membership = findMembershipForOrganization(memberships, organizationId);
 			if (membership?.person == null || membership.personId === null) {
 				setErrorMessage(`This token is not a member of organization ${organizationId}.`);
 

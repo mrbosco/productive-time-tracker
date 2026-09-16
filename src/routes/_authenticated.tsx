@@ -1,5 +1,6 @@
 import { createFileRoute, Outlet, redirect, useRouter } from '@tanstack/react-router';
 import { ApiError } from '@/api/client';
+import { findMembershipForOrganization } from '@/api/organization-memberships';
 import { Button } from '@/components/core/Button';
 import { sessionQueryOptions, useLogout } from '@/components/features/auth/useSession';
 import { AppLayout } from '@/components/shared/layouts/AppLayout';
@@ -46,16 +47,20 @@ export const Route = createFileRoute('/_authenticated')({
 			throw error;
 		}
 
-		// The response is checked, not just awaited: `personId` is read back out of the browser on
-		// every load, and it is what filters the day list (R-4). A session naming someone else's
-		// person - edited by hand, or left by an older version - must not survive a live token.
-		const person = memberships.find((membership) => membership.person !== null)?.person;
-		if (person?.id !== session.personId) {
+		// The response is checked, not just awaited. Both halves of the stored session are read
+		// back out of the browser on every load: the organization goes out as a header on every
+		// request, and the person is what filters the day list (R-4). The organization has to be
+		// matched here rather than trusted to the header, which does not scope this collection.
+		const membership = findMembershipForOrganization(memberships, session.organizationId);
+		if (membership === undefined) {
+			rejectSession('The stored credentials are not a member of that organization.');
+		}
+		if (membership.person?.id !== session.personId) {
 			rejectSession('The stored session does not match the person this token belongs to.');
 		}
 
 		// Names change. Rewriting only on a difference keeps this from re-entering itself.
-		const personName = `${person.firstName} ${person.lastName}`.trim();
+		const personName = `${membership.person.firstName} ${membership.person.lastName}`.trim();
 		if (personName !== session.personName) auth.login({ ...session, personName });
 	},
 
