@@ -1,0 +1,385 @@
+{
+  "data": [
+    {
+      "id": "14325899",
+      "type": "timers",
+      "attributes": {
+        "person_id": 1448639,
+        "started_at": "2026-09-15T17:41:22.000+02:00",
+        "stopped_at": "2026-09-15T17:41:30.000+02:00",
+        "total_time": 0
+      },
+      "relationships": {
+        "time_entry": {
+          "data": {
+            "type": "time_entries",
+            "id": "162921848"
+          }
+        }
+      }
+    },
+    {
+      "id": "14342664",
+      "type": "timers",
+      "attributes": {
+        "person_id": 1448639,
+        "started_at": "2026-09-16T18:29:19.000+02:00",
+        "stopped_at": "2026-09-17T09:42:24.000+02:00",
+        "total_time": 913
+      },
+      "relationships": {
+        "time_entry": {
+          "data": {
+            "type": "time_entries",
+            "id": "163072402"
+          }
+        }
+      }
+    },
+    {
+      "id": "14349011",
+      "type": "timers",
+      "attributes": {
+        "person_id": 1448639,
+        "started_at": "2026-09-17T09:43:13.000+02:00",
+        "stopped_at": "2026-09-17T09:43:29.000+02:00",
+        "total_time": 0
+      },
+      "relationships": {
+        "time_entry": {
+          "data": {
+            "type": "time_entries",
+            "id": "163139895"
+          }
+        }
+      }
+    },
+    {
+      "id": "14349023",
+      "type": "timers",
+      "attributes": {
+        "person_id": 1448639,
+        "started_at": "2026-09-17T09:43:52.000+02:00",
+        "stopped_at": "2026-09-17T09:43:55.000+02:00",
+        "total_time": 0
+      },
+      "relationships": {
+        "time_entry": {
+          "data": {
+            "type": "time_entries",
+            "id": "163139943"
+          }
+        }
+      }
+    },
+    {
+      "id": "14349025",
+      "type": "timers",
+      "attributes": {
+        "person_id": 1448639,
+        "started_at": "2026-09-17T09:43:58.000+02:00",
+        "stopped_at": "2026-09-17T09:45:39.000+02:00",
+        "total_time": 2
+      },
+      "relationships": {
+        "time_entry": {
+          "data": {
+            "type": "time_entries",
+            "id": "163139951"
+          }
+        }
+      }
+    },
+    {
+      "id": "14349071",
+      "type": "timers",
+      "attributes": {
+        "person_id": 1448639,
+        "started_at": "2026-09-17T09:46:26.000+02:00",
+        "stopped_at": "2026-09-17T09:48:00.000+02:00",
+        "total_time": 2
+      },
+      "relationships": {
+        "time_entry": {
+          "data": {
+            "type": "time_entries",
+            "id": "163140186"
+          }
+        }
+      }
+    },
+    {
+      "id": "14349099",
+      "type": "timers",
+      "attributes": {
+        "person_id": 1448639,
+        "started_at": "2026-09-17T09:48:00.000+02:00",
+        "stopped_at": "2026-09-17T09:48:06.000+02:00",
+        "total_time": 0
+      },
+      "relationships": {
+        "time_entry": {
+          "data": {
+            "type": "time_entries",
+            "id": "163139955"
+          }
+        }
+      }
+    },
+    {
+      "id": "14349100",
+      "type": "timers",
+      "attributes": {
+        "person_id": 1448639,
+        "started_at": "2026-09-17T09:48:07.000+02:00",
+        "stopped_at": "2026-09-17T10:11:51.000+02:00",
+        "total_time": 26
+      },
+      "relationships": {
+        "time_entry": {
+          "data": {
+            "type": "time_entries",
+            "id": "163139951"
+          }
+        }
+      }
+    },
+    {
+      "id": "14349581",
+      "type": "timers",
+      "attributes": {
+        "person_id": 1448639,
+        "started_at": "2026-09-17T10:13:05.000+02:00",
+        "stopped_at": "2026-09-17T10:13:23.000+02:00",
+        "total_time": 0
+      },
+      "relationships": {
+        "time_entry": {
+          "data": {
+            "type": "time_entries",
+            "id": "163142940"
+          }
+        }
+      }
+    },
+    {
+      "id": "14349594",
+      "type": "timers",
+      "attributes": {
+        "person_id": 1448639,
+        "started_at": "2026-09-17T10:13:24.000+02:00",
+        "stopped_at": "2026-09-17T10:13:32.000+02:00",
+        "total_time": 26
+      },
+      "relationships": {
+        "time_entry": {
+          "data": {
+            "type": "time_entries",
+            "id": "163139951"
+          }
+        }
+      }
+    },
+    {
+      "id": "14349603",
+      "type": "timers",
+      "attributes": {
+        "person_id": 1448639,
+        "started_at": "2026-09-17T10:13:42.000+02:00",
+        "stopped_at": "2026-09-17T10:13:55.000+02:00",
+        "total_time": 444
+      },
+      "relationships": {
+        "time_entry": {
+          "data": {
+            "type": "time_entries",
+            "id": "163071306"
+          }
+        }
+      }
+    },
+    {
+      "id": "14349702",
+      "type": "timers",
+      "attributes": {
+        "person_id": 1448639,
+        "started_at": "2026-09-17T10:18:14.000+02:00",
+        "stopped_at": "2026-09-17T10:18:45.000+02:00",
+        "total_time": 27
+      },
+      "relationships": {
+        "time_entry": {
+          "data": {
+            "type": "time_entries",
+            "id": "163143614"
+          }
+        }
+      }
+    },
+    {
+      "id": "14349714",
+      "type": "timers",
+      "attributes": {
+        "person_id": 1448639,
+        "started_at": "2026-09-17T10:18:58.000+02:00",
+        "stopped_at": "2026-09-17T10:19:32.000+02:00",
+        "total_time": 3
+      },
+      "relationships": {
+        "time_entry": {
+          "data": {
+            "type": "time_entries",
+            "id": "163140186"
+          }
+        }
+      }
+    },
+    {
+      "id": "14349745",
+      "type": "timers",
+      "attributes": {
+        "person_id": 1448639,
+        "started_at": "2026-09-17T10:20:21.000+02:00",
+        "stopped_at": "2026-09-17T10:20:25.000+02:00",
+        "total_time": 3
+      },
+      "relationships": {
+        "time_entry": {
+          "data": {
+            "type": "time_entries",
+            "id": "163140186"
+          }
+        }
+      }
+    },
+    {
+      "id": "14349997",
+      "type": "timers",
+      "attributes": {
+        "person_id": 1448639,
+        "started_at": "2026-09-17T10:32:36.000+02:00",
+        "stopped_at": "2026-09-17T10:32:43.000+02:00",
+        "total_time": 444
+      },
+      "relationships": {
+        "time_entry": {
+          "data": {
+            "type": "time_entries",
+            "id": "163071306"
+          }
+        }
+      }
+    },
+    {
+      "id": "14350003",
+      "type": "timers",
+      "attributes": {
+        "person_id": 1448639,
+        "started_at": "2026-09-17T10:32:51.000+02:00",
+        "stopped_at": "2026-09-17T10:33:54.000+02:00",
+        "total_time": 445
+      },
+      "relationships": {
+        "time_entry": {
+          "data": {
+            "type": "time_entries",
+            "id": "163071306"
+          }
+        }
+      }
+    }
+  ],
+  "included": [
+    {
+      "id": "162921848",
+      "type": "time_entries",
+      "attributes": {
+        "date": "2026-09-15",
+        "time": 0
+      }
+    },
+    {
+      "id": "163072402",
+      "type": "time_entries",
+      "attributes": {
+        "date": "2026-09-16",
+        "time": 913
+      }
+    },
+    {
+      "id": "163139895",
+      "type": "time_entries",
+      "attributes": {
+        "date": "2026-09-17",
+        "time": 0
+      }
+    },
+    {
+      "id": "163139943",
+      "type": "time_entries",
+      "attributes": {
+        "date": "2026-09-17",
+        "time": 0
+      }
+    },
+    {
+      "id": "163139951",
+      "type": "time_entries",
+      "attributes": {
+        "date": "2026-09-17",
+        "time": 26
+      }
+    },
+    {
+      "id": "163140186",
+      "type": "time_entries",
+      "attributes": {
+        "date": "2026-09-17",
+        "time": 3
+      }
+    },
+    {
+      "id": "163139955",
+      "type": "time_entries",
+      "attributes": {
+        "date": "2026-09-17",
+        "time": 0
+      }
+    },
+    {
+      "id": "163142940",
+      "type": "time_entries",
+      "attributes": {
+        "date": "2026-09-17",
+        "time": 0
+      }
+    },
+    {
+      "id": "163071306",
+      "type": "time_entries",
+      "attributes": {
+        "date": "2026-09-17",
+        "time": 445
+      }
+    },
+    {
+      "id": "163143614",
+      "type": "time_entries",
+      "attributes": {
+        "date": "2026-09-17",
+        "time": 27
+      }
+    }
+  ],
+  "links": {
+    "first": "https://api.productive.io/api/v2/timers?fields%5Btime_entries%5D=date%2Ctime&fields%5Btimers%5D=started_at%2Cstopped_at%2Ctotal_time%2Cperson_id%2Ctime_entry&include=time_entry&page%5Bnumber%5D=1&page%5Bsize%5D=200",
+    "last": "https://api.productive.io/api/v2/timers?fields%5Btime_entries%5D=date%2Ctime&fields%5Btimers%5D=started_at%2Cstopped_at%2Ctotal_time%2Cperson_id%2Ctime_entry&include=time_entry&page%5Bnumber%5D=1&page%5Bsize%5D=200"
+  },
+  "meta": {
+    "current_page": 1,
+    "total_pages": 1,
+    "total_count": 16,
+    "page_size": 200,
+    "max_page_size": 200
+  }
+}

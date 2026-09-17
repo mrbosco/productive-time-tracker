@@ -1,0 +1,85 @@
+{
+  "data": {
+    "id": "1523286",
+    "type": "companies",
+    "attributes": {
+      "name": "Example Companie",
+      "billing_name": null,
+      "vat": null,
+      "default_currency": "USD",
+      "created_at": "2026-09-15T15:48:31.393+02:00",
+      "last_activity_at": "2026-09-16T18:43:33.057+02:00",
+      "archived_at": null,
+      "avatar_url": "https://example.com/avatar.png",
+      "original_avatar_url": "https://example.com/avatar.png",
+      "invoice_email_recipients": {},
+      "custom_fields": null,
+      "company_code": "ANOD",
+      "domain": null,
+      "domains": [],
+      "projectless_budgets": false,
+      "default_subsidiary_id": null,
+      "default_tax_rate_id": null,
+      "default_document_type_id": null,
+      "due_days": null,
+      "payment_terms_type": null,
+      "tag_list": [],
+      "contact": {},
+      "sample_data": false,
+      "settings": {},
+      "external_id": null,
+      "external_sync": false,
+      "parent_company_id": null
+    },
+    "relationships": {
+      "organization": {
+        "data": {
+          "type": "organizations",
+          "id": "999999"
+        }
+      },
+      "import": {
+        "meta": {
+          "included": false
+        }
+      },
+      "default_subsidiary": {
+        "meta": {
+          "included": false
+        }
+      },
+      "default_tax_rate": {
+        "meta": {
+          "included": false
+        }
+      },
+      "default_document_type": {
+        "data": null
+      },
+      "custom_field_people": {
+        "meta": {
+          "included": false
+        }
+      },
+      "custom_field_attachments": {
+        "meta": {
+          "included": false
+        }
+      },
+      "integration_exporter_configuration": {
+        "meta": {
+          "included": false
+        }
+      },
+      "einvoice_identity": {
+        "meta": {
+          "included": false
+        }
+      },
+      "parent_company": {
+        "data": null
+      }
+    }
+  },
+  "meta": {}
+}

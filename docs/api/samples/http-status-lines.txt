@@ -29,3 +29,9 @@ time-entry-from-timer.json                   200
 error-409-timer-already-stopped.json         200
 organization-memberships-include-organization.json   200
 organization-memberships-unknown-organization.json   200  [X-Organization-Id: 1234]
+company-show.json                                    200
+person-show.json                                     200
+organization-memberships-include-availabilities.json 200
+timers-all.json                                      200
+timers-for-entry.json                                200
+time-entries-day-service-deal.json                   200
