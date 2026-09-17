@@ -13,8 +13,8 @@ Why this approach. Alternatives rejected and why. Cite the ADR if one governs it
 
 ## Spec and design
 
-- Story: US-n
 - Feature:
+- Requirement: `R-n` / `N-n` from SPEC 9, where one applies
 - Route: `/...`
 - Screens: mobile and desktop captures of the change
 
@@ -30,7 +30,7 @@ Both viewports are required (N-4).
 
 - Unit:
 - Component: loading, empty, error, data
-- E2E: `e2e/....spec.ts`, both projects
+- E2E: `e2e/....spec.ts` (tag `@mobile` if it should run on the phone project too)
 - Manual smoke against the real API (e2e is MSW-only, ADR-0003):
 
 ## Open questions
@@ -43,4 +43,4 @@ Anything you want the reviewer to decide. "None" is a valid answer.
 - [ ] Changeset added (every behaviour change, guidebook 31)
 - [ ] Docs updated if behaviour changed
 - [ ] No token, organization ID or other secret in the diff
-- [ ] `US-n` / `R-n` / `X-n` / `P-n` in the title and in every `Refs:` footer
+- [ ] A `Refs:` footer on every commit that changes behaviour
