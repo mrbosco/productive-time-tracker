@@ -92,6 +92,18 @@ function StopTimerForm({
 	const updateEntry = useUpdateTimeEntry(session);
 	const deleteEntry = useDeleteTimeEntry(session);
 
+	/**
+	 * What the entry is worth once X-5's idle minutes are taken off it (SPEC 10: "subtracts
+	 * `idleMinutes` from the value written on stop, client-side").
+	 *
+	 * Floored at what the entry held before this timer, never at zero: a continuation's earlier
+	 * hours were logged by a person who was here, and no heuristic about the last fifteen minutes
+	 * gets to reach back and take them.
+	 */
+	function keptMinutes(total: number): number {
+		return Math.max(stopped.loggedBefore ?? 0, total - stopped.discardMinutes);
+	}
+
 	const {
 		register,
 		handleSubmit,
@@ -104,7 +116,7 @@ function StopTimerForm({
 		// `values`, not `defaultValues`: the entry arrives a render after the sheet opens.
 		values: {
 			date: entry?.date ?? '',
-			duration: entry === undefined ? '' : formatDuration(entry.minutes),
+			duration: entry === undefined ? '' : formatDuration(keptMinutes(entry.minutes)),
 			from: '',
 			to: '',
 			note: entry?.note ?? '',
@@ -114,6 +126,7 @@ function StopTimerForm({
 
 	const isDiscarding = deleteEntry.isPending || updateEntry.isPending;
 	const durationMinutes = parseDuration(useWatch({ control, name: 'duration' }));
+	const isDiscardingIdle = stopped.discardMinutes > 0;
 	const preview = durationMinutes !== null && durationMinutes > 0 ? `= ${formatDuration(durationMinutes)}` : '';
 
 	async function save(values: TimeEntryFormOutput) {
@@ -236,7 +249,10 @@ function StopTimerForm({
 							}
 						>
 							{errors.duration?.message ??
-								`Tracked from ${formatClock(stopped.startedAt)} to ${formatClock(stopped.stoppedAt)}`}
+								`Tracked from ${formatClock(stopped.startedAt)} to ${formatClock(stopped.stoppedAt)}` +
+									// Said out loud rather than silently shorter: the number was changed on a
+									// guess, and the field is editable so it can be changed back.
+									(isDiscardingIdle ? `, less ${formatDuration(stopped.discardMinutes)} idle` : '')}
 						</p>
 					</div>
 

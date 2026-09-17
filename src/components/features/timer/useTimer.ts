@@ -29,6 +29,11 @@ export interface StoppedTimer {
 	 * is deleted.
 	 */
 	loggedBefore: number | null;
+	/**
+	 * Minutes X-5 offered to throw away, because the timer appeared to be running on its own. The
+	 * sheet subtracts them from what it prefills; nothing is discarded until it is saved.
+	 */
+	discardMinutes: number;
 }
 
 export function timerQueryOptions(session: Session) {
@@ -193,7 +198,13 @@ export function useTimer(session: Session) {
 	});
 
 	const stop = useMutation({
-		mutationFn: async (timer: RunningTimer): Promise<StoppedTimer | null> => {
+		mutationFn: async ({
+			timer,
+			discardMinutes = 0,
+		}: {
+			timer: RunningTimer;
+			discardMinutes?: number;
+		}): Promise<StoppedTimer | null> => {
 			let stoppedAt = new Date().toISOString();
 
 			try {
@@ -215,6 +226,7 @@ export function useTimer(session: Session) {
 				startedAt: timer.startedAt,
 				stoppedAt,
 				loggedBefore: readTimerState()?.loggedBefore ?? null,
+				discardMinutes,
 			};
 		},
 		onSuccess: async (stopped) => {

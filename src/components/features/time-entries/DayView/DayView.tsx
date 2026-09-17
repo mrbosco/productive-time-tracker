@@ -11,6 +11,7 @@ import { TimeEntryList } from '@/components/features/time-entries/TimeEntryList/
 import { useCopyDayForward } from '@/components/features/time-entries/useCopyDayForward';
 import { useDeleteTimeEntry } from '@/components/features/time-entries/useDeleteTimeEntry';
 import { useTimeEntries } from '@/components/features/time-entries/useTimeEntries';
+import { ActivityBanner } from '@/components/features/timer/ActivityBanner/ActivityBanner';
 import { useTimerContext } from '@/components/features/timer/TimerProvider';
 import { useWeekTotals } from '@/components/features/week/useWeekTotals';
 import { WeekStrip } from '@/components/features/week/WeekStrip/WeekStrip';
@@ -230,6 +231,19 @@ export function DayView({ session, date }: { session: Session; date: string }) {
 						 * only restates the sentence in the empty state below it.
 						 */}
 						{hasEntries && <DaySummary entries={entries} />}
+
+						{/*
+						 * X-5, above the list where the design puts it. Rendered here rather than in
+						 * the app bar because it is a paragraph and two choices, not a control - and
+						 * because this is the screen where the minutes it talks about are visible.
+						 */}
+						{timer.concern !== null && (
+							<ActivityBanner
+								concern={timer.concern}
+								onDiscard={timer.pauseAndDiscardIdle}
+								onKeepRunning={timer.keepRunning}
+							/>
+						)}
 
 						{/* P-1, drawn but inert. Absent while loading or failing, as the design has it. */}
 						{entries !== undefined && <QuickAddInput date={date} />}

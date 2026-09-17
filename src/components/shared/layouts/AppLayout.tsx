@@ -13,6 +13,7 @@ import { SettingsSheet } from '@/components/features/settings/SettingsSheet/Sett
 import { StopTimerSheet } from '@/components/features/timer/StopTimerSheet/StopTimerSheet';
 import { TimerControl } from '@/components/features/timer/TimerControl/TimerControl';
 import { TimerProvider, useTimerContext } from '@/components/features/timer/TimerProvider';
+import type { ActivityMonitorConfig } from '@/components/features/timer/useActivityMonitor';
 import { ShortcutsSheet } from '@/components/shared/ShortcutsSheet/ShortcutsSheet';
 import { useHotkeys } from '@/components/shared/useHotkeys';
 import type { Session } from '@/lib/storage';
@@ -42,9 +43,18 @@ function CaretIcon() {
  * The provider is mounted out here and the chrome consumes it, so the timer is shared with what
  * `children` renders - a card's `Continue timer` is the second consumer, down inside the day.
  */
-export function AppLayout({ session, children }: { session: Session; children: ReactNode }) {
+export function AppLayout({
+	session,
+	children,
+	activityConfig,
+}: {
+	session: Session;
+	children: ReactNode;
+	/** X-5's thresholds, exposed rather than buried (guidebook 13, ADR-0008). */
+	activityConfig?: ActivityMonitorConfig;
+}) {
 	return (
-		<TimerProvider session={session}>
+		<TimerProvider session={session} activityConfig={activityConfig}>
 			<AppChrome session={session}>{children}</AppChrome>
 		</TimerProvider>
 	);

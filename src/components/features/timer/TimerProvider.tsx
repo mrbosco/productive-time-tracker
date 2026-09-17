@@ -1,5 +1,11 @@
 import { createContext, type ReactNode, useContext, useState } from 'react';
 import { useDefaultService } from '@/components/features/settings/useDefaultService';
+import {
+	ACTIVITY_MONITOR,
+	type ActivityConcern,
+	type ActivityMonitorConfig,
+	useActivityMonitor,
+} from '@/components/features/timer/useActivityMonitor';
 import { type RunningTimer, type StoppedTimer, useTimer } from '@/components/features/timer/useTimer';
 import type { Session } from '@/lib/storage';
 
@@ -21,6 +27,15 @@ interface TimerContextValue {
 	 */
 	continueEntry: (entryId: string, loggedMinutes: number) => void;
 	stop: () => void;
+	/**
+	 * X-5: the timer appears to be running with nobody there. A concern, never an action - the
+	 * banner offers a choice and this provider stops nothing on its own.
+	 */
+	concern: ActivityConcern | null;
+	/** Stops the timer and offers to drop the idle minutes from what gets saved. */
+	pauseAndDiscardIdle: () => void;
+	/** "I am here": the clock restarts and the banner goes. */
+	keepRunning: () => void;
 	/** What the last stop left behind, for the sheet that edits it. */
 	stopped: StoppedTimer | null;
 	dismissStopped: () => void;
@@ -42,12 +57,27 @@ const TimerContext = createContext<TimerContextValue | null>(null);
  * It follows `SessionProvider`, which is the same shape for the same reason, and the query beneath
  * it is still the source of truth - this only stops the same hook being mounted three times.
  */
-export function TimerProvider({ session, children }: { session: Session; children: ReactNode }) {
+export function TimerProvider({
+	session,
+	children,
+	activityConfig,
+}: {
+	session: Session;
+	children: ReactNode;
+	/** Thresholds as configuration (guidebook 13); a test passes a smaller clock than fifteen minutes. */
+	activityConfig?: ActivityMonitorConfig;
+}) {
 	const timer = useTimer(session);
 	const { service } = useDefaultService(session);
 	const [stopped, setStopped] = useState<StoppedTimer | null>(null);
 	const [needsService, setNeedsService] = useState(false);
 	const [justStarted, setJustStarted] = useState(false);
+	/*
+	 * Mounted here rather than on the day view so the watch survives navigation: a timer left
+	 * running while someone reads the edit form is exactly the case X-5 is for. The hook attaches
+	 * nothing while `running` is null, so there is no monitoring when there is nothing being timed.
+	 */
+	const activity = useActivityMonitor(timer.running !== null, activityConfig ?? ACTIVITY_MONITOR);
 
 	async function start() {
 		/*
@@ -71,7 +101,7 @@ export function TimerProvider({ session, children }: { session: Session; childre
 		setJustStarted(true);
 	}
 
-	async function stop() {
+	async function stop(discardMinutes = 0) {
 		if (timer.running === null) return;
 
 		/*
@@ -80,7 +110,7 @@ export function TimerProvider({ session, children }: { session: Session; childre
 		 * to be edited there, which is better than refusing to stop it.
 		 */
 		setJustStarted(false);
-		setStopped(await timer.stop(timer.running));
+		setStopped(await timer.stop({ timer: timer.running, discardMinutes }));
 	}
 
 	const value: TimerContextValue = {
@@ -96,6 +126,18 @@ export function TimerProvider({ session, children }: { session: Session; childre
 		stop: () => {
 			void stop();
 		},
+		concern: activity.concern,
+		/*
+		 * The minutes are carried to the sheet rather than written anywhere: SPEC 10 asks for the
+		 * subtraction to happen client-side, before the save, so the number is still correctable and
+		 * nothing has been decided on anyone's behalf.
+		 */
+		pauseAndDiscardIdle: () => {
+			const minutes = activity.concern?.minutes ?? 0;
+			activity.acknowledge();
+			void stop(minutes);
+		},
+		keepRunning: activity.acknowledge,
 		stopped,
 		dismissStopped: () => {
 			setStopped(null);

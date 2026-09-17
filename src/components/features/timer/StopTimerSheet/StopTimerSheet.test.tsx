@@ -14,6 +14,7 @@ const stopped: StoppedTimer = {
 	startedAt: '2026-09-16T09:18:00.000+02:00',
 	stoppedAt: '2026-09-16T10:00:00.000+02:00',
 	loggedBefore: null,
+	discardMinutes: 0,
 };
 
 /** A timer continued from a card: the entry already held 5h before this timer added to it. */
@@ -181,6 +182,35 @@ describe('StopTimerSheet', () => {
 		expect(patched[0]).toMatchObject({ id: ENTRY_ID, attributes: { time: 300 } });
 		expect(deleted).not.toHaveBeenCalled();
 		expect(onClose).toHaveBeenCalled();
+	});
+
+	/**
+	 * X-5, and the whole of what "discard idle time" does: the subtraction happens here, before the
+	 * save, so the number is still correctable and nothing has been decided for anyone.
+	 */
+	it('takes the idle minutes off what it prefills (X-5)', async () => {
+		await renderSheet(() => undefined, { ...stopped, discardMinutes: 15 });
+
+		// The entry holds 5h; a quarter of an hour of it was nobody there.
+		expect(await durationField()).toHaveValue('4h 45m');
+		expect(screen.getByText(/less 15m idle/)).toBeInTheDocument();
+	});
+
+	/**
+	 * A continuation's earlier hours were logged by a person who was here. A heuristic about the
+	 * last fifteen minutes does not get to reach back and take them.
+	 */
+	it('never discards below what the entry held before the timer (X-5)', async () => {
+		await renderSheet(() => undefined, { ...stoppedAfterContinuing, discardMinutes: 90 });
+
+		expect(await durationField()).toHaveValue('5h');
+	});
+
+	it('says nothing about idle time when none was discarded', async () => {
+		await renderSheet();
+		await durationField();
+
+		expect(screen.queryByText(/idle/)).not.toBeInTheDocument();
 	});
 
 	it('says why when the save is refused, and stays open', async () => {

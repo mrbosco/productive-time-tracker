@@ -1,6 +1,7 @@
 import { http, HttpResponse } from 'msw';
 import { describe, expect, it } from 'vitest';
 import { renderWithProviders, screen, testSession, userEvent, waitFor } from '@/__tests__/test-utils';
+import { ACTIVITY_MONITOR } from '@/components/features/timer/useActivityMonitor';
 import { AppLayout } from '@/components/shared/layouts/AppLayout';
 import { addDays, todayIso } from '@/lib/date';
 import { SEEDED_DATE } from '@/mocks/handlers';
@@ -314,6 +315,46 @@ describe('DayView', () => {
 
 		expect(await screen.findByText('Tracking')).toBeInTheDocument();
 		expect(screen.getAllByRole('button', { name: 'Stop timer' }).length).toBeGreaterThan(0);
+	});
+
+	/**
+	 * X-5 assembled: the monitor runs in the provider, the banner is drawn here, and the two only
+	 * meet once a timer is actually running.
+	 *
+	 * `idleMinutes: 0` rather than a faked clock - the thresholds are configuration precisely so
+	 * they can be turned down (guidebook 13, ADR-0008), and a test that advances fifteen minutes of
+	 * fake time through a ticking elapsed clock is a slower way to learn the same thing.
+	 */
+	it('warns above the list when a running timer goes quiet (X-5)', async () => {
+		const user = userEvent.setup();
+		await renderWithProviders(
+			<AppLayout session={testSession} activityConfig={{ ...ACTIVITY_MONITOR, idleMinutes: 0, checkIntervalMs: 50 }}>
+				<DayView session={testSession} date={todayIso()} />
+			</AppLayout>,
+			{ session: testSession, initialEntry: `/day/${todayIso()}` }
+		);
+
+		await user.click(await screen.findByRole('button', { name: 'Start timer' }));
+
+		// By its words, not by its role: the running timer announces itself through a live region
+		// too, so `findByRole('status')` would settle on whichever came first.
+		expect(await screen.findByText(/we have not seen activity/)).toBeInTheDocument();
+	});
+
+	/** Nothing is discarded by the banner itself: it stops the timer and the sheet asks (X-5). */
+	it('hands the idle minutes to the stop sheet rather than writing them off (X-5)', async () => {
+		const user = userEvent.setup();
+		await renderWithProviders(
+			<AppLayout session={testSession} activityConfig={{ ...ACTIVITY_MONITOR, idleMinutes: 0, checkIntervalMs: 50 }}>
+				<DayView session={testSession} date={todayIso()} />
+			</AppLayout>,
+			{ session: testSession, initialEntry: `/day/${todayIso()}` }
+		);
+		await user.click(await screen.findByRole('button', { name: 'Start timer' }));
+
+		await user.click(await screen.findByRole('button', { name: 'Pause and discard idle time' }));
+
+		expect(await screen.findByRole('dialog', { name: 'Save tracked time' })).toBeInTheDocument();
 	});
 
 	/** A-10, from the outside: the dialog is the confirmation, so declining has to delete nothing. */
