@@ -149,7 +149,9 @@ export function TimeEntryCard({
 								Tracking
 								<TimerDot className="size-[7px]" />
 							</span>
-							<span aria-hidden="true" className="h-[11px] w-px bg-line" />
+							{/* Desktop only: the meta line wraps on a phone, which would leave the rule
+							    dangling at the end of a line with nothing after it. */}
+							<span aria-hidden="true" className="hidden h-[11px] w-px bg-line md:block" />
 						</>
 					)}
 					<span>{entry.service?.name ?? 'Unknown service'}</span>
