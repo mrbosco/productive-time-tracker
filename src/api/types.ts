@@ -11,6 +11,11 @@ export interface Person {
 	email: string | null;
 	/** Uploaded in Productive, and null for anyone who has not. Initials are the fallback. */
 	avatarUrl: string | null;
+	/**
+	 * Expected working hours, as the JSON **string** the API stores it as. Read with
+	 * `lib/availability.ts`; null when the request did not ask for it.
+	 */
+	availabilities: string | null;
 }
 
 /**

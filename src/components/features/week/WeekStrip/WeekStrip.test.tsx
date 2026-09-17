@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { cleanup, renderWithProviders, screen } from '@/__tests__/test-utils';
+import { parseAvailabilities } from '@/lib/availability';
 import { WeekStrip } from './WeekStrip';
 
 const TODAY = '2026-09-16';
@@ -69,6 +70,29 @@ describe('WeekStrip', () => {
 
 		expect(screen.getByRole('link', { name: /^Sat 19 Sep/ })).toHaveTextContent('—');
 		expect(screen.getByRole('link', { name: /^Sun 20 Sep/ })).toHaveTextContent('—');
+	});
+
+	/**
+	 * The one thing UI-6 can silently get wrong: a four-day week has to read off the person's own
+	 * hours, not off `isWeekend`, which can never see it.
+	 */
+	it('takes non-working days from the person hours rather than from the weekend', async () => {
+		await renderStrip('2026-09-17', {
+			availability: parseAvailabilities('[["2026-09-01", null, [8, 8, 8, 8, 0, 0, 0], 1]]'),
+		});
+
+		expect(screen.getByRole('link', { name: 'Fri 18 Sep, no work expected' })).toHaveTextContent('—');
+		expect(screen.getByRole('link', { name: /^Thu 17 Sep/ })).toHaveTextContent('0h');
+	});
+
+	/** The hover panel is a pointer affordance, so the numbers have to be in the name as well. */
+	it('says what was expected of a day beside what was logged on it', async () => {
+		await renderStrip('2026-09-15', {
+			availability: parseAvailabilities('[["2026-09-01", null, [8, 8, 8, 8, 8, 0, 0], 1]]'),
+		});
+
+		expect(screen.getByRole('link', { name: 'Mon 14 Sep, 6h 15m logged of 8h expected' })).toBeInTheDocument();
+		expect(screen.getByLabelText('Weekly total, 10h of 40h expected')).toBeInTheDocument();
 	});
 
 	/** The hatch and the dashed border are the visual half of this; a name is the other half. */

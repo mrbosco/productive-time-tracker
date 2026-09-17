@@ -1,5 +1,8 @@
 import { Link } from '@tanstack/react-router';
 import { useEffect, useRef } from 'react';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/core/Tooltip';
+import { useHasHover } from '@/components/shared/useHasHover';
+import { type AvailabilityPeriod, expectedMinutesOn } from '@/lib/availability';
 import {
 	dayOfMonth,
 	formatDayShort,
@@ -21,6 +24,12 @@ interface WeekStripProps {
 	/** The week could not be read. Cells show no total rather than a zero they cannot stand behind. */
 	isError?: boolean;
 	today?: string;
+	/**
+	 * The person's working hours (UI-6). Empty until the membership query lands, and for an account
+	 * that has never set any - in which case the strip says nothing about what was expected rather
+	 * than claiming nothing was.
+	 */
+	availability?: AvailabilityPeriod[];
 }
 
 /**
@@ -46,11 +55,89 @@ function formatCellTotal(minutes: number, isNonWorking: boolean): string {
  * has to say it too - a state drawn only in the fill is a state a screen reader cannot report
  * (guidebook 18).
  */
-function describeCell(iso: string, minutes: number, isNonWorking: boolean, isError: boolean): string {
+function describeCell(
+	iso: string,
+	minutes: number,
+	isNonWorking: boolean,
+	isError: boolean,
+	expected: number | null
+): string {
 	if (isError) return `${formatDayShort(iso)}, total unavailable`;
-	if (minutes > 0) return `${formatDayShort(iso)}, ${formatDuration(minutes)} logged`;
 
-	return `${formatDayShort(iso)}, ${isNonWorking ? 'no work expected' : 'nothing logged'}`;
+	const logged =
+		minutes > 0 ? `${formatDuration(minutes)} logged` : isNonWorking ? 'no work expected' : 'nothing logged';
+	// The hover panel is a pointer convenience; the same numbers belong in the name, or a touch
+	// screen and a screen reader never get them at all (guidebook 18).
+	const against = expected === null || expected === 0 ? '' : ` of ${formatDuration(expected)} expected`;
+
+	return `${formatDayShort(iso)}, ${logged}${against}`;
+}
+
+/**
+ * The week's own total. Not a link and not focusable: there is no `/day/week` to go to, and UI-5's
+ * whole point is that it should stop looking like an eighth day.
+ */
+function WeekTotalPanel({
+	total,
+	expected,
+	isError,
+	hasHover,
+}: {
+	total: number;
+	expected: number | null;
+	isError: boolean;
+	hasHover: boolean;
+}) {
+	const name =
+		expected === null || expected === 0
+			? `Weekly total, ${formatDuration(total)}`
+			: `Weekly total, ${formatDuration(total)} of ${formatDuration(expected)} expected`;
+
+	const panel = (
+		<div
+			aria-label={isError ? 'Week total unavailable' : name}
+			className="flex h-[68px] w-[98px] flex-none flex-col items-center justify-center gap-0.5 rounded-input bg-selection px-2 md:h-22 md:w-auto"
+		>
+			<span aria-hidden="true" className="text-duration font-bold text-accent-dark tabular-nums">
+				{isError ? '·' : `= ${formatDuration(total)}`}
+			</span>
+			<span aria-hidden="true" className="text-micro font-medium whitespace-nowrap text-accent-dark opacity-70">
+				Weekly total
+			</span>
+		</div>
+	);
+
+	if (!hasHover || expected === null || isError) return panel;
+
+	return (
+		<Tooltip>
+			<TooltipTrigger asChild>{panel}</TooltipTrigger>
+			<TooltipContent side="bottom" align="end" className="min-w-[232px]">
+				<ExpectedRows expected={expected} worked={total} />
+			</TooltipContent>
+		</Tooltip>
+	);
+}
+
+/** Expected, worked, and what is left of the first after the second (UI-6). */
+function ExpectedRows({ expected, worked }: { expected: number; worked: number }) {
+	const rows = [
+		{ label: 'Expected work time', value: expected },
+		{ label: 'Worked time', value: worked },
+		// Clamped: an overrun is not negative hours left, it is none.
+		{ label: 'Work hours left', value: Math.max(0, expected - worked) },
+	];
+
+	return (
+		<dl className="flex flex-col gap-1.5">
+			{rows.map((row) => (
+				<div key={row.label} className="flex items-baseline gap-3.5">
+					<dt className="flex-1 text-label text-on-accent/60">{row.label}</dt>
+					<dd className="text-label font-bold tabular-nums">{formatDuration(row.value)}</dd>
+				</div>
+			))}
+		</dl>
+	);
 }
 
 function CellSkeleton({ className }: { className?: string }) {
@@ -64,9 +151,23 @@ function CellSkeleton({ className }: { className?: string }) {
  * desktop, the eighth being the week's own total. Totals are hidden while loading rather than
  * showing stale numbers.
  */
-export function WeekStrip({ date, weekTotals, isPending, isError = false, today = todayIso() }: WeekStripProps) {
+export function WeekStrip({
+	date,
+	weekTotals,
+	isPending,
+	isError = false,
+	today = todayIso(),
+	availability = [],
+}: WeekStripProps) {
 	const days = weekDays(date);
 	const weekTotal = days.reduce((sum, day) => sum + (weekTotals?.[day] ?? 0), 0);
+	const expectedOn = (day: string) => expectedMinutesOn(availability, day);
+	const weekExpected = days.reduce<number | null>((sum, day) => {
+		const expected = expectedOn(day);
+
+		return expected === null ? sum : (sum ?? 0) + expected;
+	}, null);
+	const hasHover = useHasHover();
 	const stripRef = useRef<HTMLElement>(null);
 	const selectedRef = useRef<HTMLAnchorElement>(null);
 
@@ -116,17 +217,19 @@ export function WeekStrip({ date, weekTotals, isPending, isError = false, today 
 			{days.map((day) => {
 				const isSelected = day === date;
 				const minutes = weekTotals?.[day] ?? 0;
-				// Weekend for now. UI-6 replaces this with the person's own `availabilities`, where a
-				// zero is a non-working day - which catches a four-day week that a weekend test cannot.
-				const isNonWorking = isWeekend(day);
+				const expected = expectedOn(day);
+				// The person's own working hours where they are known (UI-6), which catches a
+				// four-day week that a weekend test cannot. The weekend is the fallback for an
+				// account that has never set any.
+				const isNonWorking = expected === null ? isWeekend(day) : expected === 0;
 
-				return (
+				const cell = (
 					<Link
 						key={day}
 						ref={isSelected ? selectedRef : undefined}
 						to="/day/$date"
 						params={{ date: day }}
-						aria-label={describeCell(day, minutes, isNonWorking, isError)}
+						aria-label={describeCell(day, minutes, isNonWorking, isError, expected)}
 						// `aria-current="page"` is set by the router itself on the active link, so
 						// the selected cell is marked without this component tracking it.
 						className={cn(
@@ -172,19 +275,33 @@ export function WeekStrip({ date, weekTotals, isPending, isError = false, today 
 						{isSelected && <span className="absolute inset-x-0 bottom-0 h-[3px] bg-accent" />}
 					</Link>
 				);
+
+				/*
+				 * The panel is a pointer affordance and nothing more: a cell is a link, so on a
+				 * touch screen its one gesture is already spoken for by navigating to that day.
+				 * What it would have said is in the cell's accessible name either way.
+				 */
+				if (!hasHover || expected === null || isError) return cell;
+
+				return (
+					<Tooltip key={day}>
+						<TooltipTrigger asChild>{cell}</TooltipTrigger>
+						<TooltipContent side="bottom" className="min-w-[232px]">
+							<ExpectedRows expected={expected} worked={minutes} />
+						</TooltipContent>
+					</Tooltip>
+				);
 			})}
 
 			{/*
 			 * A panel, not a card (UI-5): no border, no hover, no href and no tab stop, because it is
 			 * the only thing in this row that is not a day and cannot be navigated to. The equals sign
 			 * is what says "this is the sum of those" without a word for it.
+			 *
+			 * UI-6's numbers reach it by hover and by name, never by focus - giving it a tab stop to
+			 * make the panel keyboard-reachable is the thing UI-5 took away.
 			 */}
-			<div className="flex h-[68px] w-[98px] flex-none flex-col items-center justify-center gap-0.5 rounded-input bg-selection px-2 md:h-22 md:w-auto">
-				<span className="text-duration font-bold text-accent-dark tabular-nums">
-					{isError ? <span aria-label="Week total unavailable">·</span> : `= ${formatDuration(weekTotal)}`}
-				</span>
-				<span className="text-micro font-medium whitespace-nowrap text-accent-dark opacity-70">Weekly total</span>
-			</div>
+			<WeekTotalPanel total={weekTotal} expected={weekExpected} isError={isError} hasHover={hasHover} />
 		</nav>
 	);
 }

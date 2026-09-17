@@ -43,7 +43,7 @@ token, a billing email and analytics identifiers, none of which this app has any
 
 | Purpose        | Method + path                                  | Sample                                                 |
 | -------------- | ---------------------------------------------- | ------------------------------------------------------ |
-| Resolve person | `GET /organization_memberships?include=person,organization.company` | `organization-memberships-avatars.json`      |
+| Resolve person | `GET /organization_memberships?include=person,organization.company` | `organization-memberships-avatars.json`, which also carries `availabilities`      |
 | List for a day | `GET /time_entries`                            | `time-entries-day-service-context.json`, `time-entries-empty-day.json` |
 | Read one       | `GET /time_entries/{id}`                       | `time-entry-show.json`                                 |
 | Create         | `POST /time_entries`                           | `time-entry-create.json`                               |

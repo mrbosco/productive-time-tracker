@@ -28,7 +28,7 @@ import type { OrganizationMembership, Person } from './types';
  */
 const FIELDS =
 	'fields[organization_memberships]=person,organization' +
-	'&fields[people]=first_name,last_name,email,avatar_url' +
+	'&fields[people]=first_name,last_name,email,avatar_url,availabilities' +
 	'&fields[organizations]=name,company' +
 	'&fields[companies]=name,avatar_url';
 
@@ -51,6 +51,7 @@ function toPerson(resource: Resource): Person {
 		lastName: readAttributeString(resource, 'last_name') ?? '',
 		email: readAttributeString(resource, 'email'),
 		avatarUrl: readAttributeString(resource, 'avatar_url'),
+		availabilities: readAttributeString(resource, 'availabilities'),
 	};
 }
 

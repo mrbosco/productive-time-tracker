@@ -14,6 +14,7 @@ import { useTimeEntries } from '@/components/features/time-entries/useTimeEntrie
 import { ActivityBanner } from '@/components/features/timer/ActivityBanner/ActivityBanner';
 import { useTimerContext } from '@/components/features/timer/TimerProvider';
 import { useWeekTotals } from '@/components/features/week/useWeekTotals';
+import { useExpectedHours } from '@/components/features/week/useExpectedHours';
 import { WeekStrip } from '@/components/features/week/WeekStrip/WeekStrip';
 import { useHotkeys } from '@/components/shared/useHotkeys';
 import { addDays, todayIso } from '@/lib/date';
@@ -43,6 +44,7 @@ export function DayView({ session, date }: { session: Session; date: string }) {
 	const navigate = useNavigate();
 	const { data: entries, isPending, isFetching, refetch } = useTimeEntries(session, date);
 	const { data: weekTotals, isPending: isWeekPending, isError: isWeekError } = useWeekTotals(session, date);
+	const availability = useExpectedHours(session);
 	const deleteEntry = useDeleteTimeEntry(session);
 	const copyDay = useCopyDayForward(session);
 	const timer = useTimerContext();
@@ -235,7 +237,13 @@ export function DayView({ session, date }: { session: Session; date: string }) {
 					</Link>
 				</div>
 
-				<WeekStrip date={date} weekTotals={weekTotals} isPending={isWeekPending} isError={isWeekError} />
+				<WeekStrip
+					date={date}
+					weekTotals={weekTotals}
+					isPending={isWeekPending}
+					isError={isWeekError}
+					availability={availability}
+				/>
 
 				<div className="grid items-start gap-3 md:grid-cols-[minmax(0,1fr)_340px] md:gap-8">
 					<div className="flex flex-col gap-3 md:gap-3.5">
