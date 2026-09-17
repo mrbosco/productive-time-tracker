@@ -21,11 +21,13 @@ function StopIcon() {
  * `1h 30m`, `1:30`, `1.5h` or `90` and refuses what the form refuses.
  *
  * A cell with a timer running in it is the one filled cell in the grid and is never editable -
- * the number is climbing, so there is nothing stable to type over. Clicking it stops the timer and
- * the cell settles into an ordinary total.
+ * the number is climbing, so there is nothing stable to type over. It shows the timer's elapsed
+ * rather than the day's sum, which is what the app bar and the header pill show too. Clicking it
+ * stops the timer and the cell settles into an ordinary total.
  */
 export function TimesheetCellEditor({
 	cell,
+	elapsed,
 	rowName,
 	isNonWorking,
 	isTracking,
@@ -33,6 +35,8 @@ export function TimesheetCellEditor({
 	onSave,
 }: {
 	cell: TimesheetCell;
+	/** The running timer's own count, already formatted, so every cell reads from one clock. */
+	elapsed: string;
 	/** For the accessible name, since a bare number in a grid says nothing on its own. */
 	rowName: string;
 	isNonWorking: boolean;
@@ -59,7 +63,7 @@ export function TimesheetCellEditor({
 					className="flex h-[34px] items-center gap-[7px] rounded-pill bg-accent px-2.5 text-meta font-medium text-on-accent tabular-nums"
 				>
 					<StopIcon />
-					{formatDuration(cell.minutes)}
+					{elapsed}
 				</button>
 			</div>
 		);

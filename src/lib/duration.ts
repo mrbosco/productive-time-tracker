@@ -85,7 +85,12 @@ export function toMinutesOfDay(value: string): number | null {
 }
 
 /**
- * A running timer's elapsed time as a clock (X-4): `0:42`, `12:05`, `1:02:30`.
+ * A running timer's elapsed time (X-4): `9m 20s`, `1h 9m 20s`.
+ *
+ * Units, not a clock. `9:20` is nine minutes and twenty seconds here and nine hours twenty minutes
+ * three lines away on the same screen, and nothing in the glyphs says which - the design's own
+ * `0:07` had the same problem the moment a timer ran past an hour. Units cost two characters and
+ * remove the question, and they are the vocabulary every other duration in the app already uses.
  *
  * Not `formatDuration`. That one answers "how much time is this entry worth" in whole minutes and
  * renders `0h` for anything under one - which is the right answer for a saved entry and the wrong
@@ -95,10 +100,11 @@ export function formatElapsed(seconds: number): string {
 	const total = Number.isFinite(seconds) ? Math.max(0, Math.floor(seconds)) : 0;
 	const hours = Math.floor(total / 3600);
 	const minutes = Math.floor((total % 3600) / 60);
-	const remainder = total % 60;
-	const padded = String(remainder).padStart(2, '0');
+	// Seconds padded so the pill does not jitter a character wider every ten ticks; minutes not,
+	// because they only roll over once an hour and `1h 9m` is the way it is said.
+	const padded = String(total % 60).padStart(2, '0');
 
-	if (hours === 0) return `${String(minutes)}:${padded}`;
+	if (hours === 0) return `${String(minutes)}m ${padded}s`;
 
-	return `${String(hours)}:${String(minutes).padStart(2, '0')}:${padded}`;
+	return `${String(hours)}h ${String(minutes)}m ${padded}s`;
 }

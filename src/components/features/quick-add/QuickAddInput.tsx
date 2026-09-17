@@ -35,16 +35,17 @@ export function QuickAddInput({ date }: { date: string }) {
 
 	const described = value.trim();
 	const isTracking = timer.running !== null;
-
-	/**
-	 * Starting puts a row on **today**, because that is where `POST /timers` files the entry it
-	 * creates - so starting while looking at another day would file the work correctly and then
-	 * show nothing at all. Go to the day it landed on, where it is visible and counting.
+	/*
+	 * A timer runs now, so it only belongs on today. On any other day `Start` offered to track work
+	 * that is already over - and, because `POST /timers` files its entry on today, it answered by
+	 * leaving the day you were looking at. `Log time` is the whole row on a past or future day.
 	 */
+	const canTrack = date === todayIso();
+
+	/** Only ever called on today, so the row it creates is the row already on screen. */
 	function startTracking() {
 		timer.start(described);
 		setValue('');
-		if (date !== todayIso()) void navigate({ to: '/day/$date', params: { date: todayIso() } });
 	}
 
 	function logTime() {
@@ -61,8 +62,8 @@ export function QuickAddInput({ date }: { date: string }) {
 			onSubmit={(event) => {
 				event.preventDefault();
 				// Enter starts the clock, because that is the action the row is primarily for. `Log
-				// time` is a click away for the other one.
-				if (described === '') {
+				// time` is a click away for the other one - and is the only one on another day.
+				if (described === '' || !canTrack) {
 					logTime();
 
 					return;
@@ -84,32 +85,42 @@ export function QuickAddInput({ date }: { date: string }) {
 					className="h-12 flex-1 text-list"
 				/>
 
+				{canTrack && (
+					<button
+						type="submit"
+						// Not disabled while one runs: starting a second retires the first rather than
+						// refusing, which is what somebody moving on to the next thing means by it.
+						disabled={described === ''}
+						className={cn(
+							'duration-ui flex h-10 flex-none items-center gap-2 rounded-pill bg-accent px-4 text-meta font-medium text-on-accent transition-colors ease-ui',
+							'hover:bg-accent-dark disabled:cursor-not-allowed disabled:opacity-40'
+						)}
+					>
+						<PlayIcon />
+						Start
+					</button>
+				)}
+				{/* The primary action on any day but today, and it is the only one there. */}
 				<button
-					type="submit"
-					// Not disabled while one runs: starting a second retires the first rather than
-					// refusing, which is what somebody moving on to the next thing means by it.
-					disabled={described === ''}
-					className={cn(
-						'duration-ui flex h-10 flex-none items-center gap-2 rounded-pill bg-accent px-4 text-meta font-medium text-on-accent transition-colors ease-ui',
-						'hover:bg-accent-dark disabled:cursor-not-allowed disabled:opacity-40'
-					)}
-				>
-					<PlayIcon />
-					Start
-				</button>
-				<button
-					type="button"
+					type={canTrack ? 'button' : 'submit'}
 					onClick={logTime}
-					className="duration-ui hidden h-10 flex-none rounded-pill border border-line px-4 text-meta font-medium transition-colors ease-ui hover:bg-subtle sm:block"
+					className={cn(
+						'duration-ui h-10 flex-none rounded-pill px-4 text-meta font-medium transition-colors ease-ui',
+						canTrack
+							? 'hidden border border-line hover:bg-subtle sm:block'
+							: 'bg-accent text-on-accent hover:bg-accent-dark'
+					)}
 				>
 					Log time
 				</button>
 			</div>
 
 			<span className="pl-0.5 text-caption text-muted">
-				{isTracking
-					? 'Starting this stops the timer that is running and keeps its time'
-					: 'Start tracks against your default service · Log time opens the form'}
+				{!canTrack
+					? 'Log time opens the form for this day · the timer only runs on today'
+					: isTracking
+						? 'Starting this stops the timer that is running and keeps its time'
+						: 'Start tracks against your default service · Log time opens the form'}
 			</span>
 		</form>
 	);

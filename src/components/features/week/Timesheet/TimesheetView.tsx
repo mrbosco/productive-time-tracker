@@ -3,13 +3,14 @@ import { useState } from 'react';
 import { Toast } from '@/components/core/Toast';
 import { TimerDot } from '@/components/features/timer/TimerControl/TimerControl';
 import { useTimerContext } from '@/components/features/timer/TimerProvider';
+import { useElapsedSeconds } from '@/components/features/timer/useTimer';
 import { useCreateTimeEntry } from '@/components/features/time-entries/useCreateTimeEntry';
 import { useUpdateTimeEntry } from '@/components/features/time-entries/useUpdateTimeEntry';
 import { useExpectedHours } from '@/components/features/week/useExpectedHours';
 import { useWeekEntries } from '@/components/features/week/useWeekEntries';
 import { expectedMinutesOn } from '@/lib/availability';
 import { addDays, dayOfMonth, formatDayShort, formatWeekdayAndDay, isWeekend, todayIso, weekDays } from '@/lib/date';
-import { formatDuration } from '@/lib/duration';
+import { formatDuration, formatElapsed } from '@/lib/duration';
 import type { Session } from '@/lib/storage';
 import { cn } from '@/lib/utils';
 import { TimesheetCellEditor } from './TimesheetCellEditor';
@@ -38,7 +39,12 @@ function ChevronIcon({ back = false }: { back?: boolean }) {
 	);
 }
 
-const GRID = 'grid grid-cols-[minmax(220px,340px)_repeat(7,minmax(0,1fr))_120px]';
+/*
+ * `min-content` rather than 0 on the day columns: a tracking cell holds a pill wide enough for
+ * `1h 9m 20s`, and a column allowed to squeeze below that clipped it against the next border.
+ * Below the width where seven of those fit, the table scrolls sideways instead of collapsing.
+ */
+const GRID = 'grid grid-cols-[minmax(220px,340px)_repeat(7,minmax(min-content,1fr))_120px]';
 
 /**
  * A week of logged time as a grid: one row per project and service, one column per day (UI-7).
@@ -69,15 +75,18 @@ export function TimesheetView({ session, date }: { session: Session; date: strin
 
 		return minutes === null ? sum : (sum ?? 0) + minutes;
 	}, null);
-	/** What the header pill names: the row a timer is running on, and what it has put on it. */
+	/** Which row the timer is running on, for the pill that names it beside the week's numbers. */
 	const trackingRow = sheet.rows.find((row) =>
 		row.cells.some((cell) => cell.entries.some((entry) => entry.id === timer.running?.entryId))
 	);
-	const trackingMinutes =
-		trackingRow?.cells
-			.flatMap((cell) => cell.entries)
-			.filter((entry) => entry.id === timer.running?.entryId)
-			.reduce((sum, entry) => sum + entry.minutes, 0) ?? 0;
+	/*
+	 * One number in all three places the design puts a running timer - the app bar, this pill and
+	 * the cell - and it is the timer's own elapsed, not anything summed from the grid. They used to
+	 * disagree: the pill showed the entry's stored total and the cell showed the day's, so a screen
+	 * with a timer on it printed three different durations and left the reader to guess which was
+	 * the clock.
+	 */
+	const elapsed = formatElapsed(useElapsedSeconds(timer.running?.startedAt ?? null));
 
 	const isNonWorking = (day: string) => {
 		const minutes = expectedMinutesOn(availability, day);
@@ -166,7 +175,7 @@ export function TimesheetView({ session, date }: { session: Session; date: strin
 					{timer.running !== null && (
 						<span className="flex h-9 flex-none items-center gap-2 rounded-pill bg-selection px-3.5 text-label font-medium whitespace-nowrap text-accent-dark">
 							<TimerDot className="size-1.5" />
-							<span className="tabular-nums">{formatDuration(trackingMinutes)}</span>
+							<span className="tabular-nums">{elapsed}</span>
 							{trackingRow !== undefined && <span className="opacity-72">{trackingRow.project}</span>}
 						</span>
 					)}
@@ -259,6 +268,7 @@ export function TimesheetView({ session, date }: { session: Session; date: strin
 													>
 														<TimesheetCellEditor
 															cell={cell}
+															elapsed={elapsed}
 															rowName={`${row.project} ${row.service}`}
 															isNonWorking={isNonWorking(cell.date)}
 															isTracking={

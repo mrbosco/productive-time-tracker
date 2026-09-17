@@ -1,8 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
 import { renderWithProviders, screen, testSession, userEvent, waitFor } from '@/__tests__/test-utils';
+import { todayIso } from '@/lib/date';
 import { QuickAddInput } from './QuickAddInput';
 
 const session = testSession;
+/** The timer only runs on today, so the two tracking tests have to be standing on it. */
+const TODAY = todayIso();
 
 describe('QuickAddInput', () => {
 	it('has a label, even though the placeholder carries the instruction (guidebook 18)', async () => {
@@ -14,7 +17,7 @@ describe('QuickAddInput', () => {
 	/** UI-3: the common case is describing what you are about to do and starting the clock. */
 	it('starts a timer carrying what was typed', async () => {
 		const user = userEvent.setup();
-		await renderWithProviders(<QuickAddInput date="2026-09-15" />, { session });
+		await renderWithProviders(<QuickAddInput date={TODAY} />, { session });
 
 		await user.type(screen.getByRole('textbox', { name: 'Quick add an entry' }), 'Reviewing the parser');
 		await user.click(screen.getByRole('button', { name: 'Start' }));
@@ -46,7 +49,7 @@ describe('QuickAddInput', () => {
 	 */
 	it('keeps offering to start while one is already running', async () => {
 		const user = userEvent.setup();
-		await renderWithProviders(<QuickAddInput date="2026-09-15" />, { session });
+		await renderWithProviders(<QuickAddInput date={TODAY} />, { session });
 
 		await user.type(screen.getByRole('textbox', { name: 'Quick add an entry' }), 'First');
 		await user.click(screen.getByRole('button', { name: 'Start' }));
@@ -56,6 +59,17 @@ describe('QuickAddInput', () => {
 		});
 		await user.type(screen.getByRole('textbox', { name: 'Quick add an entry' }), 'Second');
 		expect(screen.getByRole('button', { name: 'Start' })).toBeEnabled();
+	});
+
+	/**
+	 * A timer runs now. Offering to start one against yesterday asked to track work that is over,
+	 * and answered by navigating away to today, where the entry it made had landed.
+	 */
+	it('offers only Log time on a day that is not today', async () => {
+		await renderWithProviders(<QuickAddInput date="2026-09-15" />, { session });
+
+		expect(screen.queryByRole('button', { name: 'Start' })).not.toBeInTheDocument();
+		expect(screen.getByRole('button', { name: 'Log time' })).toBeInTheDocument();
 	});
 
 	it('does not submit anything on its own', async () => {

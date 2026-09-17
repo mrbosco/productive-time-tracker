@@ -172,11 +172,17 @@ export function TimeEntryCard({
 			// everywhere, which is the ring the design brief asks cards to have.
 			className={cn(
 				'group relative flex min-h-[76px] items-start gap-3.5 rounded-entry border bg-surface p-4 md:items-center md:gap-[18px] md:px-5 md:py-[18px]',
-				isTracking ? 'border-accent' : 'border-line'
+				/*
+				 * The indigo edge the design gives a tracking row, so it is findable down a long
+				 * day - drawn as a thick left border rather than an absolutely positioned bar. A
+				 * bar is a rectangle and the card is not: its square ends stuck out past the
+				 * rounded corners and read as a rendering fault. A border follows the radius. The
+				 * three extra pixels come back out of the padding so nothing shifts when a timer
+				 * starts.
+				 */
+				isTracking ? 'border-l-4 border-accent pl-[13px] md:pl-[17px]' : 'border-line'
 			)}
 		>
-			{/* The indigo edge the design gives a tracking row, so it is findable down a long day. */}
-			{isTracking && <span aria-hidden="true" className="absolute inset-y-0 left-0 w-1 rounded-l-entry bg-accent" />}
 			{/*
 			 * The company the service is billed to, which is what the row used to lead with in
 			 * Productive's own UI and what UI-1 puts back. Its logo when there is one, its initials
@@ -257,32 +263,12 @@ export function TimeEntryCard({
 			 * row do not fit beside a 15px note at 390, and there is no hover to reveal a pencil, so
 			 * touch keeps `Edit` in the kebab instead.
 			 */}
-			{hasHover && onSaveDuration !== undefined ? (
-				<DurationEditor
-					minutes={minutes}
-					isTracking={isTracking}
-					onSave={async (next) => {
-						await onSaveDuration(next);
-						setHasJustSaved(true);
-					}}
-					isEditing={isEditingDuration}
-					onEditingChange={setIsEditingDuration}
-					isRevealed={REVEALED}
-				/>
-			) : (
-				<p
-					className={cn(
-						'flex-none pt-0.5 text-duration leading-[120%] font-medium tracking-[-.01em] tabular-nums md:pt-0',
-						isTracking && 'text-accent-dark'
-					)}
-				>
-					{formatDuration(minutes)}
-				</p>
-			)}
-
 			{/*
-			 * Reserved whether or not it is painted, so hovering a row does not reflow the duration
-			 * column and send the whole list twitching as the pointer moves down it.
+			 * Before the duration rather than after it, which is where `Card Actions.dc.html` draws
+			 * it. Its width is reserved whether or not it is painted - otherwise the list twitches
+			 * as the pointer runs down it - and on the trailing side that reservation is a visible
+			 * hole between the number and the kebab. On the leading side it is absorbed by the gap
+			 * the note column already leaves.
 			 */}
 			{hasHover &&
 				(isTracking ? null : isEditingDuration || onContinueTimer === undefined ? (
@@ -310,6 +296,29 @@ export function TimeEntryCard({
 			 */}
 			{isTracking && onStopTimer !== undefined && (
 				<StopTimerButton onStop={onStopTimer} label="Stop" className="flex-none" />
+			)}
+
+			{hasHover && onSaveDuration !== undefined ? (
+				<DurationEditor
+					minutes={minutes}
+					isTracking={isTracking}
+					onSave={async (next) => {
+						await onSaveDuration(next);
+						setHasJustSaved(true);
+					}}
+					isEditing={isEditingDuration}
+					onEditingChange={setIsEditingDuration}
+					isRevealed={REVEALED}
+				/>
+			) : (
+				<p
+					className={cn(
+						'flex-none pt-0.5 text-duration leading-[120%] font-medium tracking-[-.01em] tabular-nums md:pt-0',
+						isTracking && 'text-accent-dark'
+					)}
+				>
+					{formatDuration(minutes)}
+				</p>
 			)}
 
 			<DropdownMenu>

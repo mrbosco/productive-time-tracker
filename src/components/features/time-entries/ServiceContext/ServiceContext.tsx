@@ -90,7 +90,7 @@ function ServiceContextDisclosure({
 			aria-expanded={isOpen}
 			onClick={onClick}
 			className={cn(
-				'relative cursor-help text-left font-medium text-ink underline decoration-dotted underline-offset-[3px]',
+				'relative text-left font-medium text-ink underline decoration-dotted underline-offset-[3px]',
 				'[@media(hover:none)]:before:absolute [@media(hover:none)]:before:inset-x-0 [@media(hover:none)]:before:-top-2 [@media(hover:none)]:before:-bottom-4'
 			)}
 		>

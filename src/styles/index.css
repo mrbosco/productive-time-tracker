@@ -273,6 +273,22 @@
 	}
 
 	/*
+	 * Tailwind 4's preflight follows the browser and leaves a `<button>` with `cursor: default`,
+	 * where v3 gave it a pointer. Every control in this app is a button or a Radix trigger built on
+	 * one, so the whole UI lost the one signal that says "this does something". Put back here rather
+	 * than on each control, which is how it drifted out of half of them in the first place.
+	 */
+	button:not(:disabled),
+	summary,
+	label[for],
+	[role='button']:not([aria-disabled='true']),
+	[role='menuitem']:not([aria-disabled='true']),
+	[role='option'],
+	[role='tab'] {
+		@apply cursor-pointer;
+	}
+
+	/*
 	 * One focus treatment everywhere: 2px accent at 2px offset (design README §1).
 	 * `:focus-visible` rather than `:focus` so a click does not draw a ring a
 	 * keyboard user is meant to see.
