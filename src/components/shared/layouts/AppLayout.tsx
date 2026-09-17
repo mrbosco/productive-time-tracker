@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { useNavigate, useRouterState } from '@tanstack/react-router';
 import { lazy, type ReactNode, Suspense, useState } from 'react';
 import { findMembershipForOrganization } from '@/api/organization-memberships';
 import logoUrl from '@/assets/logo-productive.svg';
@@ -16,7 +17,9 @@ import { TimerControl } from '@/components/features/timer/TimerControl/TimerCont
 import { TimerProvider, useTimerContext } from '@/components/features/timer/TimerProvider';
 import type { ActivityMonitorConfig } from '@/components/features/timer/useActivityMonitor';
 import { ShortcutsSheet } from '@/components/shared/ShortcutsSheet/ShortcutsSheet';
+import { ViewSwitch } from '@/components/features/week/ViewSwitch/ViewSwitch';
 import { useHotkeys } from '@/components/shared/useHotkeys';
+import { isIsoDate, startOfWeek, todayIso } from '@/lib/date';
 import type { Session } from '@/lib/storage';
 
 /**
@@ -75,6 +78,18 @@ function AppChrome({ session, children }: { session: Session; children: ReactNod
 	const [isShortcutsOpen, setIsShortcutsOpen] = useState(false);
 	const { data: memberships } = useQuery(sessionQueryOptions(session));
 	const timer = useTimerContext();
+	const navigate = useNavigate();
+	/*
+	 * The date the switch carries across, read off whichever route is showing. A week route names
+	 * its Monday, which is a real day, so switching back lands somewhere sensible either way.
+	 */
+	const viewDate = useRouterState({
+		select: (state) => {
+			const [, , date] = state.location.pathname.split('/');
+
+			return date !== undefined && isIsoDate(date) ? date : todayIso();
+		},
+	});
 	/*
 	 * The membership login matched on, which carries the email and the organization alike. Keyed on
 	 * the organization rather than on the person (UI-8): a token with memberships in two
@@ -96,6 +111,14 @@ function AppChrome({ session, children }: { session: Session; children: ReactNod
 		'?': () => {
 			setIsShortcutsOpen(true);
 		},
+		// UI-7's two views. Here rather than on either screen, because the point of them is getting
+		// to the other one.
+		w: () => {
+			void navigate({ to: '/week/$date', params: { date: startOfWeek(viewDate) } });
+		},
+		d: () => {
+			void navigate({ to: '/day/$date', params: { date: viewDate } });
+		},
 		// X-4's, and global for the same reason: the bar carries the timer on every route, so the
 		// key that stops it has to work on every route too.
 		s: () => {
@@ -108,7 +131,10 @@ function AppChrome({ session, children }: { session: Session; children: ReactNod
 			<header className="flex h-14 items-center gap-2 border-b border-line bg-surface pr-2 pl-4 md:h-16 md:gap-3 md:px-12">
 				<img src={logoUrl} alt="Productive" className="hidden h-6 md:block" />
 				<span aria-hidden="true" className="mx-1 hidden h-5 w-px bg-line md:block" />
-				<span className="flex-1 text-list font-medium tracking-[-.01em]">Time Tracker</span>
+				{/* Between the product name and the timer - the one place both views share (UI-7). */}
+				<ViewSwitch date={viewDate} />
+				<span className="flex-1 text-list font-medium tracking-[-.01em] md:hidden">Time Tracker</span>
+				<span className="hidden flex-1 md:block" />
 
 				<TimerControl
 					running={timer.running}

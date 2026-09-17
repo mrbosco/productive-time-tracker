@@ -1,4 +1,4 @@
-import { useId, useState } from 'react';
+import { useId, useRef, useState } from 'react';
 import { Input } from '@/components/core/Input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/core/Popover';
 import { readDuration } from '@/components/features/time-entries/TimeEntryForm/TimeEntryForm.utils';
@@ -42,10 +42,26 @@ export function DurationEditor({
 	const [value, setValue] = useState(() => formatDuration(minutes));
 	const [error, setError] = useState<string | null>(null);
 	const [isSaving, setIsSaving] = useState(false);
+	/*
+	 * Enter submits the form and the blur that follows commits again, which would save the same
+	 * duration twice. A ref rather than `isSaving`, because the blur arrives before a state update
+	 * has landed.
+	 */
+	const isCommitting = useRef(false);
 
 	const preview = parseDuration(value);
 
 	async function save() {
+		if (isCommitting.current) return;
+		isCommitting.current = true;
+		try {
+			await write();
+		} finally {
+			isCommitting.current = false;
+		}
+	}
+
+	async function write() {
 		const read = readDuration(value);
 
 		if ('error' in read) {

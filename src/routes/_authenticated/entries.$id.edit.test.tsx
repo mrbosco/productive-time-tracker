@@ -46,7 +46,7 @@ describe('the edit route loader', () => {
 			expect.objectContaining({ queryKey: ['time-entries', testSession.personId, ENTRY_DATE] })
 		);
 		expect(prefetchQuery).toHaveBeenCalledWith(
-			expect.objectContaining({ queryKey: ['week-totals', testSession.personId, MONDAY] })
+			expect.objectContaining({ queryKey: ['week-entries', testSession.personId, MONDAY] })
 		);
 		expect(prefetchQuery).toHaveBeenCalledTimes(2);
 	});

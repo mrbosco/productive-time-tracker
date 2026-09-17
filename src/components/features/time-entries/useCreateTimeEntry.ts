@@ -1,8 +1,9 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { weekQueryKey } from '@/components/features/week/useWeekEntries';
 import { createTimeEntry } from '@/api/time-entries';
 import type { TimeEntryInput } from '@/api/types';
 import { toAuth } from '@/components/features/auth/useSession';
-import { startOfWeek } from '@/lib/date';
+
 import type { Session } from '@/lib/storage';
 
 /**
@@ -33,7 +34,7 @@ export function useCreateTimeEntry(session: Session) {
 			return Promise.all([
 				queryClient.invalidateQueries({ queryKey: ['time-entries', session.personId, input.date] }),
 				queryClient.invalidateQueries({
-					queryKey: ['week-totals', session.personId, startOfWeek(input.date)],
+					queryKey: weekQueryKey(session, input.date),
 				}),
 			]);
 		},

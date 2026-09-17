@@ -367,6 +367,8 @@ describe('TimeEntryCard', () => {
 		await user.type(field, '1h 45m{Enter}');
 
 		expect(onSaveDuration).toHaveBeenCalledWith(105);
+		// Once, not twice: Enter submits and the blur that follows used to commit again.
+		expect(onSaveDuration).toHaveBeenCalledTimes(1);
 	});
 
 	it('rejects what the entry form rejects, in the same words', async () => {

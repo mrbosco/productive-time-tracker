@@ -277,7 +277,7 @@ The page is exported as `docs/design/screens/08-improvements.png`.
 | 4   | UI-4  | **Play on the card, and time editable in place.** `Continue timer` leaves the kebab and becomes a play button on the card - one tap instead of two. The duration becomes a button opening a small inline editor with `−15m` / `+15m` / `+1h` nudge chips, the same parser as the form, Enter saving and Esc cancelling. Hover reveals both on a pointer; on touch both are always visible. The kebab becomes Edit / Duplicate / Timer logs / Delete.      | `PATCH /time_entries/{id}`                   | M      |
 | 5   | UI-5  | **Week strip: tell the cells apart.** Non-working days take a hatched fill, `—` replaces `0h` wherever nothing is expected, and the week total sits in the selection wash with an equals sign, no border, no click and no focus stop - it is not a day and not navigable.                                                                                                                                                                              | none                                         | S      |
 | 6   | UI-6  | **Expected, worked and remaining.** A day cell and the week total both answer a hover with `Expected work time`, `Worked time` and `Work hours left`, scoped to that day or to the week. Durations stay `1h 30m`, never `01:30`.                                                                                                                                                                                                                       | an expected-hours figure per person          | S      |
-| 7   | UI-7  | **Timesheet alongside Day. RESERVED - out of scope here.** One row per project and service, one column per day, editable cells, behind a two-item view switch; desktop only, the grid does not survive 390px. Section 9 puts the timesheet grid out of scope, and the design page proposes it "as a phase 2 on its own, not bundled with the rest".                                                                                                    | not decided                                  | L      |
+| 7   | UI-7  | **Timesheet alongside Day.** A second route, `/week/:date`, reached by a segmented switch in the app bar, with `w` and `d` as its shortcuts. One row per project and service, one column per day, cells editable in place with the entry form's own duration rules. Today's column takes the selection wash and non-working ones the hatch from UI-5; a running timer fills its cell. `Add row` opens UI-11's picker. Desktop only - nine columns do not survive 390px, and the day view is the mobile answer. **Drawn in full as `Timesheet.dc.html`, which is why it is built rather than reserved.** | one week of entries, which the strip already fetches | L      |
 | 8   | UI-8  | **Organization on the avatar.** Someone who works across organizations should see which one they are logging into before they log anything. The avatar carries a small organization badge and the menu names the organization and its ID - the same ID typed at login. The avatar is 44px, the largest control in the bar, never smaller than the help button beside it.                                                                               | already in the login response                | S      |
 | 9   | UI-9  | **Timer logs.** Tracked time is timer runs plus manual corrections, and the card shows only the result. A read-only dialog from the kebab shows how the number was arrived at: one row per run (`Started`, `Stopped`, `Timer`, `Running`), a dash in `Stopped` while a run is going, and a footer reconciling `Tracked by timer`, `Manual correction` and `Logged`.                                                                                     | `GET /timers` narrowed to one time entry     | S      |
 | 10  | UI-10 | **Don't throw away a half-written entry. SHIPPED with US-4.** Dismissing the form with unsaved changes asks first; an untouched form still closes immediately, because a prompt nobody needs is one people click through without reading. `shared/ConfirmDialog` and `UnsavedChangesDialog`.                                                                                                                                                           | none                                         | S      |
@@ -286,15 +286,16 @@ The page is exported as `docs/design/screens/08-improvements.png`.
 Order of work - dependency order, not ID order, cheapest and least blocked first:
 
 1. Record the three API answers UI-1, UI-6 and UI-9 turn on (below).
-2. UI-5, 3. UI-8, 4. UI-1, 5. UI-2, 6. UI-6, 7. UI-4, 8. UI-3, 9. UI-9, 10. UI-11.
+2. UI-5, 3. UI-8, 4. UI-1, 5. UI-2, 6. UI-6, 7. UI-4, 8. UI-3, 9. UI-9, 10. UI-11, 11. UI-7.
 
 UI-1 changes the entry card's anatomy, and UI-2, UI-4 and UI-3 each redraw the card that change
 produces. They are therefore **one branch and one pull request**, which is the exception to SPEC 12's
 one-story-per-PR rule and the only one: four PRs would rewrite the same component four times and
 show a reviewer three intermediate shapes that never ship.
 
-> **UI-7 is reserved.** It has an ID so nothing else claims the number and so the design page's item
-> 7 has somewhere to point, not because it is being built.
+> **UI-7 was reserved and is now built.** It was carried as a number with nowhere to point until
+> `Timesheet.dc.html` drew it as a real screen, cell states and all. SPEC 9 still lists the
+> timesheet grid as out of scope for the assignment's own stories; this is an extra beyond them.
 
 > **UI-10 already shipped**, with US-4 - `shared/ConfirmDialog` was extracted there and
 > `UnsavedChangesDialog` became a thin wrapper over it. It is listed for completeness, and because

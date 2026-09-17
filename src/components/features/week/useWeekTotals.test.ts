@@ -11,7 +11,7 @@ describe('weekTotalsQueryOptions', () => {
 		const tuesday = weekTotalsQueryOptions(testSession, '2026-09-15').queryKey;
 		const friday = weekTotalsQueryOptions(testSession, '2026-09-18').queryKey;
 
-		expect(tuesday).toEqual(['week-totals', testSession.personId, '2026-09-14']);
+		expect(tuesday).toEqual(['week-entries', testSession.personId, '2026-09-14']);
 		expect(friday).toEqual(tuesday);
 	});
 

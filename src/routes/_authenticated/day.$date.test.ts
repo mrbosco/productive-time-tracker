@@ -81,7 +81,7 @@ describe('the day route loader', () => {
 		const { prefetchQuery } = runLoader('2026-09-15');
 
 		expect(prefetchQuery).toHaveBeenCalledWith(
-			expect.objectContaining({ queryKey: ['week-totals', testSession.personId, '2026-09-14'] })
+			expect.objectContaining({ queryKey: ['week-entries', testSession.personId, '2026-09-14'] })
 		);
 		expect(prefetchQuery).toHaveBeenCalledTimes(2);
 	});

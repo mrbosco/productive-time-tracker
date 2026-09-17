@@ -1,9 +1,9 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { weekQueryKey } from '@/components/features/week/useWeekEntries';
 import { deleteTimeEntry } from '@/api/time-entries';
 import type { TimeEntry } from '@/api/types';
 import { toAuth } from '@/components/features/auth/useSession';
-import type { WeekTotals } from '@/components/features/week/useWeekTotals';
-import { startOfWeek } from '@/lib/date';
+
 import type { Session } from '@/lib/storage';
 
 interface DeleteTimeEntryInput {
@@ -16,7 +16,7 @@ interface DeleteTimeEntryInput {
 
 interface DeleteContext {
 	entries: TimeEntry[] | undefined;
-	weekTotals: WeekTotals | undefined;
+	weekEntries: TimeEntry[] | undefined;
 }
 
 /**
@@ -38,9 +38,9 @@ export function useDeleteTimeEntry(session: Session) {
 	return useMutation({
 		mutationFn: ({ id }: DeleteTimeEntryInput) => deleteTimeEntry(toAuth(session), id),
 
-		onMutate: async ({ id, date, minutes }): Promise<DeleteContext> => {
+		onMutate: async ({ id, date }): Promise<DeleteContext> => {
 			const dayKey = ['time-entries', session.personId, date];
-			const weekKey = ['week-totals', session.personId, startOfWeek(date)];
+			const weekKey = weekQueryKey(session, date);
 
 			// A refetch already in flight would land after this and put the row back, so it is
 			// cancelled before the cache is written rather than after.
@@ -50,7 +50,7 @@ export function useDeleteTimeEntry(session: Session) {
 			]);
 
 			const entries = queryClient.getQueryData<TimeEntry[]>(dayKey);
-			const weekTotals = queryClient.getQueryData<WeekTotals>(weekKey);
+			const weekEntries = queryClient.getQueryData<TimeEntry[]>(weekKey);
 
 			if (entries !== undefined) {
 				queryClient.setQueryData<TimeEntry[]>(
@@ -59,14 +59,19 @@ export function useDeleteTimeEntry(session: Session) {
 				);
 			}
 
-			if (weekTotals !== undefined) {
-				queryClient.setQueryData<WeekTotals>(weekKey, {
-					...weekTotals,
-					[date]: (weekTotals[date] ?? 0) - minutes,
-				});
+			/*
+			 * The week holds entries rather than sums now, so the row is dropped rather than the
+			 * minutes subtracted - which is the same arithmetic done once, in the `select` that
+			 * turns this into the strip's totals, instead of in two places that could disagree.
+			 */
+			if (weekEntries !== undefined) {
+				queryClient.setQueryData<TimeEntry[]>(
+					weekKey,
+					weekEntries.filter((entry) => entry.id !== id)
+				);
 			}
 
-			return { entries, weekTotals };
+			return { entries, weekEntries };
 		},
 
 		onError: (_error, { date }, context) => {
@@ -77,7 +82,7 @@ export function useDeleteTimeEntry(session: Session) {
 			if (context === undefined) return;
 
 			queryClient.setQueryData(['time-entries', session.personId, date], context.entries);
-			queryClient.setQueryData(['week-totals', session.personId, startOfWeek(date)], context.weekTotals);
+			queryClient.setQueryData(weekQueryKey(session, date), context.weekEntries);
 		},
 
 		onSettled: (_data, _error, { id, date }) => {
@@ -93,7 +98,7 @@ export function useDeleteTimeEntry(session: Session) {
 			// or failed (because the restored snapshot is now of unknown age).
 			return Promise.all([
 				queryClient.invalidateQueries({ queryKey: ['time-entries', session.personId, date] }),
-				queryClient.invalidateQueries({ queryKey: ['week-totals', session.personId, startOfWeek(date)] }),
+				queryClient.invalidateQueries({ queryKey: weekQueryKey(session, date) }),
 			]);
 		},
 	});

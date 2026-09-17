@@ -123,7 +123,7 @@ describe('useCopyDayForward', () => {
 			expect(invalidate).toHaveBeenCalledTimes(2);
 		});
 		expect(invalidate).toHaveBeenCalledWith({ queryKey: ['time-entries', testSession.personId, TARGET] });
-		expect(invalidate).toHaveBeenCalledWith({ queryKey: ['week-totals', testSession.personId, MONDAY] });
+		expect(invalidate).toHaveBeenCalledWith({ queryKey: ['week-entries', testSession.personId, MONDAY] });
 	});
 
 	/** Nothing landed, so there is nothing to refetch and no reason to make the network say so. */

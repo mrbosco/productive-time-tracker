@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { weekQueryKey } from '@/components/features/week/useWeekEntries';
 import { updateTimeEntry } from '@/api/time-entries';
 import type { TimeEntryInput } from '@/api/types';
 import { toAuth } from '@/components/features/auth/useSession';
@@ -59,9 +60,7 @@ export function useUpdateTimeEntry(session: Session) {
 			// the edited entry rather than briefly showing the value that was just replaced.
 			return Promise.all([
 				...[...days].map((day) => queryClient.invalidateQueries({ queryKey: ['time-entries', session.personId, day] })),
-				...[...weeks].map((monday) =>
-					queryClient.invalidateQueries({ queryKey: ['week-totals', session.personId, monday] })
-				),
+				...[...weeks].map((monday) => queryClient.invalidateQueries({ queryKey: weekQueryKey(session, monday) })),
 			]);
 		},
 	});

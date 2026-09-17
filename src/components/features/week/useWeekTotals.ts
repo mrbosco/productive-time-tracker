@@ -1,7 +1,5 @@
 import { queryOptions, useQuery } from '@tanstack/react-query';
-import { listTimeEntriesInRange } from '@/api/time-entries';
-import { toAuth } from '@/components/features/auth/useSession';
-import { startOfWeek, weekDays } from '@/lib/date';
+import { weekEntriesQueryOptions } from '@/components/features/week/useWeekEntries';
 import type { Session } from '@/lib/storage';
 
 /** Minutes logged per ISO date, for the seven days of one week. */
@@ -18,23 +16,14 @@ function groupByDate(entries: { date: string; minutes: number }[]): WeekTotals {
 
 /**
  * One week of totals from a single request (SPEC 10, X-1): `filter[after]`/`filter[before]` take a
- * range, so seven days cost the same one call a single day does, and the grouping happens here.
+ * range, so seven days cost the same one call a single day does.
  *
- * Keyed on the week's Monday rather than the selected date (SPEC 6.3), so stepping between days
- * inside a week reuses the cache instead of refetching the same seven days.
+ * A `select` over the week's entries rather than a query of its own. The grid (UI-7) needs those
+ * entries and the strip needs these sums, and fetching the same range twice to answer both would
+ * be a second request for arithmetic that can be done here.
  */
 export function weekTotalsQueryOptions(session: Session, date: string) {
-	const monday = startOfWeek(date);
-	const days = weekDays(date);
-
-	return queryOptions({
-		queryKey: ['week-totals', session.personId, monday],
-		queryFn: async () => {
-			const entries = await listTimeEntriesInRange(toAuth(session), session.personId, monday, days[6]);
-
-			return groupByDate(entries);
-		},
-	});
+	return queryOptions({ ...weekEntriesQueryOptions(session, date), select: groupByDate });
 }
 
 export function useWeekTotals(session: Session, date: string) {

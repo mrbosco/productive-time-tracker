@@ -3,7 +3,6 @@ import { http, HttpResponse } from 'msw';
 import { describe, expect, it, vi } from 'vitest';
 import { ApiError } from '@/api/client';
 import type { TimeEntry } from '@/api/types';
-import type { WeekTotals } from '@/components/features/week/useWeekTotals';
 import { buildService, renderHookWithProviders, testSession } from '@/__tests__/test-utils';
 import { server } from '@/mocks/node';
 import { useDeleteTimeEntry } from './useDeleteTimeEntry';
@@ -18,7 +17,7 @@ function dayKey(date: string) {
 }
 
 function weekKey(monday: string) {
-	return ['week-totals', testSession.personId, monday];
+	return ['week-entries', testSession.personId, monday];
 }
 
 function buildEntry(id: string, minutes: number): TimeEntry {
@@ -34,10 +33,19 @@ function buildEntry(id: string, minutes: number): TimeEntry {
 	};
 }
 
-/** A day of two entries and the week total they add up to, as the day view would have them. */
+/**
+ * A day of two entries, and the week holding the same two. The week is entries rather than sums:
+ * the strip's totals are a `select` over them, so one cache answers both.
+ */
 function seed(queryClient: { setQueryData: (key: unknown[], data: unknown) => unknown }) {
-	queryClient.setQueryData(dayKey(DATE), [buildEntry(ENTRY_ID, 90), buildEntry('162903874', 30)]);
-	queryClient.setQueryData(weekKey(MONDAY), { [DATE]: 120, '2026-09-16': 60 } satisfies WeekTotals);
+	const day = [buildEntry(ENTRY_ID, 90), buildEntry('162903874', 30)];
+	queryClient.setQueryData(dayKey(DATE), day);
+	queryClient.setQueryData(weekKey(MONDAY), day);
+}
+
+/** What the strip would draw for that day, which is what the optimistic write has to move. */
+function weekMinutesOn(entries: TimeEntry[] | undefined, date: string) {
+	return (entries ?? []).filter((entry) => entry.date === date).reduce((sum, entry) => sum + entry.minutes, 0);
 }
 
 describe('useDeleteTimeEntry', () => {
@@ -84,7 +92,7 @@ describe('useDeleteTimeEntry', () => {
 		const deleted = result.current.mutateAsync({ id: ENTRY_ID, date: DATE, minutes: 90 });
 
 		await waitFor(() => {
-			expect(queryClient.getQueryData<WeekTotals>(weekKey(MONDAY))?.[DATE]).toBe(30);
+			expect(weekMinutesOn(queryClient.getQueryData<TimeEntry[]>(weekKey(MONDAY)), DATE)).toBe(30);
 		});
 
 		await deleted;
@@ -101,7 +109,7 @@ describe('useDeleteTimeEntry', () => {
 		);
 
 		expect(queryClient.getQueryData<TimeEntry[]>(dayKey(DATE))).toHaveLength(2);
-		expect(queryClient.getQueryData<WeekTotals>(weekKey(MONDAY))?.[DATE]).toBe(120);
+		expect(weekMinutesOn(queryClient.getQueryData<TimeEntry[]>(weekKey(MONDAY)), DATE)).toBe(120);
 	});
 
 	/** So the caller can say why, rather than reporting a delete that did not happen. */
