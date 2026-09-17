@@ -21,6 +21,9 @@ interface TimeEntryListProps {
 	 */
 	focusedEntryId?: string | null;
 	onFocusEntry?: (id: string) => void;
+	/** X-3: fills an empty day from the one before it. The day view owns the copy and its toast. */
+	onCopyFromYesterday?: () => void;
+	isCopying?: boolean;
 }
 
 /** The card the empty and error states share, so the list never collapses to nothing. */
@@ -70,6 +73,8 @@ export function TimeEntryList({
 	onRequestDelete,
 	focusedEntryId = null,
 	onFocusEntry,
+	onCopyFromYesterday,
+	isCopying = false,
 }: TimeEntryListProps) {
 	if (isPending) {
 		return (
@@ -127,15 +132,16 @@ export function TimeEntryList({
 					</Link>
 				</Button>
 				{/*
-				 * X-3 copies yesterday's entries into this day. Drawn here because the design puts
-				 * it in this state; it does nothing until that story lands.
+				 * X-3. Secondary to `Add entry` and styled as a link, because it is a shortcut for
+				 * a day that looks like the one before it rather than the way to fill a day in.
 				 */}
 				<button
 					type="button"
-					disabled
+					disabled={onCopyFromYesterday === undefined || isCopying}
+					onClick={onCopyFromYesterday}
 					className="rounded-input text-meta font-medium text-accent underline underline-offset-[3px] disabled:opacity-60"
 				>
-					Copy from yesterday (X-3)
+					{isCopying ? 'Copying...' : 'Copy from yesterday'}
 				</button>
 			</ListState>
 		);

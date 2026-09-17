@@ -58,6 +58,11 @@ interface TimeEntryFormProps {
 	date: string;
 	/** The entry being edited (US-3). Absent means this is the New entry form. */
 	entry?: TimeEntry;
+	/**
+	 * Values a new entry starts from without being an edit of anything (X-3's `Duplicate`). Ignored
+	 * while `entry` is present: an edit already has values, and its own are the right ones.
+	 */
+	prefill?: { minutes: number; note: string | null } | null;
 	maxNoteLength?: number;
 }
 
@@ -88,7 +93,7 @@ interface TimeEntryFormProps {
  * is a surface of its own rather than a third mode here: per SPEC 11 it edits the entry the timer
  * already created, and it has no date, no service and no draft to protect.
  */
-export function TimeEntryForm({ session, date, entry, maxNoteLength = MAX_NOTE_LENGTH }: TimeEntryFormProps) {
+export function TimeEntryForm({ session, date, entry, prefill, maxNoteLength = MAX_NOTE_LENGTH }: TimeEntryFormProps) {
 	const navigate = useNavigate();
 	const isEditing = entry !== undefined;
 	// The entry is authoritative about its own day; the prop only answers for the New entry form.
@@ -127,13 +132,21 @@ export function TimeEntryForm({ session, date, entry, maxNoteLength = MAX_NOTE_L
 	const [mode, setMode] = useState<DurationMode>('duration');
 	const fieldId = useId();
 
-	/** What the fields start from: blank for a new entry, the entry's own values for an edit. */
+	/**
+	 * What the fields start from: the entry's own values for an edit, a duplicate's for a copy, and
+	 * blank otherwise.
+	 *
+	 * A prefilled form is not a dirty one. These are `defaultValues`, so `isDirty` stays false until
+	 * something is actually changed, and closing a duplicate nobody touched asks nothing - the same
+	 * reason editing seeds from `formatDuration` rather than from raw minutes.
+	 */
+	const source = entry ?? prefill ?? undefined;
 	const seed = {
 		date: dayDate,
-		duration: entry === undefined ? '' : formatDuration(entry.minutes),
+		duration: source === undefined ? '' : formatDuration(source.minutes),
 		from: '',
 		to: '',
-		note: entry?.note ?? '',
+		note: source?.note ?? '',
 	};
 
 	const {

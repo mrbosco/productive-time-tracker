@@ -42,10 +42,21 @@ describe('TimeEntryList', () => {
 	});
 
 	/** X-3 copies yesterday's entries in; the design puts the offer in this state. */
-	it('shows Copy from yesterday, marked as not yet wired', async () => {
-		await renderWithProviders(<TimeEntryList {...baseProps} entries={[]} />);
+	it('offers to copy yesterday into an empty day (X-3)', async () => {
+		const onCopyFromYesterday = vi.fn();
+		const user = userEvent.setup();
+		await renderWithProviders(<TimeEntryList {...baseProps} entries={[]} onCopyFromYesterday={onCopyFromYesterday} />);
 
-		expect(screen.getByRole('button', { name: /^Copy from yesterday/ })).toBeDisabled();
+		await user.click(screen.getByRole('button', { name: 'Copy from yesterday' }));
+
+		expect(onCopyFromYesterday).toHaveBeenCalledTimes(1);
+	});
+
+	/** The copy is N sequential POSTs, so the offer says so rather than sitting there looking inert. */
+	it('says a copy is under way rather than looking idle (X-3)', async () => {
+		await renderWithProviders(<TimeEntryList {...baseProps} entries={[]} onCopyFromYesterday={vi.fn()} isCopying />);
+
+		expect(screen.getByRole('button', { name: 'Copying...' })).toBeDisabled();
 	});
 
 	/**

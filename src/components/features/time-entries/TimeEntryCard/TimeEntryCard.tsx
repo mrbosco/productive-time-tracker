@@ -8,6 +8,7 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from '@/components/core/DropdownMenu';
+import { todayIso } from '@/lib/date';
 import { formatDuration } from '@/lib/duration';
 import { Note } from '@/components/features/time-entries/Note/Note';
 import { toPlainText } from '@/lib/note';
@@ -131,6 +132,12 @@ export function TimeEntryCard({
 				 * here to open it would drag the whole ProseMirror tree onto the screen SPEC 4.2
 				 * requires to render on one request.
 				 *
+				 * `Duplicate` lands on **today**, not on the day the source entry is from (X-3, Toggl's
+				 * continue pattern): copying yesterday's standup is almost always about logging today's,
+				 * and the source date is one tap away in the picker if it was not. It carries the entry's
+				 * ID rather than its values - the form reads them back - so nobody's description ends up
+				 * in a URL.
+				 *
 				 * `Delete` is a handler rather than a link for the same reason read the other way:
 				 * it asks its question on this screen and stays here (design brief 5), so there is
 				 * no route to send anyone to. The dialog it opens lives on the day view, not on this
@@ -144,7 +151,11 @@ export function TimeEntryCard({
 						</Link>
 					</DropdownMenuItem>
 					<DropdownMenuItem disabled>Continue timer (X-4)</DropdownMenuItem>
-					<DropdownMenuItem disabled>Duplicate (X-3)</DropdownMenuItem>
+					<DropdownMenuItem asChild>
+						<Link to="/entries/new" search={{ date: todayIso(), duplicate: entry.id }}>
+							Duplicate
+						</Link>
+					</DropdownMenuItem>
 					<DropdownMenuSeparator />
 					<DropdownMenuItem variant="destructive" onSelect={onRequestDelete}>
 						Delete

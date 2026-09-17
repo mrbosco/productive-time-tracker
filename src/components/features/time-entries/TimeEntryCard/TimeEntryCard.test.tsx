@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { TimeEntry } from '@/api/types';
+import { todayIso } from '@/lib/date';
 import { renderWithProviders, screen, userEvent } from '@/__tests__/test-utils';
 import { TimeEntryCard } from './TimeEntryCard';
 
@@ -162,18 +163,36 @@ describe('TimeEntryCard', () => {
 	});
 
 	/**
-	 * The rest of the menu is drawn because the design puts it on the card, but each item belongs to
-	 * a later story, so it says which and does not activate.
+	 * What is left of the menu belongs to X-4, so it says which and does not activate - an item that
+	 * reads as live, takes focus and then does nothing is worse than one visibly not ready.
 	 */
-	it('leaves the actions later stories own marked as not yet wired', async () => {
+	it('leaves the action X-4 owns marked as not yet wired', async () => {
 		const user = userEvent.setup();
 		await renderWithProviders(<TimeEntryCard onRequestDelete={noop} entry={buildEntry()} />);
 
 		await user.click(screen.getByRole('button', { name: 'Entry actions' }));
 
-		for (const name of [/^Continue timer/, /^Duplicate/]) {
-			expect(await screen.findByRole('menuitem', { name })).toHaveAttribute('aria-disabled', 'true');
-		}
+		expect(await screen.findByRole('menuitem', { name: /^Continue timer/ })).toHaveAttribute('aria-disabled', 'true');
+	});
+
+	/**
+	 * X-3. Today, not the entry's own day: copying yesterday's standup is almost always about
+	 * logging today's. The entry travels as an ID, so nobody's description ends up in a URL.
+	 */
+	it('duplicates onto today, carrying the entry by id (X-3)', async () => {
+		const user = userEvent.setup();
+		await renderWithProviders(<TimeEntryCard onRequestDelete={noop} entry={buildEntry()} />);
+
+		await user.click(screen.getByRole('button', { name: 'Entry actions' }));
+
+		const duplicate = await screen.findByRole('menuitem', { name: 'Duplicate' });
+		/*
+		 * The id arrives percent-encoded and quoted because the router JSON-encodes any search value
+		 * that is itself valid JSON, and an id of digits is a valid JSON number. That is the round
+		 * trip working, not a bug: `validateSearch` reads a string back out of it.
+		 */
+		expect(duplicate).toHaveAttribute('href', `/entries/new?date=${todayIso()}&duplicate=%22162903873%22`);
+		expect(duplicate).not.toHaveAttribute('aria-disabled', 'true');
 	});
 
 	/** R-12 starts here: the card asks, and the day view is what confirms and deletes. */
