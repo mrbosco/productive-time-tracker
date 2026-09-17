@@ -63,20 +63,59 @@ More screens: [`docs/screenshots/`](docs/screenshots/).
 
 ## Scripts
 
-| Script           | What it does                                                  |
-| ---------------- | ------------------------------------------------------------- |
-| `pnpm dev`       | Vite dev server against the real Productive API               |
-| `pnpm dev:mock`  | Same, but against MSW handlers — no credentials needed        |
-| `pnpm build`     | Type-check, then build to `dist/`                             |
-| `pnpm preview`   | Serve the production build                                    |
-| `pnpm typecheck` | `tsc -b`, no emit                                             |
-| `pnpm lint`      | ESLint, type-aware rules plus Prettier                        |
-| `pnpm format`    | Prettier over the repo                                        |
-| `pnpm test`      | Vitest: unit and component tests                              |
-| `pnpm test:e2e`  | Playwright, desktop and mobile projects, served by `dev:mock` |
+| Script            | What it does                                                  |
+| ----------------- | ------------------------------------------------------------- |
+| `pnpm dev`        | Vite dev server against the real Productive API               |
+| `pnpm dev:mock`   | Same, but against MSW handlers — no credentials needed        |
+| `pnpm build`      | Type-check, then build to `dist/`                             |
+| `pnpm preview`    | Serve the production build                                    |
+| `pnpm typecheck`  | `tsc -b`, no emit                                             |
+| `pnpm lint`       | ESLint, type-aware rules plus Prettier                        |
+| `pnpm format`     | Prettier over the repo                                        |
+| `pnpm test`       | Vitest: unit and component tests                              |
+| `pnpm test:e2e`   | Playwright, desktop and a mobile subset, served by `dev:mock` |
+| `pnpm api:sample` | Record one live API response into `docs/api/samples/`         |
 
 End-to-end tests never hit the real API — they run against MSW so CI stays deterministic and
 secret-free ([ADR-0003](docs/adr/0003-testing.md)).
+
+## Working on it
+
+The API layer is built from recorded responses rather than from the published reference alone,
+because the two disagree in ways that matter — unknown filters are ignored rather than rejected,
+and stopping a timer is `PUT`, not `POST`. `docs/api/README.md` records each of those with the
+response that established it, and `pnpm api:sample` records a new one. That needs a `.env.local`
+holding a real token and organization ID; it is gitignored, the app itself never reads it, and
+`docs/api/README.md` lists the variable names.
+
+### Developing with a coding agent
+
+The assignment encourages using one, so the setup is committed rather than hidden. `CLAUDE.md` loads
+every session; the rules load only when a file they cover is opened, so they cost nothing until they
+apply:
+
+| Rule                  | Applies to                                                                  |
+| --------------------- | --------------------------------------------------------------------------- |
+| `rules/guidebook.md`  | `src/**` — component layout, naming, hooks, accessibility                   |
+| `rules/api-client.md` | `src/api/**` — JSON:API constraints, how to settle a question about the API |
+| `rules/testing.md`    | tests and `e2e/**`                                                          |
+| `rules/git.md`        | everywhere — commit and PR format                                           |
+
+Three skills carry the repeatable parts — `/feature`, `/pr`, `/release` — and two subagents do the
+reading: `api-explorer` answers endpoint questions from the recorded samples, and `reviewer` reads a
+diff against the spec and the conventions. Adding a feature is `/feature <name>`, then the gate
+(`pnpm lint && pnpm typecheck && pnpm test && pnpm test:e2e`), then `/pr`.
+
+## Known limitations
+
+Worth saying plainly rather than leaving to be found:
+
+- **Nothing detects API drift.** The tests run against recorded responses through MSW, so the suite
+  would stay green against a shape the API no longer sends. Responses are validated at runtime, so
+  the app itself fails loudly rather than silently — but only a person re-running `pnpm api:sample`
+  finds out that the recordings have aged.
+- **An entry does not remember it was logged as a range.** Productive stores minutes and nothing
+  else, so `09:00`–`10:30` reopens as `1h 30m`.
 
 ## Notes
 

@@ -15,7 +15,7 @@ All four pass before the PR exists (guidebook 29):
 pnpm lint && pnpm typecheck && pnpm test && pnpm test:e2e
 ```
 
-`.github/workflows/ci.yml` runs the same four commands plus `changeset status`, so a red gate surfaces either way - locally is just faster than a round trip.
+`.github/workflows/ci.yml` runs lint, typecheck, unit tests, the build, the changeset check and e2e, so a red gate surfaces either way - locally is just faster than a round trip.
 
 Then confirm:
 
@@ -39,7 +39,7 @@ Read it as a reviewer. For anything non-trivial, hand it to the `reviewer` agent
 Commit format plus the ID in parentheses:
 
 ```
-feat(time-entries): add entry form (US-2)
+feat(time-entries): add entry form
 ```
 
 Scope from `.claude/rules/git.md`. The ID is the story the PR closes.
@@ -59,7 +59,6 @@ Why this approach. Alternatives rejected and why. Cite the ADR if one governs it
 
 ## Spec and design
 
-- Story: US-2
 - Feature: add a time entry
 - Route: `/entries/new` (SPEC 1)
 - Screens: `docs/screenshots/entry-form-mobile.png`, `entry-form-desktop.png`
@@ -87,10 +86,8 @@ Anything you want the reviewer to decide. "None" is a valid answer.
 - [ ] Changeset added (every behaviour change, guidebook 31)
 - [ ] Docs updated if behaviour changed
 - [ ] No token, organization ID or other secret in the diff
-- [ ] `US-n` / `R-n` / `X-n` / `P-n` in the title and in every `Refs:` footer
+- [ ] A `Refs:` footer on every commit that changes behaviour
 ```
-
-`US-n` is the canonical story ID, never `UC-n` - the same rule as commits (`.claude/rules/git.md`).
 
 Screenshots are required, both viewports (N-4). Get them from the Playwright run or the dev server at a mobile viewport.
 

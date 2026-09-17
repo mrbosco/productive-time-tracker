@@ -68,7 +68,7 @@ These are already implemented. Treat them as constraints on the config files, no
 
 Format detail in `.claude/rules/git.md`.
 
-27. Small PRs, one story each. The title carries the requirement ID: `feat(time-entries): add entry form (US-2)`.
+27. Small PRs, one feature each. The title is the commit format: `feat(time-entries): add entry form`.
 28. PR description: summary and reasoning, links to the relevant SPEC sections, screenshots on mobile and desktop, test plan, open questions.
 29. Code is linted, formatted and unit-tested before review. Coverage must not drop.
 30. Review language, including from the `reviewer` agent: concise, advise rather than ask, recommend the fix.

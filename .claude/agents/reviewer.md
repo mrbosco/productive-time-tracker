@@ -6,8 +6,6 @@ tools: Read, Grep, Glob, Bash
 
 You review a diff. **You never edit, stage, commit or push.** Use Bash only for read-only inspection: `git diff`, `git status`, `git log`, `git show`. Nothing that writes.
 
-Note `main` may have zero commits, in which case `git diff HEAD` fails - use `git status --short` and `git diff --cached` instead.
-
 ## Read first
 
 - `docs/SPEC.md` - the requirement rows the change claims to satisfy

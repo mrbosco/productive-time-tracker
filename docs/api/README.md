@@ -9,9 +9,27 @@ untouched so relationship pointers stay coherent for MSW fixtures. `docs` is in 
 so the bodies are never reformatted again. Transport statuses are in `http-status-lines.txt`,
 recorded by `curl` rather than asserted in prose here.
 
-Superseded source: `api-master.yaml` (OpenAPI 3.1, kept out of the repo because of size) and
-https://developer.productive.io/reference/resources/time-entries. Where the OpenAPI file and the
-live API disagreed, the live API won.
+## What this file is, and is not
+
+**The contract is Productive's own reference**, at https://developer.productive.io/reference, and
+changes to it are announced at https://developer.productive.io/reference/changelog. Read those
+first; most questions are answered there.
+
+**This file records the gap between that reference and what the API actually does**, because for
+this integration the gap mattered. Unknown filter names are ignored rather than rejected, so a
+filter that looks applied may not be. `X-Organization-Id` does not scope `/organization_memberships`.
+Stopping a timer is `PUT`, not `POST`. `fields` is honoured on collections and ignored on a single
+resource. None of that is in the reference, and each of them would have been a bug shipped on an
+assumption. Every claim below cites the recorded response that established it.
+
+**These recordings are a point in time, not a live contract.** They were taken on 2026-09-16/17 and
+nothing re-checks them: the test suite runs against these files through MSW, so it would stay green
+against a shape the API no longer sends. Re-record with `pnpm api:sample` and read the diff when the
+changelog moves, or when something behaves unlike these notes describe. One known drift is already
+documented at the end of this file.
+
+The OpenAPI source (`api-master.yaml`, 130k lines) is deliberately not in the repo (ADR-0005). Where
+it and the live API disagreed, the live API won.
 
 ## Auth and headers
 
@@ -336,8 +354,17 @@ entry's `time` was typed by hand.
 
 ## Reproducing
 
-`scripts/api-sample.sh` records one response into `docs/api/samples/`. It reads the credentials
-from the gitignored `.env.local` itself, so they never reach a terminal, a log or an agent's
+`pnpm api:sample <name> '<path-with-query>'` records one response into `docs/api/samples/`.
+
+It expects a gitignored `.env.local` holding two variables:
+
+```sh
+PRODUCTIVE_API_TOKEN=...      # or PRODUCTIVE_TOKEN, or API_TOKEN
+PRODUCTIVE_ORGANIZATION_ID=... # or PRODUCTIVE_ORG_ID, ORGANIZATION_ID, or ORG_ID
+```
+
+The app itself never reads that file — only this script does. It reads the credentials
+from `.env.local` itself, so they never reach a terminal, a log or an agent's
 context, and it scrubs the organization ID, the person's name and email, and the organization name
 before anything is written.
 

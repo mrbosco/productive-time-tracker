@@ -1,6 +1,6 @@
 ---
 name: feature
-description: Implement one user story or extra feature end to end - branch, code, tests, changeset, commit. Use when starting work on an R-, US-, X- or P- identifier from docs/SPEC.md.
+description: Implement one feature end to end - branch, code, tests, changeset, commit. Use when starting work on a requirement from docs/SPEC.md.
 ---
 
 # Build a feature
@@ -11,8 +11,8 @@ One story per branch. If the request spans two stories, stop and split it.
 
 Find the ID in `docs/SPEC.md` before writing anything:
 
-- `US-n` / `R-n`: the tables in 2.1. Note every `R-` row tracing to the story; they are the acceptance criteria.
-- `X-n` / `P-n`: the table in 10, which carries the full scope of each extra.
+- A required feature: the `R-n` and `N-n` tables in SPEC 9. The `R-` rows are the acceptance criteria.
+- Something beyond the assignment: the table in SPEC 6, which names each extra and what it covers.
 
 Also read: the routes and state keys in SPEC 1, the matching screens in `docs/screenshots/`, and any ADR the spec cites. If the requirement is ambiguous, check SPEC 4 (assumptions) before asking - it may already be decided.
 
@@ -87,7 +87,7 @@ feat(time-entries): add entry form with inline validation
 The day list had no create path. The zod schema is shared with the edit route
 so both surfaces reject the same input.
 
-Refs: US-2, R-9
+Refs: R-9
 ```
 
 Commit only when the user asks. Then use the `pr` skill.

@@ -1,7 +1,6 @@
 <!--
-Title: type(scope): subject (US-n)   e.g. feat(time-entries): add entry form (US-2)
+Title: type(scope): subject   e.g. feat(time-entries): add entry form
 Scopes: .claude/rules/git.md. Sections below are guidebook rule 28 - keep all six.
-Use US-n, never UC-n.
 -->
 
 ## Summary

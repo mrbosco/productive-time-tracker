@@ -75,9 +75,24 @@ hand-written client; ADR-0005 rules out generating types from the OpenAPI file.
 
 ## When the notes do not answer it
 
-25. **The procedure is: record it.** An API question this repo cannot answer is settled by making a
-    real request and saving the response into `docs/api/samples/`. That path always works and needs
-    no subscription. Everything below is an accelerator on top of it, never a replacement.
+22. **Check the published reference first.** https://developer.productive.io/reference is the
+    contract and is kept current; https://developer.productive.io/reference/changelog is where a
+    change to it is announced. Read it before assuming this repo has to discover something for
+    itself — most questions are answered there, and an answer that is already written down costs
+    nothing to find.
+23. **Record what the reference does not say, or says wrongly.** The samples in `docs/api/samples/`
+    exist for the gap between the two, and the gap is real: unknown filters are silently ignored
+    rather than rejected, `X-Organization-Id` does not scope `/organization_memberships`, stopping a
+    timer is `PUT` and not `POST`, and `fields` is ignored on a single-resource GET. None of that is
+    in the reference. When observation and the reference disagree, observation wins and the sample
+    is the citation.
+24. **Recording is one command**: `pnpm api:sample <name> '<path-with-query>'`. It reads credentials
+    from the gitignored `.env.local`, scrubs identity out of the body, and refuses to write anything
+    carrying a secret-shaped key.
+25. **The procedure is: record it.** An API question neither the reference nor this repo answers is
+    settled by making a real request and saving the response into `docs/api/samples/`. That path
+    always works and needs no subscription. Everything below is an accelerator on top of it, never a
+    replacement.
 26. **The Productive MCP server is optional and often unavailable.** It is configured in `.mcp.json`
     (`https://mcp.productive.io/mcp`, browser OAuth, no key in the file), but it requires
     Productive's **Ultimate** plan, connects per-user and binds to one organization. This project's
