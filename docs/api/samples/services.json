@@ -534,7 +534,8 @@
       "id": "1523286",
       "type": "companies",
       "attributes": {
-        "name": "Example Companie"
+        "name": "Example Companie",
+        "avatar_url": "https://example.com/avatar.png"
       }
     },
     {
@@ -548,7 +549,8 @@
       "id": "1523289",
       "type": "companies",
       "attributes": {
-        "name": "Example Companie"
+        "name": "Example Companie",
+        "avatar_url": "https://example.com/avatar.png"
       }
     },
     {
@@ -562,14 +564,16 @@
       "id": "1523288",
       "type": "companies",
       "attributes": {
-        "name": "Example Companie"
+        "name": "Example Companie",
+        "avatar_url": "https://example.com/avatar.png"
       }
     },
     {
       "id": "1523290",
       "type": "companies",
       "attributes": {
-        "name": "Example Companie"
+        "name": "Example Companie",
+        "avatar_url": "https://example.com/avatar.png"
       }
     },
     {
@@ -588,8 +592,8 @@
     }
   ],
   "links": {
-    "first": "https://api.productive.io/api/v2/services?fields%5Bcompanies%5D=name&fields%5Bdeals%5D=name%2Ccompany%2Cproject&fields%5Bprojects%5D=name&fields%5Bservices%5D=name%2Cdeal&filter%5Btime_tracking_enabled%5D=true&include=deal.company%2Cdeal.project&page%5Bnumber%5D=1&page%5Bsize%5D=200",
-    "last": "https://api.productive.io/api/v2/services?fields%5Bcompanies%5D=name&fields%5Bdeals%5D=name%2Ccompany%2Cproject&fields%5Bprojects%5D=name&fields%5Bservices%5D=name%2Cdeal&filter%5Btime_tracking_enabled%5D=true&include=deal.company%2Cdeal.project&page%5Bnumber%5D=1&page%5Bsize%5D=200"
+    "first": "https://api.productive.io/api/v2/services?fields%5Bcompanies%5D=name%2Cavatar_url&fields%5Bdeals%5D=name%2Ccompany%2Cproject&fields%5Bprojects%5D=name&fields%5Bservices%5D=name%2Cdeal&filter%5Btime_tracking_enabled%5D=true&include=deal.company%2Cdeal.project&page%5Bnumber%5D=1&page%5Bsize%5D=200",
+    "last": "https://api.productive.io/api/v2/services?fields%5Bcompanies%5D=name%2Cavatar_url&fields%5Bdeals%5D=name%2Ccompany%2Cproject&fields%5Bprojects%5D=name&fields%5Bservices%5D=name%2Cdeal&filter%5Btime_tracking_enabled%5D=true&include=deal.company%2Cdeal.project&page%5Bnumber%5D=1&page%5Bsize%5D=200"
   },
   "meta": {
     "current_page": 1,

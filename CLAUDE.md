@@ -29,7 +29,7 @@ IDs appear in commits, PR titles and tests. Unpadded decimal, except ADRs.
 - `UC-n` in `docs/diagrams/01-use-cases.mmd` maps 1:1 to `US-n`
 - `A-1`..`A-10` assumptions (SPEC 5)
 - `X-1`..`X-5`, `P-1`, `P-2` extra features (SPEC 10)
-- `UI-1`..`UI-10` second design pass (SPEC 10.1). `UI-7` is reserved and not built; `UI-10` shipped with US-4
+- `UI-1`..`UI-11` second design pass (SPEC 10.1). `UI-7` is reserved and not built; `UI-10` shipped with US-4
 - `ADR-0001`..`ADR-0010` decisions, zero-padded to four
 
 ## Stack

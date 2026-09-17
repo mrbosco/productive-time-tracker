@@ -1,10 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
-import { useId } from 'react';
 import { labelServices } from '@/api/services';
-import { Select } from '@/components/core/Select';
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@/components/core/Sheet';
 import { useSession } from '@/components/features/auth/useSession';
+import { ServicePicker } from '@/components/features/settings/ServicePicker/ServicePicker';
 import { servicesQueryOptions } from '@/components/features/settings/useDefaultService';
+import { useRecentServiceIds } from '@/components/features/settings/useRecentServices';
+import { useOrganizationCompanyId } from '@/components/features/settings/useOrganizationCompanyId';
 import type { Session } from '@/lib/storage';
 
 interface SettingsSheetProps {
@@ -21,8 +22,7 @@ interface SettingsSheetProps {
  * only place it can be changed, which is why A-1b sends a person here when Productive refuses the
  * service their entry was logged against.
  *
- * There are no Cancel and Save buttons: the design draws none, and a single select that applies on
- * change has nothing to confirm.
+ * There are no Cancel and Save buttons: choosing applies immediately, so `Done` only closes.
  *
  * Failing to load and having nothing to load are rendered differently on purpose (A-1). "We could
  * not read the list" is a problem to retry; "this organization tracks nothing" is a fact about the
@@ -33,61 +33,104 @@ export function SettingsSheet({ session, open, onOpenChange }: SettingsSheetProp
 	// Only while it is open. The list is already prefetched at login for the entry form (A-1), and
 	// a closed sheet mounted on every authenticated screen has no business issuing a request - or
 	// re-issuing one the moment logout clears the cache.
-	const { data, isPending, isError } = useQuery({ ...servicesQueryOptions(session), enabled: open });
-	const selectId = useId();
+	const { data, isPending, isError, refetch } = useQuery({ ...servicesQueryOptions(session), enabled: open });
+	const recentIds = useRecentServiceIds(session, open);
+	const ownCompanyId = useOrganizationCompanyId(session);
 
-	// Sorted by name before labelling, so the order is stable across sessions - `/services`
-	// guarantees none of its own.
-	const labelled = data === undefined ? [] : labelServices([...data].sort((a, b) => a.name.localeCompare(b.name)));
+	const services = data ?? [];
 	/**
 	 * Resolved against the list, not just read off the session: a service that was the default and
-	 * has since been disabled is no longer among the options, and pointing the select at a value
-	 * with no option would leave it showing the first one while claiming the stored one -
-	 * disagreeing with `useDefaultService`, which has already fallen back.
+	 * has since been disabled is no longer among the options, and marking a row that is not there
+	 * would disagree with `useDefaultService`, which has already fallen back to the first by name.
 	 */
-	const stored = labelled.find((entry) => entry.service.id === session.defaultServiceId);
-	const selectedId = (stored ?? labelled[0])?.service.id;
+	const stored = services.find((service) => service.id === session.defaultServiceId);
+	const selected = stored ?? [...services].sort((a, b) => a.name.localeCompare(b.name))[0];
+	const [current] = labelServices(selected === undefined ? [] : [selected]);
 
 	return (
 		<Sheet open={open} onOpenChange={onOpenChange}>
-			<SheetContent aria-describedby={undefined}>
-				<SheetTitle className="mb-[18px] block md:mb-5">Default service</SheetTitle>
+			{/*
+			 * A fixed height rather than one that fits its contents: the search field would
+			 * otherwise walk up the screen as results filter, which is the one thing a field being
+			 * typed into must not do. 88% on a phone, the full column on desktop.
+			 */}
+			<SheetContent aria-describedby={undefined} className="flex h-[88dvh] flex-col md:h-auto">
+				<div className="flex-none">
+					<SheetTitle className="block">Default service</SheetTitle>
+					<SheetDescription className="mt-1">Used for new entries and the timer.</SheetDescription>
+				</div>
 
-				{isPending && <p className="text-meta text-muted">Loading services…</p>}
+				{isPending && (
+					<div className="mt-4 flex flex-col gap-2" aria-hidden="true">
+						<div className="h-11 animate-pulse rounded-input bg-subtle" />
+						{[62, 48, 70, 54].map((width) => (
+							<div key={width} className="flex min-h-14 items-center gap-3 px-3">
+								<span className="size-5 flex-none animate-pulse rounded-pill bg-subtle" />
+								<span className="flex flex-1 flex-col gap-1.5">
+									<span className="h-3 animate-pulse rounded-[5px] bg-subtle" style={{ width: `${String(width)}%` }} />
+									<span className="h-2.5 w-[46%] animate-pulse rounded-[5px] bg-subtle" />
+								</span>
+							</div>
+						))}
+					</div>
+				)}
 
 				{isError && (
-					<p role="alert" className="text-meta text-danger-ink">
-						Could not load the service list. Close this and try again.
-					</p>
-				)}
-
-				{!isPending && !isError && labelled.length === 0 && (
-					<p className="text-meta text-muted">
-						This organization has no services with time tracking enabled, so entries cannot be logged yet.
-					</p>
-				)}
-
-				{labelled.length > 0 && (
-					<div className="flex flex-col gap-1.5">
-						<label htmlFor={selectId} className="text-label font-medium text-muted">
-							Default service
-						</label>
-						<Select
-							id={selectId}
-							value={selectedId}
-							onChange={(event) => {
-								login({ ...session, defaultServiceId: event.target.value });
-								onOpenChange(false);
-							}}
+					<div role="alert" className="mt-8 flex flex-col items-center gap-3.5 px-5 text-center">
+						<p className="text-list">Could not load services.</p>
+						<button
+							type="button"
+							onClick={() => void refetch()}
+							className="duration-ui h-11 rounded-pill border border-line px-4.5 text-meta font-medium transition-colors ease-ui hover:bg-subtle"
 						>
-							{labelled.map(({ service, label }) => (
-								<option key={service.id} value={service.id}>
-									{label}
-								</option>
-							))}
-						</Select>
-						<SheetDescription className="pl-0.5">Used for new entries and the timer.</SheetDescription>
+							Retry
+						</button>
 					</div>
+				)}
+
+				{!isPending && !isError && services.length === 0 && (
+					<div className="mt-8 flex flex-col items-center gap-3 px-5 text-center">
+						<p className="text-list">No services are assigned to you in this organization.</p>
+						<p className="text-label text-muted">
+							Ask an administrator to add you to a project, then reopen this sheet.
+						</p>
+					</div>
+				)}
+
+				{services.length > 0 && (
+					<>
+						<div className="mt-3.5 flex min-h-0 flex-1 flex-col">
+							<ServicePicker
+								services={services}
+								selectedId={selected?.id ?? null}
+								recentIds={recentIds}
+								ownCompanyId={ownCompanyId}
+								onSelect={(service) => {
+									login({ ...session, defaultServiceId: service.id });
+									// On touch there is nothing else to do in here, so choosing closes it.
+									// A pointer keeps the sheet open, where `Done` is one click away.
+									if (!window.matchMedia?.('(hover: hover)').matches) onOpenChange(false);
+								}}
+							/>
+						</div>
+
+						{/* Says what is set from anywhere in the list, so the sheet can be closed without
+						    scrolling back to check. */}
+						<div className="flex flex-none items-center gap-3 border-t border-line pt-3.5">
+							<span className="min-w-0 flex-1 truncate text-caption text-muted">
+								Default: <span className="font-medium text-ink">{current?.label ?? '—'}</span>
+							</span>
+							<button
+								type="button"
+								onClick={() => {
+									onOpenChange(false);
+								}}
+								className="duration-ui hidden h-11 flex-none rounded-pill bg-accent px-5 text-meta font-medium text-on-accent transition-colors ease-ui hover:bg-accent-dark md:block"
+							>
+								Done
+							</button>
+						</div>
+					</>
 				)}
 			</SheetContent>
 		</Sheet>

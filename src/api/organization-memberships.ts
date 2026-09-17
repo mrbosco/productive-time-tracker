@@ -73,6 +73,7 @@ export function parseOrganizationMemberships(document: JsonApiDocument): Organiz
 			organizationId,
 			organizationName: organization === undefined ? null : readAttributeString(organization, 'name'),
 			organizationAvatarUrl: company === undefined ? null : readAttributeString(company, 'avatar_url'),
+			organizationCompanyId: company?.id ?? null,
 		};
 	});
 }

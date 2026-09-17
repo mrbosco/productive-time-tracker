@@ -250,7 +250,7 @@ Implemented only after all required stories are merged (`v0.2.0`), one PR each, 
 - Synthetic score (flag `activityMonitor.detectSyntheticInput`, default `false`): rolling window of the last 60 pointer events; fires when the coefficient of variation of intervals is below 0.15, median displacement is below 3 px and the window contains no keyboard, wheel or click events.
 - Thresholds live in one config object (`activityMonitor.idleMinutes`, `...cvThreshold`, `...displacementPx`); the hook `useActivityMonitor` is tested with recorded synthetic and human-like event streams.
 
-### 10.1 Second design pass (UI-1..UI-10)
+### 10.1 Second design pass (UI-1..UI-11)
 
 Ten changes to what was already designed, drawn as standalone proposals after `v0.3.0` shipped the
 required stories and the extras above. Nothing on that page is wired into the approved screens -
@@ -281,11 +281,12 @@ The page is exported as `docs/design/screens/08-improvements.png`.
 | 8   | UI-8  | **Organization on the avatar.** Someone who works across organizations should see which one they are logging into before they log anything. The avatar carries a small organization badge and the menu names the organization and its ID - the same ID typed at login. The avatar is 44px, the largest control in the bar, never smaller than the help button beside it.                                                                               | already in the login response                | S      |
 | 9   | UI-9  | **Timer logs.** Tracked time is timer runs plus manual corrections, and the card shows only the result. A read-only dialog from the kebab shows how the number was arrived at: one row per run (`Started`, `Stopped`, `Timer`, `Running`), a dash in `Stopped` while a run is going, and a footer reconciling `Tracked by timer`, `Manual correction` and `Logged`.                                                                                     | `GET /timers` narrowed to one time entry     | S      |
 | 10  | UI-10 | **Don't throw away a half-written entry. SHIPPED with US-4.** Dismissing the form with unsaved changes asks first; an untouched form still closes immediately, because a prompt nobody needs is one people click through without reading. `shared/ConfirmDialog` and `UnsavedChangesDialog`.                                                                                                                                                           | none                                         | S      |
+| 11  | UI-11 | **Default service: a searchable picker.** The sheet's native `select` cannot be searched, truncates its options to the control's width and holds no markup, which stops working at eighty services across a dozen companies. A search field and a list grouped by company replace it: service name leading, project beneath, the company once per group header with its logo. Search spans company, project and service and collapses the groups. Current default first in its group, then anything tracked in the last 30 days marked `Recent`, then by name; the person's own organization leads. Choosing applies at once - `Done` only closes, and on touch a tap does both. | `/services` + one 30-day `/time_entries` read while the sheet is open | M      |
 
 Order of work - dependency order, not ID order, cheapest and least blocked first:
 
 1. Record the three API answers UI-1, UI-6 and UI-9 turn on (below).
-2. UI-5, 3. UI-8, 4. UI-1, 5. UI-2, 6. UI-6, 7. UI-4, 8. UI-3, 9. UI-9.
+2. UI-5, 3. UI-8, 4. UI-1, 5. UI-2, 6. UI-6, 7. UI-4, 8. UI-3, 9. UI-9, 10. UI-11.
 
 UI-1 changes the entry card's anatomy, and UI-2, UI-4 and UI-3 each redraw the card that change
 produces. They are therefore **one branch and one pull request**, which is the exception to SPEC 12's

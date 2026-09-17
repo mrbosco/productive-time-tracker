@@ -68,6 +68,8 @@ export interface OrganizationMembership {
 	 * company's `avatar_url` (`organization-memberships-avatars.json`).
 	 */
 	organizationAvatarUrl: string | null;
+	/** That company's ID, which is how the picker knows which group is the user's own. */
+	organizationCompanyId: string | null;
 }
 
 export interface TimeEntry {

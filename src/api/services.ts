@@ -25,11 +25,11 @@ import type { Service } from './types';
  * The project rides along because A-1's label calls its middle part the project and had been
  * printing the deal there. They are different records - a deal is "Data platform migration - phase
  * 2" where its project is "Data platform migration" - and the entry card names the project now
- * (UI-2), so a picker naming the deal would have two names for one thing. No logo here: this list
- * labels rows, it does not draw them.
+ * (UI-2), so a picker naming the deal would have two names for one thing. The company logo comes
+ * too, because the picker groups by company and draws one per group header.
  */
 const FIELDS =
-	'fields[services]=name,deal&fields[deals]=name,company,project&fields[projects]=name&fields[companies]=name';
+	'fields[services]=name,deal&fields[deals]=name,company,project&fields[projects]=name&fields[companies]=name,avatar_url';
 
 function buildPath(page: number): string {
 	return (
