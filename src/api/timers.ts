@@ -35,6 +35,25 @@ export function parseTimer(document: JsonApiDocument): Timer | null {
 }
 
 /**
+ * Every timer run attached to one entry, oldest first (UI-9).
+ *
+ * `filter[time_entry_id]` genuinely filters rather than being one of the silently ignored ones:
+ * three rows against sixteen unfiltered, recorded as `timers-for-entry.json` and `timers-all.json`
+ * (api-client rule 11).
+ *
+ * Sorted here rather than trusted: the rows came back in start order, nothing documents that they
+ * must, and UI-9 reads each run as the step up from the one before it - an order that is wrong
+ * gives wrong minutes rather than a wrong-looking list.
+ */
+export async function listTimersForEntry(auth: Auth, timeEntryId: string): Promise<Timer[]> {
+	const path =
+		`/timers?filter[time_entry_id]=${encodeURIComponent(timeEntryId)}` + `&include=time_entry&${FIELDS}&page[size]=200`;
+	const timers = listResources(requireDocument(await request(auth, path))).map(toTimer);
+
+	return timers.sort((left, right) => Date.parse(left.startedAt) - Date.parse(right.startedAt));
+}
+
+/**
  * `filter[stopped_at][eq]=` is an empty-valued filter copied from Productive's own web app, and no
  * sample can prove it filters - the account only ever had one timer. Since an ignored filter would
  * hand back an arbitrary timer, the running check is repeated client-side.

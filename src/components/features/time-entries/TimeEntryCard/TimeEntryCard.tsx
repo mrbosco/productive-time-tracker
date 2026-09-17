@@ -64,6 +64,8 @@ interface TimeEntryCardProps {
 	onContinueTimer?: () => void;
 	/** Writes a corrected duration (UI-4). Absent leaves the duration as plain text. */
 	onSaveDuration?: (minutes: number) => Promise<void>;
+	/** Opens UI-9's read-only account of how this entry's minutes were arrived at. */
+	onShowTimerLogs?: () => void;
 	/**
 	 * A timer is running against this entry (X-4). The card says so and carries a stop control of
 	 * its own, because the app bar can be scrolled a long way from the row it belongs to.
@@ -90,6 +92,7 @@ export function TimeEntryCard({
 	onTakeFocus,
 	onContinueTimer,
 	onSaveDuration,
+	onShowTimerLogs,
 	trackingSince = null,
 	onStopTimer,
 }: TimeEntryCardProps) {
@@ -300,6 +303,8 @@ export function TimeEntryCard({
 							Duplicate
 						</Link>
 					</DropdownMenuItem>
+					{/* Where `Continue timer` used to be, so the menu did not grow (UI-9). */}
+					{onShowTimerLogs !== undefined && <DropdownMenuItem onSelect={onShowTimerLogs}>Timer logs</DropdownMenuItem>}
 					<DropdownMenuSeparator />
 					<DropdownMenuItem variant="destructive" onSelect={onRequestDelete}>
 						Delete

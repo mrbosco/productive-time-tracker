@@ -10,6 +10,7 @@ import timeEntryShow from '../../docs/api/samples/time-entry-show.json';
 import timeEntryUpdate from '../../docs/api/samples/time-entry-update.json';
 import timerCreate from '../../docs/api/samples/timer-create.json';
 import timerStop from '../../docs/api/samples/timer-stop.json';
+import timersForEntry from '../../docs/api/samples/timers-for-entry.json';
 import timersRunning from '../../docs/api/samples/timers-running.json';
 import { todayIso } from '@/lib/date';
 
@@ -23,6 +24,12 @@ import { todayIso } from '@/lib/date';
  * Happy path only. Error cases belong in the test that needs them, via `server.use(...)`
  * (.claude/rules/testing.md).
  */
+
+/**
+ * The seeded day's noted entry, which is where the recorded timer runs are served from (UI-9). Any
+ * other entry answers with none, so the dialog's empty state is reachable too.
+ */
+const ENTRY_WITH_TIMER_RUNS = '162903873';
 
 /** The date `time-entries-day.json` was recorded for; any other date responds empty. */
 export const SEEDED_DATE = '2026-09-15';
@@ -301,6 +308,33 @@ export const handlers: RequestHandler[] = [
 	 * create and the stop responses carry `time_entry` un-included (api-client rule 10), which is
 	 * why the app learns it from here and remembers it.
 	 */
+	/*
+	 * UI-9's runs for one entry. Answered before the running-timer handler because both are
+	 * `GET /timers` and MSW takes the first match; this one only claims the request when the entry
+	 * filter is on it.
+	 *
+	 * The three recorded runs belong to an entry on a day this fixture does not hold, so they are
+	 * re-envelopa onto the seeded day's noted entry - the same move `showEntry` makes, and for the
+	 * same reason: without it `dev:mock` and the e2e suite could only ever see the empty state.
+	 * Every other entry answers empty, so both states are reachable.
+	 */
+	http.get('*/timers', ({ request }) => {
+		const entryId = new URL(request.url).searchParams.get('filter[time_entry_id]');
+		// Undefined rather than a response: MSW then tries the next matching handler, which is the
+		// running-timer one below.
+		if (entryId === null) return undefined;
+
+		const runs =
+			entryId === ENTRY_WITH_TIMER_RUNS
+				? timersForEntry.data.map((timer) => ({
+						...timer,
+						relationships: { time_entry: { data: { type: 'time_entries', id: entryId } } },
+					}))
+				: [];
+
+		return HttpResponse.json({ ...timersForEntry, data: runs, meta: { ...timersForEntry.meta } });
+	}),
+
 	http.get('*/timers', () => {
 		if (runningTimer === null) {
 			return HttpResponse.json({

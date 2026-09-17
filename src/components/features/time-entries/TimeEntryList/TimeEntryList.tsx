@@ -28,6 +28,8 @@ interface TimeEntryListProps {
 	onContinueTimer?: (entry: TimeEntry) => void;
 	/** Writes a corrected duration from the card (UI-4). The day view owns the write and the toast. */
 	onSaveDuration?: (entry: TimeEntry, minutes: number) => Promise<void>;
+	/** Opens UI-9's timer logs for one entry. */
+	onShowTimerLogs?: (entry: TimeEntry) => void;
 	/** The entry a timer is running against, and when it started (X-4). */
 	trackingEntryId?: string | null;
 	trackingSince?: string | null;
@@ -85,6 +87,7 @@ export function TimeEntryList({
 	isCopying = false,
 	onContinueTimer,
 	onSaveDuration,
+	onShowTimerLogs,
 	trackingEntryId = null,
 	trackingSince = null,
 	onStopTimer,
@@ -191,6 +194,13 @@ export function TimeEntryList({
 									}
 						}
 						onSaveDuration={onSaveDuration === undefined ? undefined : (minutes) => onSaveDuration(entry, minutes)}
+						onShowTimerLogs={
+							onShowTimerLogs === undefined
+								? undefined
+								: () => {
+										onShowTimerLogs(entry);
+									}
+						}
 						trackingSince={entry.id === trackingEntryId ? trackingSince : null}
 						onStopTimer={onStopTimer}
 					/>

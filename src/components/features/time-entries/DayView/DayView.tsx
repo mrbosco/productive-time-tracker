@@ -11,6 +11,7 @@ import { TimeEntryList } from '@/components/features/time-entries/TimeEntryList/
 import { useCopyDayForward } from '@/components/features/time-entries/useCopyDayForward';
 import { useDeleteTimeEntry } from '@/components/features/time-entries/useDeleteTimeEntry';
 import { useUpdateTimeEntry } from '@/components/features/time-entries/useUpdateTimeEntry';
+import { TimerLogsDialog } from '@/components/features/timer/TimerLogsDialog/TimerLogsDialog';
 import { useTimeEntries } from '@/components/features/time-entries/useTimeEntries';
 import { ActivityBanner } from '@/components/features/timer/ActivityBanner/ActivityBanner';
 import { useTimerContext } from '@/components/features/timer/TimerProvider';
@@ -53,6 +54,7 @@ export function DayView({ session, date }: { session: Session; date: string }) {
 
 	/** The entry the confirm dialog is asking about, and the only thing that opens it (R-12). */
 	const [entryPendingDelete, setEntryPendingDelete] = useState<TimeEntry | null>(null);
+	const [entryShowingLogs, setEntryShowingLogs] = useState<TimeEntry | null>(null);
 	/**
 	 * Raised here rather than handed over in history state, because a delete does not navigate: the
 	 * design keeps it on the day behind the dialog (design brief 5). The route's own toast, which
@@ -326,6 +328,7 @@ export function DayView({ session, date }: { session: Session; date: string }) {
 							 * - on whatever day it is on. Nothing navigates, and nothing is copied.
 							 */
 							onSaveDuration={saveDuration}
+							onShowTimerLogs={setEntryShowingLogs}
 							onContinueTimer={
 								timer.running === null
 									? (entry) => {
@@ -357,6 +360,13 @@ export function DayView({ session, date }: { session: Session; date: string }) {
 			 * the values it was opened with for as long as it is on screen: a background refetch
 			 * that removed the row would otherwise leave a question about nothing.
 			 */}
+			<TimerLogsDialog
+				session={session}
+				entry={entryShowingLogs}
+				onOpenChange={(open) => {
+					if (!open) setEntryShowingLogs(null);
+				}}
+			/>
 			<TimeEntryDeleteDialog
 				entry={entryPendingDelete}
 				onOpenChange={(next) => {
