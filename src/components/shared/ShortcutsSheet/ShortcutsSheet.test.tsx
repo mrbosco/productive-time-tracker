@@ -13,18 +13,12 @@ describe('ShortcutsSheet', () => {
 			'Move between entries',
 			'Edit focused entry',
 			'Delete focused entry',
+			'Stop timer',
 			'This sheet',
 			'Close',
 		]) {
 			expect(screen.getByText(action)).toBeInTheDocument();
 		}
-	});
-
-	/** X-4 is what gives `s` something to stop; teaching it earlier would teach a key that does nothing. */
-	it('leaves the timer key out until there is a timer (X-4)', async () => {
-		await renderWithProviders(<ShortcutsSheet open onOpenChange={() => undefined} />);
-
-		expect(screen.queryByText('Stop timer')).not.toBeInTheDocument();
 	});
 
 	it('closes from its own close button', async () => {

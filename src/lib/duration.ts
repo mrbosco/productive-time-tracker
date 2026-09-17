@@ -83,3 +83,22 @@ export function toMinutesOfDay(value: string): number | null {
 
 	return hours * 60 + minutes;
 }
+
+/**
+ * A running timer's elapsed time as a clock (X-4): `0:42`, `12:05`, `1:02:30`.
+ *
+ * Not `formatDuration`. That one answers "how much time is this entry worth" in whole minutes and
+ * renders `0h` for anything under one - which is the right answer for a saved entry and the wrong
+ * one for a timer, where the seconds ticking are the only sign it is running at all.
+ */
+export function formatElapsed(seconds: number): string {
+	const total = Number.isFinite(seconds) ? Math.max(0, Math.floor(seconds)) : 0;
+	const hours = Math.floor(total / 3600);
+	const minutes = Math.floor((total % 3600) / 60);
+	const remainder = total % 60;
+	const padded = String(remainder).padStart(2, '0');
+
+	if (hours === 0) return `${String(minutes)}:${padded}`;
+
+	return `${String(hours)}:${String(minutes).padStart(2, '0')}:${padded}`;
+}

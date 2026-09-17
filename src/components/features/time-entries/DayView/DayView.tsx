@@ -11,6 +11,7 @@ import { TimeEntryList } from '@/components/features/time-entries/TimeEntryList/
 import { useCopyDayForward } from '@/components/features/time-entries/useCopyDayForward';
 import { useDeleteTimeEntry } from '@/components/features/time-entries/useDeleteTimeEntry';
 import { useTimeEntries } from '@/components/features/time-entries/useTimeEntries';
+import { useTimerContext } from '@/components/features/timer/TimerProvider';
 import { useWeekTotals } from '@/components/features/week/useWeekTotals';
 import { WeekStrip } from '@/components/features/week/WeekStrip/WeekStrip';
 import { useHotkeys } from '@/components/shared/useHotkeys';
@@ -43,6 +44,7 @@ export function DayView({ session, date }: { session: Session; date: string }) {
 	const { data: weekTotals, isPending: isWeekPending, isError: isWeekError } = useWeekTotals(session, date);
 	const deleteEntry = useDeleteTimeEntry(session);
 	const copyDay = useCopyDayForward(session);
+	const timer = useTimerContext();
 
 	/** The entry the confirm dialog is asking about, and the only thing that opens it (R-12). */
 	const [entryPendingDelete, setEntryPendingDelete] = useState<TimeEntry | null>(null);
@@ -247,6 +249,14 @@ export function DayView({ session, date }: { session: Session; date: string }) {
 								void copyFromYesterday();
 							}}
 							isCopying={copyDay.isPending}
+							/*
+							 * X-4. The day view passes it down rather than the card reaching for the
+							 * context itself, so a card stays renderable on its own - the same reason
+							 * `onRequestDelete` is a prop.
+							 */
+							onContinueTimer={(entry) => {
+								timer.start(entry.note);
+							}}
 						/>
 					</div>
 

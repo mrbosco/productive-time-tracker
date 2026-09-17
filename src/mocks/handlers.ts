@@ -1,4 +1,5 @@
 import { http, HttpResponse, type RequestHandler } from 'msw';
+import timerAlreadyStopped from '../../docs/api/samples/error-409-timer-already-stopped.json';
 import error404 from '../../docs/api/samples/error-404.json';
 import memberships from '../../docs/api/samples/organization-memberships-include-organization.json';
 import services from '../../docs/api/samples/services.json';
@@ -10,6 +11,7 @@ import timeEntryUpdate from '../../docs/api/samples/time-entry-update.json';
 import timerCreate from '../../docs/api/samples/timer-create.json';
 import timerStop from '../../docs/api/samples/timer-stop.json';
 import timersRunning from '../../docs/api/samples/timers-running.json';
+import { todayIso } from '@/lib/date';
 
 /**
  * Fixtures are the responses recorded in `docs/api/samples/`, imported rather than copied so there
@@ -58,11 +60,24 @@ let editedAttributes = new Map<string, Record<string, unknown>>();
  */
 let deletedIds = new Set<string>();
 
+/**
+ * The timer this run has started, if any.
+ *
+ * The recorded `timers-running.json` describes a timer that *is* running, and serving it
+ * unconditionally would mean the app booted with a timer it never started - the pill would open
+ * in its running state on every screen and every e2e spec. X-4 is only honest against a mock that
+ * can also answer "nothing is running", which is the state every session starts in.
+ */
+let runningTimer: { id: string; startedAt: string; entryId: string } | null = null;
+let nextTimerId = 0;
+
 export function resetMockData(): void {
 	createdEntries = [];
 	editedAttributes = new Map();
 	deletedIds = new Set();
 	nextCreatedId = 0;
+	runningTimer = null;
+	nextTimerId = 0;
 }
 
 /** A recorded entry as it stands after any edits this run has made to it. */
@@ -209,10 +224,101 @@ export const handlers: RequestHandler[] = [
 		return new HttpResponse(null, { status: 204 });
 	}),
 
-	http.get('*/timers', () => HttpResponse.json(timersRunning)),
+	/**
+	 * `filter[stopped_at][eq]=` asks for the running one, and the answer is a collection - empty
+	 * when there is none, which is the state a session starts in.
+	 *
+	 * `include=time_entry` is the only place the linked entry's ID is returned at all: both the
+	 * create and the stop responses carry `time_entry` un-included (api-client rule 10), which is
+	 * why the app learns it from here and remembers it.
+	 */
+	http.get('*/timers', () => {
+		if (runningTimer === null) {
+			return HttpResponse.json({
+				...timersRunning,
+				data: [],
+				included: [],
+				meta: { ...timersRunning.meta, total_count: 0 },
+			});
+		}
 
-	http.post('*/timers', () => HttpResponse.json(timerCreate, { status: 201 })),
+		const entry = createdEntries.find((candidate) => candidate.id === runningTimer?.entryId);
 
-	// PUT, not POST: every other verb on this path 404s against the real API.
-	http.put('*/timers/:id/stop', () => HttpResponse.json(timerStop)),
+		return HttpResponse.json({
+			...timersRunning,
+			data: [
+				{
+					...timersRunning.data[0],
+					id: runningTimer.id,
+					attributes: { ...timersRunning.data[0].attributes, started_at: runningTimer.startedAt, stopped_at: null },
+					relationships: {
+						...timersRunning.data[0].relationships,
+						time_entry: { data: { type: 'time_entries', id: runningTimer.entryId } },
+					},
+				},
+			],
+			included: entry === undefined ? [] : [withEdits(entry)],
+			meta: { ...timersRunning.meta, total_count: 1 },
+		});
+	}),
+
+	/**
+	 * Starting a timer **also creates a time entry**, dated today with `time: 0`, linked through the
+	 * timer's `time_entry` relationship (SPEC 11, finding 1). The mock creates it too, or the `0h`
+	 * row a running timer is would never appear in the day list and X-4's second entry problem would
+	 * be invisible here.
+	 */
+	http.post('*/timers', () => {
+		nextTimerId += 1;
+		nextCreatedId += 1;
+
+		const entryId = `9100000${String(nextCreatedId)}`;
+		const startedAt = new Date().toISOString();
+		createdEntries.push(toCreatedEntry({ data: { attributes: { date: todayIso(), time: 0, note: null } } }, entryId));
+		runningTimer = { id: `1433564${String(nextTimerId)}`, startedAt, entryId };
+
+		return HttpResponse.json(
+			{
+				...timerCreate,
+				data: {
+					...timerCreate.data,
+					id: runningTimer.id,
+					attributes: { ...timerCreate.data.attributes, started_at: startedAt, stopped_at: null, total_time: 0 },
+				},
+			},
+			{ status: 201 }
+		);
+	}),
+
+	/**
+	 * PUT, not POST: every other verb on this path 404s against the real API.
+	 *
+	 * Stopping writes the elapsed **whole minutes** onto the linked entry and drops the remainder -
+	 * 87 seconds became 1 against the live API - so a timer stopped inside a minute really does
+	 * leave a `0h` entry behind. The stop sheet is editable because of it.
+	 */
+	http.put('*/timers/:id/stop', ({ params }) => {
+		const id = String(params.id);
+		if (runningTimer?.id !== id) {
+			return HttpResponse.json(timerAlreadyStopped, { status: 409 });
+		}
+
+		const stoppedAt = new Date();
+		const totalTime = Math.floor((stoppedAt.getTime() - new Date(runningTimer.startedAt).getTime()) / 60_000);
+		editedAttributes.set(runningTimer.entryId, { ...editedAttributes.get(runningTimer.entryId), time: totalTime });
+		runningTimer = null;
+
+		return HttpResponse.json({
+			...timerStop,
+			data: {
+				...timerStop.data,
+				id,
+				attributes: {
+					...timerStop.data.attributes,
+					stopped_at: stoppedAt.toISOString(),
+					total_time: totalTime,
+				},
+			},
+		});
+	}),
 ];

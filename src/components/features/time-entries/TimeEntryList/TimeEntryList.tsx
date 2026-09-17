@@ -24,6 +24,8 @@ interface TimeEntryListProps {
 	/** X-3: fills an empty day from the one before it. The day view owns the copy and its toast. */
 	onCopyFromYesterday?: () => void;
 	isCopying?: boolean;
+	/** X-4: starts a timer seeded with that entry's description. */
+	onContinueTimer?: (entry: TimeEntry) => void;
 }
 
 /** The card the empty and error states share, so the list never collapses to nothing. */
@@ -75,6 +77,7 @@ export function TimeEntryList({
 	onFocusEntry,
 	onCopyFromYesterday,
 	isCopying = false,
+	onContinueTimer,
 }: TimeEntryListProps) {
 	if (isPending) {
 		return (
@@ -170,6 +173,13 @@ export function TimeEntryList({
 						onRequestDelete={() => {
 							onRequestDelete(entry);
 						}}
+						onContinueTimer={
+							onContinueTimer === undefined
+								? undefined
+								: () => {
+										onContinueTimer(entry);
+									}
+						}
 					/>
 				</li>
 			))}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatDuration, parseDuration, toMinutesOfDay } from './duration';
+import { formatDuration, formatElapsed, parseDuration, toMinutesOfDay } from './duration';
 
 describe('formatDuration', () => {
 	it.each([
@@ -121,5 +121,34 @@ describe('toMinutesOfDay', () => {
 
 		expect(parseDuration('25:00')).toBe(1500);
 		expect(toMinutesOfDay('25:00')).toBeNull();
+	});
+});
+
+describe('formatElapsed', () => {
+	it.each([
+		[0, '0:00'],
+		[9, '0:09'],
+		[42, '0:42'],
+		[60, '1:00'],
+		[725, '12:05'],
+		[3600, '1:00:00'],
+		[3750, '1:02:30'],
+		[36_000, '10:00:00'],
+	])('renders %i seconds as %s', (seconds, expected) => {
+		expect(formatElapsed(seconds)).toBe(expected);
+	});
+
+	/** A clock that ran backwards would be a stranger thing to show than one that reads zero. */
+	it.each([-1, Number.NaN, Number.POSITIVE_INFINITY])('renders %s as zero', (seconds) => {
+		expect(formatElapsed(seconds)).toBe('0:00');
+	});
+
+	/**
+	 * Why X-4 does not reuse `formatDuration`: that one answers "what is this entry worth" in whole
+	 * minutes, and `0h` for a timer forty seconds old hides the only sign it is running.
+	 */
+	it('shows seconds where formatDuration shows nothing', () => {
+		expect(formatElapsed(40)).toBe('0:40');
+		expect(formatDuration(0)).toBe('0h');
 	});
 });

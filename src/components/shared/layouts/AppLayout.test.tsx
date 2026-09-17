@@ -82,14 +82,48 @@ describe('AppLayout', () => {
 		expect(await screen.findByRole('dialog', { name: 'Keyboard shortcuts' })).toBeInTheDocument();
 	});
 
-	/**
-	 * X-4 owns starting one; the bar carries the control so it does not move when that lands, and
-	 * says it is not ready rather than taking focus and doing nothing.
-	 */
-	it('carries the timer control on every authenticated screen, disabled until X-4', async () => {
+	/** Idle until something is running: one control, two states, on every authenticated screen (X-4). */
+	it('carries the timer control on every authenticated screen (X-4)', async () => {
 		await renderWithProviders(<AppLayout session={session}>content</AppLayout>, { session });
 
-		expect(screen.getByRole('button', { name: 'Start timer' })).toBeDisabled();
+		expect(await screen.findByRole('button', { name: 'Start timer' })).toBeEnabled();
+	});
+
+	/**
+	 * Starting one is a `POST /timers`, which also creates the entry it will be written onto
+	 * (SPEC 11) - so the pill swapping to a running clock is the whole visible outcome here.
+	 */
+	it('starts a timer from the app bar and shows it running (X-4)', async () => {
+		const user = userEvent.setup();
+		await renderWithProviders(<AppLayout session={session}>content</AppLayout>, { session });
+
+		await user.click(await screen.findByRole('button', { name: 'Start timer' }));
+
+		expect(await screen.findByRole('button', { name: /^Stop timer/ })).toBeInTheDocument();
+	});
+
+	/** The stop opens the sheet that turns the tracked time into a described entry (X-4). */
+	it('stops a timer and asks what the time was for (X-4)', async () => {
+		const user = userEvent.setup();
+		await renderWithProviders(<AppLayout session={session}>content</AppLayout>, { session });
+
+		await user.click(await screen.findByRole('button', { name: 'Start timer' }));
+		await user.click(await screen.findByRole('button', { name: /^Stop timer/ }));
+
+		// The bar itself is `aria-hidden` behind the sheet, as it is behind every modal here, so what
+		// the pill says next is a question for after it closes - `StopTimerSheet` owns that.
+		expect(await screen.findByRole('dialog', { name: 'Save tracked time' })).toBeInTheDocument();
+	});
+
+	/** X-2 lists `s`; X-4 is what gives it something to stop, and it works on every route. */
+	it('stops the running timer with the s key (X-2, X-4)', async () => {
+		const user = userEvent.setup();
+		await renderWithProviders(<AppLayout session={session}>content</AppLayout>, { session });
+
+		await user.click(await screen.findByRole('button', { name: 'Start timer' }));
+		await user.keyboard('s');
+
+		expect(await screen.findByRole('dialog', { name: 'Save tracked time' })).toBeInTheDocument();
 	});
 
 	it('keeps logging out working', async () => {
@@ -106,7 +140,13 @@ describe('AppLayout', () => {
 		const { queryClient, router } = await renderWithProviders(<AppLayout session={session}>content</AppLayout>, {
 			session,
 		});
-		queryClient.setQueryData(['services', '1448639'], []);
+		/*
+		 * A key nothing on screen is subscribed to. The timer provider observes `['services', ...]`
+		 * for the default service (A-1), and an observed key is refetched the moment the cache is
+		 * cleared - in the app that never happens, because logging out unmounts this whole tree,
+		 * but the test router keeps rendering it.
+		 */
+		queryClient.setQueryData(['time-entries', '1448639', '2026-09-15'], []);
 
 		await user.click(screen.getByRole('button', { name: 'Account menu' }));
 		await user.click(await screen.findByRole('menuitem', { name: 'Log out' }));
@@ -115,6 +155,6 @@ describe('AppLayout', () => {
 			expect(router.state.location.pathname).toBe('/login');
 		});
 		expect(window.localStorage.getItem(SESSION_STORAGE_KEY)).toBeNull();
-		expect(queryClient.getQueryData(['services', '1448639'])).toBeUndefined();
+		expect(queryClient.getQueryData(['time-entries', '1448639', '2026-09-15'])).toBeUndefined();
 	});
 });

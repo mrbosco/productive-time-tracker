@@ -9,6 +9,7 @@ import {
 import { render, type RenderOptions, renderHook, type RenderHookOptions } from '@testing-library/react';
 import type { ReactElement, ReactNode } from 'react';
 import { SessionProvider } from '@/components/features/auth/useSession';
+import { TimerProvider } from '@/components/features/timer/TimerProvider';
 import { type Session, writeSession } from '@/lib/storage';
 
 function createTestQueryClient() {
@@ -78,10 +79,18 @@ export async function renderWithProviders(ui: ReactElement, { session, initialEn
 	const router = createTestRouter(ui, initialEntry);
 	await router.load();
 
+	/*
+	 * `TimerProvider` only when there is a session, because it needs one - and because a screen
+	 * rendered without one is a screen behind the auth boundary, where no timer exists. Extended
+	 * here rather than wrapped per file (testing.md rule 1): the day view and the app bar both read
+	 * the timer now, and X-5's banner will be the third.
+	 */
 	function Wrapper({ children }: { children: ReactNode }) {
 		return (
 			<QueryClientProvider client={queryClient}>
-				<SessionProvider>{children}</SessionProvider>
+				<SessionProvider>
+					{session === undefined ? children : <TimerProvider session={session}>{children}</TimerProvider>}
+				</SessionProvider>
 			</QueryClientProvider>
 		);
 	}

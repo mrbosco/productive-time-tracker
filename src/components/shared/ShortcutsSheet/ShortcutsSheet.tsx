@@ -5,9 +5,6 @@ import { Sheet, SheetContent, SheetTitle } from '@/components/core/Sheet';
  *
  * The two directional rows carry both arrows in one cap, as the design draws them: `← →` is one
  * shortcut with two directions, and four rows would say there are four things to learn.
- *
- * `s` (stop timer) is not here yet: X-4 is what gives it something to stop, and a sheet that
- * teaches a key which does nothing is worse than one that is short. It joins this list there.
  */
 const SHORTCUTS: { keys: string; action: string }[] = [
 	{ keys: 'n', action: 'New entry' },
@@ -16,6 +13,7 @@ const SHORTCUTS: { keys: string; action: string }[] = [
 	{ keys: '↑ ↓', action: 'Move between entries' },
 	{ keys: 'e', action: 'Edit focused entry' },
 	{ keys: 'Del', action: 'Delete focused entry' },
+	{ keys: 's', action: 'Stop timer' },
 	{ keys: '?', action: 'This sheet' },
 	{ keys: 'Esc', action: 'Close' },
 ];

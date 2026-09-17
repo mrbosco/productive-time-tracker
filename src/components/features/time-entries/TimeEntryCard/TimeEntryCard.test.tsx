@@ -163,16 +163,20 @@ describe('TimeEntryCard', () => {
 	});
 
 	/**
-	 * What is left of the menu belongs to X-4, so it says which and does not activate - an item that
-	 * reads as live, takes focus and then does nothing is worse than one visibly not ready.
+	 * X-4. A new entry rather than an addition to this one, because `POST /timers` always creates
+	 * one - the note is what carries over, so the running `0h` row already says what it is for.
 	 */
-	it('leaves the action X-4 owns marked as not yet wired', async () => {
+	it('continues an entry as a new timer, carrying its description (X-4)', async () => {
+		const onContinueTimer = vi.fn();
 		const user = userEvent.setup();
-		await renderWithProviders(<TimeEntryCard onRequestDelete={noop} entry={buildEntry()} />);
+		await renderWithProviders(
+			<TimeEntryCard onRequestDelete={noop} entry={buildEntry()} onContinueTimer={onContinueTimer} />
+		);
 
 		await user.click(screen.getByRole('button', { name: 'Entry actions' }));
+		await user.click(await screen.findByRole('menuitem', { name: 'Continue timer' }));
 
-		expect(await screen.findByRole('menuitem', { name: /^Continue timer/ })).toHaveAttribute('aria-disabled', 'true');
+		expect(onContinueTimer).toHaveBeenCalledTimes(1);
 	});
 
 	/**

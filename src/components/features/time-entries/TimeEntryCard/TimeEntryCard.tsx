@@ -39,6 +39,8 @@ interface TimeEntryCardProps {
 	isTabStop?: boolean;
 	/** The card took focus on its own - a click or a Tab - so the list can follow it. */
 	onTakeFocus?: () => void;
+	/** Starts a timer seeded with this entry's description (X-4). Absent leaves the item inert. */
+	onContinueTimer?: () => void;
 }
 
 /**
@@ -57,6 +59,7 @@ export function TimeEntryCard({
 	isFocused = false,
 	isTabStop = true,
 	onTakeFocus,
+	onContinueTimer,
 }: TimeEntryCardProps) {
 	const cardRef = useRef<HTMLElement>(null);
 	// `toPlainText` only to decide whether there is anything to show: a note that is all markup
@@ -132,6 +135,11 @@ export function TimeEntryCard({
 				 * here to open it would drag the whole ProseMirror tree onto the screen SPEC 4.2
 				 * requires to render on one request.
 				 *
+				 * `Continue timer` starts a timer and writes this entry's description onto the entry
+				 * that start creates (X-4). It is a new entry, not an addition to this one, because
+				 * `POST /timers` always creates one - SPEC 10's X-4 row is amended to say so. It is
+				 * also what Toggl's continue actually does.
+				 *
 				 * `Duplicate` lands on **today**, not on the day the source entry is from (X-3, Toggl's
 				 * continue pattern): copying yesterday's standup is almost always about logging today's,
 				 * and the source date is one tap away in the picker if it was not. It carries the entry's
@@ -150,7 +158,7 @@ export function TimeEntryCard({
 							Edit
 						</Link>
 					</DropdownMenuItem>
-					<DropdownMenuItem disabled>Continue timer (X-4)</DropdownMenuItem>
+					<DropdownMenuItem onSelect={onContinueTimer}>Continue timer</DropdownMenuItem>
 					<DropdownMenuItem asChild>
 						<Link to="/entries/new" search={{ date: todayIso(), duplicate: entry.id }}>
 							Duplicate

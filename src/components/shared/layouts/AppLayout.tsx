@@ -10,6 +10,9 @@ import {
 } from '@/components/core/DropdownMenu';
 import { sessionQueryOptions, useLogout } from '@/components/features/auth/useSession';
 import { SettingsSheet } from '@/components/features/settings/SettingsSheet/SettingsSheet';
+import { StopTimerSheet } from '@/components/features/timer/StopTimerSheet/StopTimerSheet';
+import { TimerControl } from '@/components/features/timer/TimerControl/TimerControl';
+import { TimerProvider, useTimerContext } from '@/components/features/timer/TimerProvider';
 import { ShortcutsSheet } from '@/components/shared/ShortcutsSheet/ShortcutsSheet';
 import { useHotkeys } from '@/components/shared/useHotkeys';
 import type { Session } from '@/lib/storage';
@@ -24,14 +27,6 @@ export function toInitials(name: string): string {
 		.join('');
 }
 
-function PlayIcon() {
-	return (
-		<svg width="14" height="14" viewBox="0 0 20 20" aria-hidden="true" className="text-accent">
-			<path d="M6 3.6 16 10 6 16.4V3.6Z" fill="currentColor" />
-		</svg>
-	);
-}
-
 function CaretIcon() {
 	return (
 		<svg width="14" height="14" viewBox="0 0 20 20" aria-hidden="true" className="text-muted">
@@ -41,36 +36,32 @@ function CaretIcon() {
 }
 
 /**
- * The timer control (SPEC 10, X-4). Idle only: starting a timer is X-4's, and this screen is
- * read-only until then. Drawn because the design puts it in the app bar on every authenticated
- * route, and a bar that gains a control later would move everything beside it.
+ * The chrome every authenticated screen sits in: the product mark and name, the timer control,
+ * and the avatar menu that holds logout (R-2).
+ *
+ * The provider is mounted out here and the chrome consumes it, so the timer is shared with what
+ * `children` renders - a card's `Continue timer` is the second consumer, down inside the day.
  */
-function TimerButton() {
+export function AppLayout({ session, children }: { session: Session; children: ReactNode }) {
 	return (
-		<button
-			type="button"
-			disabled
-			title="Starting a timer arrives with X-4"
-			className="duration-ui flex h-10 flex-none items-center gap-[7px] rounded-pill border border-line bg-surface px-3.5 text-label font-medium transition-colors ease-ui hover:bg-subtle disabled:opacity-60 disabled:hover:bg-surface md:gap-2 md:px-4"
-		>
-			<PlayIcon />
-			Start timer
-		</button>
+		<TimerProvider session={session}>
+			<AppChrome session={session}>{children}</AppChrome>
+		</TimerProvider>
 	);
 }
 
 /**
- * The chrome every authenticated screen sits in: the product mark and name, the timer control,
- * and the avatar menu that holds logout (R-2).
+ * The bar itself.
  *
  * The email comes from the membership the session was already re-validated against, so the menu
  * reads the way the design draws it without the session having to carry another field.
  */
-export function AppLayout({ session, children }: { session: Session; children: ReactNode }) {
+function AppChrome({ session, children }: { session: Session; children: ReactNode }) {
 	const logout = useLogout();
 	const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 	const [isShortcutsOpen, setIsShortcutsOpen] = useState(false);
 	const { data: memberships } = useQuery(sessionQueryOptions(session));
+	const timer = useTimerContext();
 	const email = memberships?.find((membership) => membership.personId === session.personId)?.person?.email ?? null;
 	const initials = toInitials(session.personName);
 
@@ -83,6 +74,11 @@ export function AppLayout({ session, children }: { session: Session; children: R
 		'?': () => {
 			setIsShortcutsOpen(true);
 		},
+		// X-4's, and global for the same reason: the bar carries the timer on every route, so the
+		// key that stops it has to work on every route too.
+		s: () => {
+			if (timer.running !== null) timer.stop();
+		},
 	});
 
 	return (
@@ -92,7 +88,14 @@ export function AppLayout({ session, children }: { session: Session; children: R
 				<span aria-hidden="true" className="mx-1 hidden h-5 w-px bg-line md:block" />
 				<span className="flex-1 text-list font-medium tracking-[-.01em]">Time Tracker</span>
 
-				<TimerButton />
+				<TimerControl
+					running={timer.running}
+					isBusy={timer.isBusy}
+					onStart={() => {
+						timer.start();
+					}}
+					onStop={timer.stop}
+				/>
 
 				{/*
 				 * Desktop only, as the design has it - a phone has no keyboard to teach. The `?` key
@@ -147,8 +150,21 @@ export function AppLayout({ session, children }: { session: Session; children: R
 
 			{children}
 
-			<SettingsSheet session={session} open={isSettingsOpen} onOpenChange={setIsSettingsOpen} />
+			{/*
+			 * Also opened by the timer when there is no default service to start one on, which is
+			 * the only place that can be fixed - the same route A-1b takes when Productive refuses
+			 * the service an entry was logged against.
+			 */}
+			<SettingsSheet
+				session={session}
+				open={isSettingsOpen || timer.needsService}
+				onOpenChange={(next) => {
+					setIsSettingsOpen(next);
+					if (!next) timer.dismissNeedsService();
+				}}
+			/>
 			<ShortcutsSheet open={isShortcutsOpen} onOpenChange={setIsShortcutsOpen} />
+			<StopTimerSheet session={session} stopped={timer.stopped} onClose={timer.dismissStopped} />
 		</div>
 	);
 }
