@@ -96,10 +96,10 @@ function WeekTotalPanel({
 	const panel = (
 		<div
 			aria-label={isError ? 'Week total unavailable' : name}
-			className="flex h-[68px] w-[98px] flex-none flex-col items-center justify-center gap-0.5 rounded-input bg-subtle/70 px-2 md:h-22 md:w-auto md:items-start md:px-4"
+			className="flex h-[92px] w-[108px] flex-none flex-col items-center justify-center gap-0.5 rounded-input bg-selection/65 px-2 md:h-[124px] md:w-auto md:items-start md:px-4"
 		>
-			<span aria-hidden="true" className="text-duration font-semibold text-ink tabular-nums">
-				{isError ? '·' : `= ${formatDuration(total)}`}
+			<span aria-hidden="true" className="text-title font-semibold tracking-tight text-accent-dark tabular-nums">
+				{isError ? '·' : formatDuration(total)}
 			</span>
 			<span aria-hidden="true" className="text-micro font-medium whitespace-nowrap text-muted">
 				Weekly total
@@ -196,11 +196,11 @@ export function WeekStrip({
 
 	if (isPending) {
 		return (
-			<div className="flex gap-2 overflow-hidden md:grid md:grid-cols-8 md:gap-1 md:rounded-entry md:border md:border-line md:bg-surface md:p-1.5">
+			<div className="flex gap-2 overflow-hidden md:grid md:grid-cols-8 md:gap-1 md:rounded-entry md:border md:border-line md:bg-surface md:p-2">
 				{days.map((day) => (
-					<CellSkeleton key={day} className="h-[68px] w-14 flex-none md:h-22 md:w-auto" />
+					<CellSkeleton key={day} className="h-[92px] w-16 flex-none md:h-[124px] md:w-auto" />
 				))}
-				<CellSkeleton className="h-[68px] w-[98px] flex-none md:h-22 md:w-auto" />
+				<CellSkeleton className="h-[92px] w-[108px] flex-none md:h-[124px] md:w-auto" />
 			</div>
 		);
 	}
@@ -212,7 +212,7 @@ export function WeekStrip({
 		<nav
 			ref={stripRef}
 			aria-label="Week"
-			className="-mx-4 flex [scrollbar-width:none] gap-2 overflow-x-auto px-4 md:mx-0 md:grid md:grid-cols-8 md:gap-1 md:overflow-visible md:rounded-entry md:border md:border-line md:bg-surface md:p-1.5"
+			className="-mx-4 flex [scrollbar-width:none] gap-2 overflow-x-auto px-4 md:mx-0 md:grid md:grid-cols-8 md:gap-1 md:overflow-visible md:rounded-entry md:border md:border-line md:bg-surface md:p-2"
 		>
 			{days.map((day) => {
 				const isSelected = day === date;
@@ -233,32 +233,32 @@ export function WeekStrip({
 						// `aria-current="page"` is set by the router itself on the active link, so
 						// the selected cell is marked without this component tracking it.
 						className={cn(
-							'duration-ui relative flex h-[68px] w-14 flex-none flex-col items-center gap-[3px] overflow-hidden rounded-input border bg-surface pt-2 leading-[1.2] whitespace-nowrap transition-colors ease-ui hover:bg-subtle md:h-22 md:w-auto md:items-start md:gap-2 md:px-4 md:pt-4',
+							'duration-ui relative flex h-[92px] w-16 flex-none flex-col items-center gap-1 overflow-hidden rounded-input border bg-surface pt-2.5 leading-[1.2] whitespace-nowrap transition-colors ease-ui hover:bg-subtle md:h-[124px] md:w-auto md:items-start md:gap-2 md:px-4 md:pt-3',
 							isNonWorking
 								? 'border-dashed border-line hatched md:border-transparent'
 								: 'border-line md:border-transparent',
 							// The token's own name for itself is "selected day" - the strip had been
 							// carrying the whole selection on a 3px underline, which is the one thing
 							// on a cell that a neighbouring cell's border can be mistaken for.
-							isSelected && 'border-accent/25 bg-selection hover:bg-selection md:border-accent/25'
+							isSelected && 'border-accent bg-accent text-white shadow-fab hover:bg-accent md:border-accent'
 						)}
 					>
 						<span
 							aria-hidden="true"
-							className={cn('text-micro font-medium md:hidden', isSelected ? 'text-accent-dark' : 'text-muted')}
+							className={cn('text-micro font-medium md:hidden', isSelected ? 'text-white/80' : 'text-muted')}
 						>
 							{formatWeekdayInitial(day)}
 						</span>
 						<span
 							aria-hidden="true"
-							className={cn('hidden text-caption font-medium md:block', isSelected ? 'text-accent-dark' : 'text-muted')}
+							className={cn('hidden text-caption font-medium md:block', isSelected ? 'text-white/80' : 'text-muted')}
 						>
-							{formatWeekdayAndDay(day)}
+							{formatWeekdayAndDay(day).split(' ')[0]}
 						</span>
 						<span
 							aria-hidden="true"
 							className={cn(
-								'text-list font-medium tabular-nums md:hidden',
+								'text-title font-semibold tracking-tight tabular-nums md:text-[28px]',
 								isNonWorking && !isSelected && 'text-muted'
 							)}
 						>
@@ -266,15 +266,39 @@ export function WeekStrip({
 						</span>
 						<span
 							aria-hidden="true"
-							className="text-micro font-medium text-muted tabular-nums md:text-list md:text-ink"
+							className={cn(
+								'text-micro font-medium tabular-nums md:text-caption',
+								isSelected ? 'text-white/80' : 'text-muted'
+							)}
 						>
 							{isError ? '·' : formatCellTotal(minutes, isNonWorking)}
 						</span>
 
 						{day === today && (
-							<span className="absolute top-1.5 right-1.5 size-[5px] rounded-pill bg-accent md:top-3 md:right-3 md:size-1.5" />
+							<span
+								className={cn(
+									'absolute top-1.5 right-1.5 size-[5px] rounded-pill md:top-3 md:right-3 md:size-1.5',
+									isSelected ? 'bg-white' : 'bg-accent'
+								)}
+							/>
 						)}
-						{isSelected && <span className="absolute inset-x-3 bottom-0 h-0.5 rounded-pill bg-accent" />}
+						{!isError && expected !== null && expected > 0 && (
+							<span
+								aria-hidden="true"
+								className={cn(
+									'absolute inset-x-4 bottom-3 hidden h-[3px] overflow-hidden rounded-pill md:block',
+									isSelected ? 'bg-white/20' : 'bg-subtle'
+								)}
+							>
+								<span
+									className={cn(
+										'block h-full rounded-pill transition-[width] duration-500',
+										isSelected ? 'bg-white' : 'bg-accent/60'
+									)}
+									style={{ width: `${Math.min(100, (minutes / expected) * 100)}%` }}
+								/>
+							</span>
+						)}
 					</Link>
 				);
 

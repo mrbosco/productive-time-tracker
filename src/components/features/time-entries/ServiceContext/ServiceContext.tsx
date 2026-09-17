@@ -20,7 +20,7 @@ export function ServiceContext({ service }: { service: Service | null }) {
 	const serviceName = service?.name ?? 'Unknown service';
 
 	return (
-		<p className="flex flex-wrap items-center gap-1.5 text-label leading-[140%] text-muted">
+		<p className="flex flex-wrap items-center gap-x-2 gap-y-1.5 text-label leading-[140%] text-muted">
 			{projectName !== null &&
 				(rows.length === 0 ? (
 					// Nothing behind the name, so nothing to hint at. A dotted underline that opens
@@ -34,13 +34,7 @@ export function ServiceContext({ service }: { service: Service | null }) {
 						rows={rows}
 					/>
 				))}
-			{/*
-			 * Its own item rather than the head of the service name, so that when a long project
-			 * name wraps the line at 390px the separator stays behind on the first line instead of
-			 * starting the second one.
-			 */}
-			{projectName !== null && <span aria-hidden="true">·</span>}
-			<span>{serviceName}</span>
+			<span className="rounded-md bg-subtle/70 px-2 py-0.5 text-caption">{serviceName}</span>
 		</p>
 	);
 }
@@ -90,7 +84,7 @@ function ServiceContextDisclosure({
 			aria-expanded={isOpen}
 			onClick={onClick}
 			className={cn(
-				'relative text-left font-medium text-ink underline decoration-dotted underline-offset-[3px]',
+				'relative text-left text-meta font-semibold text-ink decoration-accent/40 underline-offset-4 hover:text-accent hover:underline',
 				'[@media(hover:none)]:before:absolute [@media(hover:none)]:before:inset-x-0 [@media(hover:none)]:before:-top-2 [@media(hover:none)]:before:-bottom-4'
 			)}
 		>

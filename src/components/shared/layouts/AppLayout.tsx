@@ -128,7 +128,7 @@ function AppChrome({ session, children }: { session: Session; children: ReactNod
 
 	return (
 		<div className="min-h-dvh">
-			<header className="flex h-14 items-center gap-2 border-b border-line bg-surface pr-2 pl-4 md:h-[72px] md:gap-4 md:px-8 xl:px-[max(48px,calc((100%-1280px)/2))]">
+			<header className="flex h-14 items-center gap-2 border-b border-line bg-surface pr-2 pl-4 md:h-20 md:gap-4 md:px-8 xl:px-[max(48px,calc((100%-1280px)/2))]">
 				<img src={logoUrl} alt="Productive" className="hidden h-6 md:block" />
 				<span aria-hidden="true" className="mx-1 hidden h-5 w-px bg-line md:block" />
 				{/* Between the product name and the timer - the one place both views share (UI-7). */}
@@ -173,7 +173,7 @@ function AppChrome({ session, children }: { session: Session; children: ReactNod
 						// the approved bar. The avatar inside grew from 32 to 40 - UI-8 wants it the
 						// largest thing in the bar, and 40 is as large as it goes without breaking that
 						// row.
-						className="flex h-11 flex-none items-center gap-2 rounded-pill px-1 md:h-10"
+						className="flex h-11 flex-none items-center gap-2 rounded-control px-1 md:h-12 md:pl-3"
 					>
 						<span className="relative size-10 flex-none">
 							<Avatar
@@ -196,6 +196,7 @@ function AppChrome({ session, children }: { session: Session; children: ReactNod
 								/>
 							)}
 						</span>
+						<span className="hidden max-w-36 truncate text-label font-medium xl:block">{session.personName}</span>
 						<span className="hidden md:block">
 							<CaretIcon />
 						</span>

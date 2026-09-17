@@ -38,8 +38,8 @@ describe('WeekStrip', () => {
 	it('totals the week from the days it was given', async () => {
 		await renderStrip();
 
-		// 375 + 225 = 600 minutes. The equals sign is part of the panel, not decoration on it.
-		expect(screen.getByText('= 10h')).toBeInTheDocument();
+		// 375 + 225 = 600 minutes.
+		expect(screen.getByText('10h')).toBeInTheDocument();
 	});
 
 	it('shows what was logged on a day that has entries', async () => {
@@ -110,7 +110,7 @@ describe('WeekStrip', () => {
 	it('makes the week total a panel rather than an eighth day', async () => {
 		await renderStrip();
 
-		const total = screen.getByText('= 10h');
+		const total = screen.getByText('10h');
 		expect(total.closest('a')).toBeNull();
 		expect(total.closest('button')).toBeNull();
 		expect(total.closest('[tabindex]')).toBeNull();

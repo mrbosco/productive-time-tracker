@@ -1,3 +1,5 @@
+import { Clock3 } from 'lucide-react';
+import { expectedMinutesOn } from '@/lib/availability';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { useRef, useState } from 'react';
 import type { TimeEntry } from '@/api/types';
@@ -290,15 +292,20 @@ export function DayView({ session, date }: { session: Session; date: string }) {
 			 * `pb-24` on mobile: the Add entry FAB is `fixed` at the bottom right, so without room
 			 * reserved for it the last card of a scrolling day sits under an opaque 56px circle (N-4).
 			 */}
-			<main className="mx-auto flex w-full max-w-[1376px] flex-col gap-4 px-4 pt-4 pb-24 md:gap-6 md:px-8 md:pt-8 md:pb-14 xl:px-12">
-				<div className="flex items-center gap-4">
-					<DateNavigator
-						date={date}
-						onSelect={(next) => {
-							void navigate({ to: '/day/$date', params: { date: next } });
-						}}
-					/>
-
+			<main className="mx-auto flex w-full max-w-[1376px] flex-col gap-4 px-4 pt-4 pb-24 md:gap-7 md:px-8 md:pt-9 md:pb-14 xl:px-12">
+				<div className="flex items-center justify-between gap-4">
+					<div className="min-w-0 flex-1">
+						<p className="mb-2 flex items-center gap-2 text-meta font-medium text-muted">
+							<Clock3 size={16} aria-hidden="true" />
+							Time tracking
+						</p>
+						<DateNavigator
+							date={date}
+							onSelect={(next) => {
+								void navigate({ to: '/day/$date', params: { date: next } });
+							}}
+						/>
+					</div>
 					{/*
 					 * One element that restyles across the breakpoint - a bottom-right FAB on mobile,
 					 * a header button on desktop - rather than two with `hidden md:flex`, which is CSS
@@ -312,7 +319,7 @@ export function DayView({ session, date }: { session: Session; date: string }) {
 						ref={addEntryRef}
 						to="/entries/new"
 						search={{ date }}
-						className="duration-ui fixed right-4 bottom-7 z-10 inline-flex size-14 items-center justify-center gap-2 rounded-pill bg-accent text-on-accent shadow-fab transition-colors ease-ui hover:bg-accent-dark md:static md:ml-auto md:h-11 md:w-auto md:rounded-control md:px-5 md:shadow-none"
+						className="duration-ui fixed right-4 bottom-7 z-10 inline-flex size-14 items-center justify-center gap-2 rounded-pill bg-accent text-on-accent shadow-fab transition-colors ease-ui hover:bg-accent-dark md:static md:ml-auto md:h-12 md:w-auto md:rounded-control md:px-5 md:shadow-fab"
 					>
 						<PlusIcon />
 						<span className="sr-only md:not-sr-only md:text-meta md:font-medium">Add entry</span>
@@ -327,8 +334,8 @@ export function DayView({ session, date }: { session: Session; date: string }) {
 					availability={availability}
 				/>
 
-				<div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_288px] lg:gap-6">
-					<div className="flex min-w-0 flex-col gap-4">
+				<div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_320px] lg:gap-6">
+					<div className="flex min-w-0 flex-col gap-5">
 						{/*
 						 * Only once there is something to summarise. `0h logged · 0 entries` would be
 						 * a lie while the day is loading or failing, and on a genuinely empty day it
@@ -343,7 +350,11 @@ export function DayView({ session, date }: { session: Session; date: string }) {
 						{isPending ? (
 							<span aria-hidden="true" className="h-5 w-40 animate-pulse rounded-[5px] bg-subtle" />
 						) : (
-							hasEntries && <DaySummary entries={entries} />
+							hasEntries && (
+								<div key={date} className="animate-day-in">
+									<DaySummary entries={entries} />
+								</div>
+							)
 						)}
 
 						{/*
@@ -411,9 +422,14 @@ export function DayView({ session, date }: { session: Session; date: string }) {
 						/>
 					</div>
 
-					{hasEntries && (
-						<div className="hidden lg:block">
-							<ServiceTotals entries={entries} weekTotals={weekTotals} isWeekError={isWeekError} />
+					{entries !== undefined && (
+						<div key={date} className="hidden animate-day-in lg:block">
+							<ServiceTotals
+								entries={entries}
+								weekTotals={weekTotals}
+								isWeekError={isWeekError}
+								expectedMinutes={expectedMinutesOn(availability, date)}
+							/>
 						</div>
 					)}
 				</div>

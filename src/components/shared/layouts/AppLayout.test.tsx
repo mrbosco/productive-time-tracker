@@ -18,7 +18,9 @@ describe('AppLayout', () => {
 
 		await user.click(screen.getByRole('button', { name: 'Account menu' }));
 
-		expect(await screen.findByText('Ada Lovelace')).toBeInTheDocument();
+		// Inside the menu, not just anywhere: the trigger names the person too on a wide screen, so
+		// an unscoped query would pass on the bar alone and never open the menu at all.
+		expect(await within(await screen.findByRole('menu')).findByText('Ada Lovelace')).toBeInTheDocument();
 	});
 
 	/**

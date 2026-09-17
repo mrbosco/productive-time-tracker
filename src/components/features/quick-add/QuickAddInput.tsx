@@ -1,3 +1,4 @@
+import { Clock3 } from 'lucide-react';
 import { useNavigate } from '@tanstack/react-router';
 import { useId, useState } from 'react';
 import { Input } from '@/components/core/Input';
@@ -71,7 +72,13 @@ export function QuickAddInput({ date }: { date: string }) {
 				startTracking();
 			}}
 		>
-			<div className="flex items-center gap-1 rounded-entry border border-line bg-surface p-1.5 transition-colors focus-within:border-accent/50 sm:gap-2">
+			<div className="flex items-center gap-1 rounded-entry border border-accent/20 bg-surface p-2 shadow-card transition-[border-color,box-shadow] focus-within:border-accent/60 focus-within:shadow-control sm:gap-2 sm:p-3">
+				<span
+					aria-hidden="true"
+					className="hidden size-11 shrink-0 items-center justify-center rounded-control bg-selection text-accent sm:flex"
+				>
+					<Clock3 size={21} strokeWidth={1.6} />
+				</span>
 				<label htmlFor={fieldId} className="sr-only">
 					Quick add an entry
 				</label>
@@ -115,7 +122,7 @@ export function QuickAddInput({ date }: { date: string }) {
 				</button>
 			</div>
 
-			<span className="px-1 text-caption leading-relaxed text-muted">
+			<span className="px-2 text-caption leading-relaxed text-muted">
 				{!canTrack
 					? 'Log time opens the form for this day · the timer only runs on today'
 					: isTracking

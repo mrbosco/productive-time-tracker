@@ -18,16 +18,14 @@ const SUBCONTRACTED = buildService({
  * tooltip needs real pointer events and is covered in `e2e/entry-card.spec.ts` instead.
  */
 describe('ServiceContext', () => {
-	it('reads as project · service', async () => {
+	it('names the project and the service', async () => {
 		await renderWithProviders(<ServiceContext service={SUBCONTRACTED} />);
 
-		const trigger = screen.getByRole('button', { name: 'Mobile banking app' });
-		expect(trigger).toBeInTheDocument();
-		// The separator is its own element so it stays behind when a long project name wraps the
-		// line, and the space around it is a flex gap rather than whitespace - so the line is read
-		// as a pattern rather than as one string. It is `aria-hidden`, so what is announced is the
-		// two names and not the dot between them.
-		expect(trigger.parentElement).toHaveTextContent(/Mobile banking app\s*·\s*Design/);
+		// Two separate elements, which is what lets the service name sit in a chip of its own and
+		// the project name carry the disclosure. Asserted apart rather than as one string for the
+		// same reason: nothing between them is text, so there is no pattern to match.
+		expect(screen.getByRole('button', { name: 'Mobile banking app' })).toBeInTheDocument();
+		expect(screen.getByText('Design')).toBeInTheDocument();
 	});
 
 	it('falls back to the service alone when the entry has no project', async () => {

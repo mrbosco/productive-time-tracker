@@ -105,7 +105,7 @@ export function DurationEditor({
 					onEditingChange(true);
 				}}
 				className={cn(
-					'duration-ui flex h-10 flex-none items-center gap-[7px] rounded-pill px-3 text-duration leading-none font-medium tabular-nums transition-colors ease-ui',
+					'duration-ui ml-auto flex h-10 flex-none items-center gap-[7px] rounded-control px-3 text-duration leading-none font-medium tabular-nums transition-colors ease-ui md:ml-0',
 					// Filled when the *row* is hovered, not only when the number is: the design shows
 					// the whole row waking up at once, and a pill that appears under the pointer
 					// alone reads as a second, later affordance.
@@ -127,7 +127,7 @@ export function DurationEditor({
 	const isValid = !('error' in read);
 
 	return (
-		<div className="relative flex-none">
+		<div className="relative ml-auto flex-none md:ml-0">
 			<input
 				autoFocus
 				aria-label="Duration"

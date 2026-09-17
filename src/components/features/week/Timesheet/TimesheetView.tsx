@@ -1,3 +1,4 @@
+import { CalendarDays } from 'lucide-react';
 import { useNavigate } from '@tanstack/react-router';
 import { useState } from 'react';
 import { Toast } from '@/components/core/Toast';
@@ -128,7 +129,7 @@ export function TimesheetView({ session, date }: { session: Session; date: strin
 	return (
 		<>
 			{/* Below `md` the grid is unreadable rather than cramped, so it is not drawn at all. */}
-			<main className="mx-auto flex w-full max-w-[1376px] flex-col gap-6 px-4 pt-6 pb-14 md:px-8 md:pt-8 xl:px-12">
+			<main className="mx-auto flex w-full max-w-[1376px] flex-col gap-5 px-4 pt-6 pb-14 md:px-8 md:pt-9 xl:px-12">
 				<div className="rounded-entry border border-line bg-surface p-6 text-center md:hidden">
 					<p className="text-list">The timesheet needs a wider screen. Rotate, or use the day view.</p>
 					<button
@@ -140,7 +141,11 @@ export function TimesheetView({ session, date }: { session: Session; date: strin
 					</button>
 				</div>
 
-				<div className="hidden items-center gap-2 md:flex">
+				<p className="-mb-3 hidden items-center gap-2 text-meta font-medium text-muted md:flex">
+					<CalendarDays size={16} aria-hidden="true" />
+					Timesheet
+				</p>
+				<div className="hidden flex-wrap items-center gap-2 md:flex">
 					<button
 						type="button"
 						aria-label="Previous week"
@@ -157,7 +162,7 @@ export function TimesheetView({ session, date }: { session: Session; date: strin
 					>
 						<ChevronIcon />
 					</button>
-					<h1 className="px-1.5 text-title font-bold tracking-[-.02em]" tabIndex={-1}>
+					<h1 className="order-first mr-4 text-[28px] font-semibold tracking-[-.035em]" tabIndex={-1}>
 						{describeWeek(date, today)}
 					</h1>
 					{!weekDays(today).includes(date) && (
@@ -179,13 +184,17 @@ export function TimesheetView({ session, date }: { session: Session; date: strin
 							{trackingRow !== undefined && <span className="opacity-72">{trackingRow.project}</span>}
 						</span>
 					)}
-					<span className="text-meta whitespace-nowrap text-muted">
+					<span className="ml-auto rounded-control border border-line bg-surface px-4 py-3 text-label whitespace-nowrap text-muted shadow-card">
 						<span className="font-medium text-ink tabular-nums">{formatDuration(sheet.total)}</span>
 						{expected === null ? ' logged' : ` of ${formatDuration(expected)} expected`}
 					</span>
 				</div>
 
-				<div className="hidden overflow-x-auto rounded-entry border border-line bg-surface md:block">
+				<div className="hidden overflow-x-auto rounded-entry border border-line bg-surface shadow-card md:block">
+					<div className="flex items-center justify-between gap-4 border-b border-line px-5 py-5">
+						<h2 className="text-base font-semibold">Weekly breakdown</h2>
+						<p className="text-caption text-muted">Select a cell to log or adjust time</p>
+					</div>
 					{isError ? (
 						<div role="alert" className="flex flex-col items-center gap-3.5 px-5 py-12 text-center">
 							<p className="text-list">Could not load this week.</p>
@@ -201,7 +210,7 @@ export function TimesheetView({ session, date }: { session: Session; date: strin
 						<table className="w-full border-collapse">
 							<caption className="sr-only">Logged time for {describeWeek(date, today)}</caption>
 							<thead>
-								<tr className={cn(GRID, 'border-b border-line bg-canvas')}>
+								<tr className={cn(GRID, 'border-b border-line bg-canvas/65')}>
 									<th scope="col" className="px-5 py-3.5 text-left text-caption font-medium text-muted">
 										Project · service
 									</th>
@@ -210,8 +219,8 @@ export function TimesheetView({ session, date }: { session: Session; date: strin
 											key={day}
 											scope="col"
 											className={cn(
-												'flex flex-col items-center gap-0.5 border-l border-line px-2 py-2.5',
-												day === today && 'bg-selection',
+												'flex flex-col items-center gap-1 border-l border-line/60 px-2 py-4',
+												day === today && 'bg-selection/80',
 												isNonWorking(day) && 'hatched'
 											)}
 										>
@@ -222,8 +231,8 @@ export function TimesheetView({ session, date }: { session: Session; date: strin
 											</span>
 											<span
 												className={cn(
-													'text-meta font-medium tabular-nums',
-													day === today && 'font-bold text-accent-dark',
+													'grid size-9 place-items-center rounded-control text-title font-semibold tabular-nums',
+													day === today && 'bg-accent text-on-accent shadow-control',
 													isNonWorking(day) && day !== today && 'text-muted'
 												)}
 											>
@@ -260,14 +269,14 @@ export function TimesheetView({ session, date }: { session: Session; date: strin
 												key={row.serviceId}
 												className={cn(GRID, 'items-stretch border-b border-line hover:bg-canvas/60')}
 											>
-												<th scope="row" className="flex min-w-0 flex-col justify-center px-5 py-3.5 text-left">
-													<span className="block truncate text-meta font-medium">{row.project}</span>
-													<span className="block truncate text-caption font-normal text-muted">{row.service}</span>
+												<th scope="row" className="flex min-w-0 flex-col justify-center px-5 py-5 text-left">
+													<span className="block truncate text-meta font-semibold">{row.project}</span>
+													<span className="mt-1 block truncate text-caption font-normal text-muted">{row.service}</span>
 												</th>
 												{row.cells.map((cell) => (
 													<td
 														key={cell.date}
-														className={cn('border-l border-line p-0', isNonWorking(cell.date) && 'hatched')}
+														className={cn('border-l border-line/60 p-0', isNonWorking(cell.date) && 'hatched')}
 													>
 														<TimesheetCellEditor
 															cell={cell}
@@ -291,19 +300,19 @@ export function TimesheetView({ session, date }: { session: Session; date: strin
 							</tbody>
 
 							<tfoot>
-								<tr className={cn(GRID, 'bg-selection text-accent-dark')}>
+								<tr className={cn(GRID, 'bg-raised text-white')}>
 									<th scope="row" className="flex items-center px-5 py-4 text-left text-meta font-bold">
 										Daily total
 									</th>
 									{sheet.dailyTotals.map((minutes, index) => (
 										<td
 											key={days[index]}
-											className="flex items-center justify-center border-l border-accent-dark/12 px-2 py-4 text-meta font-bold tabular-nums"
+											className="flex items-center justify-center border-l border-white/10 px-2 py-4 text-meta font-bold tabular-nums"
 										>
 											{minutes === 0 ? '—' : formatDuration(minutes)}
 										</td>
 									))}
-									<td className="flex items-center justify-end border-l border-accent-dark/12 px-5 py-4 text-base font-bold whitespace-nowrap tabular-nums">
+									<td className="flex items-center justify-end border-l border-white/10 px-5 py-4 text-base font-bold whitespace-nowrap tabular-nums">
 										= {formatDuration(sheet.total)}
 									</td>
 								</tr>

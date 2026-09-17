@@ -164,9 +164,13 @@ test.describe('the day view', () => {
 	test('totals the day', async ({ page }) => {
 		await page.goto(`/day/${SEEDED_DATE}`);
 
-		// `logged ·` rather than `logged`, which is also a word in the empty state's sentence.
-		await expect(page.getByText(/logged ·/)).toContainText('5h');
-		await expect(page.getByText(/logged ·/)).toContainText('3 entries');
+		// The summary is a heading with a count beside it and the logged time at the other end of
+		// the same row. Anchored on the heading, because the right-hand service panel prints the
+		// day's count too and an unscoped query would match both.
+		const summary = page.getByRole('heading', { name: 'Time entries' }).locator('..').locator('..');
+
+		await expect(summary).toContainText('5h logged');
+		await expect(summary).toContainText('3 entries');
 	});
 
 	/**

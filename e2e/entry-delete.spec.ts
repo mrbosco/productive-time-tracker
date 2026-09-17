@@ -111,7 +111,9 @@ test.describe('deleting a time entry', () => {
 		// Read before the dialog opens: Radix marks the day behind it `aria-hidden`, so neither the
 		// summary nor the strip is role-queryable while the question is up.
 		await openSeededDay(page);
-		await expect(page.getByText('5h logged · 3 entries')).toBeVisible();
+		const summary = page.getByRole('heading', { name: 'Time entries' }).locator('..').locator('..');
+		await expect(summary).toContainText('5h logged');
+		await expect(summary).toContainText('3 entries');
 		await expect(page.getByRole('link', { name: 'Tue 15 Sep, 5h logged' })).toBeVisible();
 
 		await askToDelete(page);
@@ -119,7 +121,8 @@ test.describe('deleting a time entry', () => {
 
 		// The two that remain are the recorded day's zero-minute entries, so the day empties out
 		// without emptying the list - which is the pair A-8 exists for.
-		await expect(page.getByText('0h logged · 2 entries')).toBeVisible();
+		await expect(summary).toContainText('0h logged');
+		await expect(summary).toContainText('2 entries');
 		await expect(page.getByRole('link', { name: 'Tue 15 Sep, nothing logged' })).toBeVisible();
 	});
 

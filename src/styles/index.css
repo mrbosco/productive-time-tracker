@@ -9,15 +9,15 @@
    --------------------------------------------------------------------------- */
 @theme {
 	/* Colour — surfaces and ink */
-	--color-canvas: #f6f7f9; /* --bg          page ground */
+	--color-canvas: #f5f6fa; /* --bg          page ground */
 	--color-surface: #ffffff; /* --surface-2   cards, app bar, sheets */
 	--color-subtle: #eef0f4; /* --subtle      skeletons, quiet fills, key caps */
 	--color-line: #e1e4eb; /* --border      hairlines */
-	--color-ink: #20232d; /* --text */
+	--color-ink: #24283d; /* --text */
 	--color-muted: #697080; /* --muted-2     meta text, labels, captions */
 
 	/* Colour — accent (one accent, one accented object per view) */
-	--color-accent: #643de0; /* --accent      primary fill, links, focus */
+	--color-accent: #6842df; /* --accent      primary fill, links, focus */
 	--color-accent-dark: #4826ae; /* --indigo-dark text on the selection wash */
 	--color-selection: #f0ecfc; /* --selection   selected day, timer pill, avatar */
 	--color-on-accent: #ffffff; /* --on-accent */
@@ -27,7 +27,9 @@
 	 * the card rather than as part of it, and on a screen where every other surface is white or a
 	 * pale tint, dark is the only thing that says "above" without a heavier shadow.
 	 */
-	--color-raised: #242131;
+	--color-raised: #25233f;
+	--color-chart-teal: #329f8f;
+	--color-chart-blue: #5c8bd6;
 
 	/*
 	 * The hairline that draws the edge of an uploaded avatar. The ground behind one is white, not a
@@ -73,12 +75,13 @@
 	/* Radius — semantic, not a scale */
 	--radius-input: 8px; /* inputs, menus, popovers, toasts, key caps */
 	--radius-control: 10px; /* buttons and segmented navigation */
-	--radius-entry: 12px; /* entry cards, dialogs, list states */
+	--radius-entry: 18px; /* entry cards, dialogs, list states */
 	--radius-panel: 20px; /* login card, bottom sheets */
 	--radius-pill: 999px; /* avatars, status pills, circular controls */
 
 	/* Elevation — hairlines carry structure; shadow only for overlays */
 	--shadow-menu: 0 8px 24px rgba(17, 17, 17, 0.12);
+	--shadow-card: 0 4px 24px rgb(36 40 61 / 4%);
 	--shadow-control: 0 1px 3px rgb(32 35 45 / 8%), 0 0 0 1px rgb(32 35 45 / 4%);
 	--shadow-popover: 0 10px 30px rgba(17, 17, 17, 0.14);
 	--shadow-dialog: 0 12px 40px rgba(17, 17, 17, 0.2);
@@ -94,6 +97,29 @@
 	--animate-spinner: spinner 0.7s linear infinite;
 	--animate-overlay-in: overlay-in 0.12s var(--ease-ui);
 	--animate-sheet-up: sheet-up 0.18s var(--ease-ui);
+	--animate-day-in: overlay-in 0.24s var(--ease-ui) backwards;
+	--animate-entry-in: entry-in 0.36s var(--ease-ui) backwards;
+	--animate-skeleton-sweep: skeleton-sweep 1.6s ease-in-out infinite;
+
+	@keyframes entry-in {
+		from {
+			opacity: 0;
+			transform: translateY(10px);
+		}
+		to {
+			opacity: 1;
+			transform: none;
+		}
+	}
+
+	@keyframes skeleton-sweep {
+		from {
+			transform: translateX(-100%);
+		}
+		to {
+			transform: translateX(100%);
+		}
+	}
 
 	/* The running timer (X-4), from `Timer.dc.html`.
 
@@ -343,6 +369,7 @@
 	*::before,
 	*::after {
 		animation-duration: 0.14s !important;
+		animation-delay: 0s !important;
 		animation-iteration-count: 1 !important;
 		transition-duration: 0.14s !important;
 	}
@@ -351,5 +378,12 @@
 		animation: none !important;
 		opacity: 1 !important;
 		transform: none !important;
+	}
+
+	/* Day changes stay immediate; no stagger, entrance travel, or loading sweep. */
+	.animate-day-in,
+	.animate-entry-in,
+	.animate-skeleton-sweep {
+		animation: none !important;
 	}
 }

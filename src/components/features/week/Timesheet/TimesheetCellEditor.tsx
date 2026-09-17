@@ -60,7 +60,7 @@ export function TimesheetCellEditor({
 					type="button"
 					aria-label={`Stop the timer on ${rowName}`}
 					onClick={onStopTimer}
-					className="flex h-[34px] items-center gap-[7px] rounded-pill bg-accent px-2.5 text-meta font-medium text-on-accent tabular-nums"
+					className="flex h-[34px] items-center gap-[7px] rounded-control bg-accent px-2.5 text-meta font-medium text-on-accent tabular-nums"
 				>
 					<StopIcon />
 					{elapsed}
@@ -108,11 +108,14 @@ export function TimesheetCellEditor({
 				setDraft(cell.minutes === 0 ? '' : formatDuration(cell.minutes));
 			}}
 			className={cn(
-				'duration-ui group grid h-full w-full place-items-center px-1.5 py-3 text-meta font-medium tabular-nums transition-colors ease-ui hover:bg-subtle'
+				'duration-ui group grid h-full w-full place-items-center px-1.5 py-3 text-meta font-medium tabular-nums transition-colors ease-ui hover:bg-selection/65 focus-visible:bg-selection/65'
 			)}
 		>
 			{cell.minutes === 0 ? (
-				<span aria-hidden="true" className="text-muted opacity-0 group-hover:opacity-100">
+				<span
+					aria-hidden="true"
+					className="grid size-7 place-items-center rounded-input bg-selection text-accent opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100"
+				>
 					+
 				</span>
 			) : (

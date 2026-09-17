@@ -171,18 +171,13 @@ export function TimeEntryCard({
 			// No focus classes: `styles/index.css` draws one accent ring on `:focus-visible`
 			// everywhere, which is the ring the design brief asks cards to have.
 			className={cn(
-				'duration-ui group relative flex min-h-[76px] items-start gap-3.5 rounded-entry border bg-surface p-4 transition-colors md:items-center md:gap-[18px] md:px-5 md:py-5',
-				/*
-				 * The indigo edge the design gives a tracking row, so it is findable down a long
-				 * day - drawn as a thick left border rather than an absolutely positioned bar. A
-				 * bar is a rectangle and the card is not: its square ends stuck out past the
-				 * rounded corners and read as a rendering fault. A border follows the radius. The
-				 * three extra pixels come back out of the padding so nothing shifts when a timer
-				 * starts.
-				 */
-				isTracking ? 'border-l-4 border-accent pl-[13px] md:pl-[17px]' : 'border-line hover:border-muted/40'
+				'duration-ui group relative flex min-h-[76px] flex-wrap items-start gap-3.5 rounded-input border bg-surface p-3 transition-colors md:flex-nowrap md:items-center md:gap-4 md:px-4 md:py-6',
+				isTracking ? 'border-transparent bg-selection/65' : 'border-transparent hover:bg-canvas/80'
 			)}
 		>
+			{isTracking && (
+				<span aria-hidden="true" className="absolute top-5 bottom-5 left-0 w-[3px] rounded-pill bg-accent/65" />
+			)}
 			{/*
 			 * The company the service is billed to, which is what the row used to lead with in
 			 * Productive's own UI and what UI-1 puts back. Its logo when there is one, its initials
@@ -197,7 +192,7 @@ export function TimeEntryCard({
 				initialsFrom="start"
 				// Contained and padded rather than cropped - a brand mark filled to the edges of a
 				// square is a brand mark with its corners cut off.
-				className="size-10 flex-none rounded-[10px] object-contain p-1.5"
+				className="size-11 flex-none rounded-[13px] object-contain p-2"
 				fallbackClassName={cn(
 					'text-micro font-bold tracking-[.02em]',
 					entry.service?.companyName === null || entry.service?.companyName === undefined
@@ -206,9 +201,7 @@ export function TimeEntryCard({
 				)}
 			/>
 
-			<div className="flex min-w-0 flex-1 flex-col gap-1.5">
-				{hasNote ? <ClampedNote note={entry.note ?? ''} /> : <p className="text-list text-muted">No description</p>}
-
+			<div className="order-last flex min-w-0 flex-1 basis-full flex-col gap-1.5 md:order-none md:basis-auto">
 				<div className="flex flex-wrap items-center gap-2">
 					{/* `project · service`, and everything behind the project name (UI-2). */}
 					<ServiceContext service={entry.service} />
@@ -221,9 +214,9 @@ export function TimeEntryCard({
 					{isTracking && (
 						<>
 							<span aria-hidden="true" className="hidden h-[11px] w-px bg-line md:block" />
-							<span className="flex items-center gap-1.5 text-caption font-medium text-accent">
+							<span className="flex items-center gap-1.5 rounded-pill bg-surface/80 px-2.5 py-1 text-micro font-medium text-accent-dark">
+								<TimerDot className="size-[6px]" />
 								Tracking
-								<TimerDot className="size-[7px]" />
 							</span>
 						</>
 					)}
@@ -244,6 +237,7 @@ export function TimeEntryCard({
 					 */}
 					{entry.draft && <span className="text-caption font-medium text-muted">Draft</span>}
 				</div>
+				{hasNote ? <ClampedNote note={entry.note ?? ''} /> : <p className="text-label text-muted">No description</p>}
 			</div>
 
 			{/*
@@ -268,7 +262,7 @@ export function TimeEntryCard({
 			 */}
 			{hasHover &&
 				(isTracking ? null : isEditingDuration || onContinueTimer === undefined ? (
-					<span aria-hidden="true" className="size-9 flex-none" />
+					<span aria-hidden="true" className="hidden size-9 flex-none md:block" />
 				) : (
 					<button
 						type="button"
@@ -276,7 +270,7 @@ export function TimeEntryCard({
 						title="Continue timer"
 						onClick={onContinueTimer}
 						className={cn(
-							'duration-ui grid size-9 flex-none place-items-center rounded-control border border-line text-accent transition-colors ease-ui hover:border-transparent hover:bg-selection',
+							'duration-ui ml-auto grid size-9 flex-none place-items-center rounded-control border border-line text-accent transition-colors ease-ui hover:border-transparent hover:bg-selection md:ml-0',
 							REVEALED
 						)}
 					>
@@ -291,7 +285,11 @@ export function TimeEntryCard({
 			 * card can scroll out of sight.
 			 */}
 			{isTracking && onStopTimer !== undefined && (
-				<StopTimerButton onStop={onStopTimer} label="Stop" className="flex-none" />
+				<StopTimerButton
+					onStop={onStopTimer}
+					label="Stop"
+					className="ml-auto h-9 flex-none rounded-[10px] border border-accent/15 bg-surface text-accent-dark shadow-control transition-colors hover:scale-100 hover:bg-selection md:ml-0"
+				/>
 			)}
 
 			{hasHover && onSaveDuration !== undefined ? (
@@ -309,7 +307,7 @@ export function TimeEntryCard({
 			) : (
 				<p
 					className={cn(
-						'flex-none pt-0.5 text-duration leading-[120%] font-medium tracking-[-.01em] tabular-nums md:pt-0',
+						'ml-auto flex-none pt-0.5 text-duration leading-[120%] font-medium tracking-[-.01em] tabular-nums md:ml-0 md:pt-0',
 						isTracking && 'text-accent-dark'
 					)}
 				>
@@ -320,7 +318,7 @@ export function TimeEntryCard({
 			<DropdownMenu>
 				<DropdownMenuTrigger
 					aria-label="Entry actions"
-					className="duration-ui -mt-2.5 -mr-2.5 grid size-11 flex-none place-items-center rounded-control text-muted transition-colors ease-ui hover:bg-subtle hover:text-ink md:-mt-0 md:-mr-1 md:size-9"
+					className="duration-ui -mr-2.5 grid size-11 flex-none place-items-center rounded-control text-muted transition-colors ease-ui hover:bg-subtle hover:text-ink md:-mt-0 md:-mr-1 md:size-9"
 				>
 					<KebabIcon />
 				</DropdownMenuTrigger>
