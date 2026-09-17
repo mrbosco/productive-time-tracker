@@ -62,7 +62,12 @@ interface TimeEntryFormProps {
 	 * Values a new entry starts from without being an edit of anything (X-3's `Duplicate`). Ignored
 	 * while `entry` is present: an edit already has values, and its own are the right ones.
 	 */
-	prefill?: { minutes: number; note: string | null } | null;
+	/**
+	 * Values to open on without them counting as edits. X-3's duplicate brings both; UI-3's `Log
+	 * time` brings only the description, and a null duration leaves that field empty rather than
+	 * seeding it with a `0h` nobody typed.
+	 */
+	prefill?: { minutes: number | null; note: string | null } | null;
 	maxNoteLength?: number;
 }
 
@@ -143,7 +148,7 @@ export function TimeEntryForm({ session, date, entry, prefill, maxNoteLength = M
 	const source = entry ?? prefill ?? undefined;
 	const seed = {
 		date: dayDate,
-		duration: source === undefined ? '' : formatDuration(source.minutes),
+		duration: source?.minutes == null ? '' : formatDuration(source.minutes),
 		from: '',
 		to: '',
 		note: source?.note ?? '',
