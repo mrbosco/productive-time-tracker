@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { TimeEntry } from '@/api/types';
-import { render, screen, within } from '@/__tests__/test-utils';
+import { buildService, render, screen, within } from '@/__tests__/test-utils';
 import { ServiceTotals } from './ServiceTotals';
 import { groupMinutesByService } from './ServiceTotals.utils';
 
@@ -12,10 +12,7 @@ function buildEntry(id: string, minutes: number, serviceName: string | null): Ti
 		note: null,
 		draft: false,
 		serviceId: serviceName,
-		service:
-			serviceName === null
-				? null
-				: { id: serviceName, name: serviceName, dealName: null, dealId: null, companyName: null },
+		service: serviceName === null ? null : buildService({ id: serviceName, name: serviceName }),
 		createdAt: '2026-09-15T16:08:26.527+02:00',
 	};
 }

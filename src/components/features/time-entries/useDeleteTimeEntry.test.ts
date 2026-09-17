@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { ApiError } from '@/api/client';
 import type { TimeEntry } from '@/api/types';
 import type { WeekTotals } from '@/components/features/week/useWeekTotals';
-import { renderHookWithProviders, testSession } from '@/__tests__/test-utils';
+import { buildService, renderHookWithProviders, testSession } from '@/__tests__/test-utils';
 import { server } from '@/mocks/node';
 import { useDeleteTimeEntry } from './useDeleteTimeEntry';
 
@@ -29,7 +29,7 @@ function buildEntry(id: string, minutes: number): TimeEntry {
 		note: null,
 		draft: false,
 		serviceId: '16887825',
-		service: { id: '16887825', name: 'Administrative work', dealName: null, dealId: null, companyName: null },
+		service: buildService(),
 		createdAt: '2026-09-17T09:00:00.000+02:00',
 	};
 }

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { TimeEntry } from '@/api/types';
-import { renderWithProviders, screen } from '@/__tests__/test-utils';
+import { buildService, renderWithProviders, screen } from '@/__tests__/test-utils';
 import { TimeEntryDeleteDialog } from './TimeEntryDeleteDialog';
 
 function buildEntry(overrides: Partial<TimeEntry> = {}): TimeEntry {
@@ -11,7 +11,7 @@ function buildEntry(overrides: Partial<TimeEntry> = {}): TimeEntry {
 		note: 'Standup and time logging.',
 		draft: false,
 		serviceId: '16887825',
-		service: { id: '16887825', name: 'Administrative work', dealName: null, dealId: null, companyName: null },
+		service: buildService(),
 		createdAt: '2026-09-15T16:08:26.527+02:00',
 		...overrides,
 	};

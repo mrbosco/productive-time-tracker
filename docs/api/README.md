@@ -43,8 +43,8 @@ token, a billing email and analytics identifiers, none of which this app has any
 
 | Purpose        | Method + path                                  | Sample                                                 |
 | -------------- | ---------------------------------------------- | ------------------------------------------------------ |
-| Resolve person | `GET /organization_memberships?include=person,organization` | `organization-memberships-include-organization.json`      |
-| List for a day | `GET /time_entries`                            | `time-entries-day.json`, `time-entries-empty-day.json` |
+| Resolve person | `GET /organization_memberships?include=person,organization.company` | `organization-memberships-avatars.json`      |
+| List for a day | `GET /time_entries`                            | `time-entries-day-service-context.json`, `time-entries-empty-day.json` |
 | Read one       | `GET /time_entries/{id}`                       | `time-entry-show.json`                                 |
 | Create         | `POST /time_entries`                           | `time-entry-create.json`                               |
 | Update         | `PATCH /time_entries/{id}`                     | `time-entry-update.json`                               |
@@ -325,6 +325,9 @@ entry's `time` was typed by hand.
 | `/timers` accepts `filter[time_entry_id]`, and it genuinely filters: 3 rows against 16 unfiltered. | `timers-for-entry.json` + `timers-all.json`  | **Unblocks UI-9** — one entry's runs are listable                     |
 | A timer's `total_time` is the linked entry's **cumulative** minutes after that run, not the run's own length. Three runs on one entry read 2, 26, 26. | `timers-for-entry.json`                      | **Confirms SPEC 11 finding 4** — UI-9's per-run figure is a delta      |
 | The recorded day drifted between 2026-09-16 and 2026-09-17: entry `162921872` (240 min) is gone and `163073474` (0 min) is new, so the day totals `5h` rather than `9h`. | `time-entries-day-service-deal.json`         | The day fixture and every test asserting `9h` move with it            |
+| A service's whole hierarchy resolves in one day request: `include=service.deal.company,service.deal.project.company,service.section`. `deals` carry both `company` and `project`, `projects` carry a `company` of their own, and `sections` hang off the service. | `time-entries-day-service-context.json`       | **Unblocks UI-2** — five levels, no fan-out                   |
+| The project names in the recording are the design's own sample copy - `Internal project [SAMPLE]`, `Fixed price [SAMPLE]` - which is what confirms the card's meta line is `project · service` rather than `deal · service`. | `time-entries-day-service-context.json`      | **Confirms UI-2** — the dotted name is `deal.project.name`     |
+| A single-resource endpoint answers every relationship with `{"meta":{"included":false}}` unless `include` asks; `/services/{id}` and `/deals/{id}` list the relationship names and nothing else. | `service-show.json`, `deal-show.json`        | Confirms api-client rule 10 — the shapes came from the collection |
 | An organization has no picture of its own: the logo Productive's top bar renders belongs to `organization.company`, and that company's `avatar_url` is the field. Watched on `app.productive.io`, whose own request is `organization_memberships/{id}?include=…organization.company…`. | `organization-memberships-avatars.json`       | **Confirms UI-8** — the org badge is a real logo, not initials |
 | `people.avatar_url` exists and is nullable (null for the recorded person, who never uploaded one). | `person-show.json`, `organization-memberships-avatars.json` | **Confirms UI-8** — initials are the fallback, not the design |
 | `fields[people]=…,avatar_url` and `include=person,organization.company` are both honoured on the login request, alongside `availabilities`. | `organization-memberships-avatars.json`      | **Extends SPEC 4.2** — avatars and expected hours cost no request |

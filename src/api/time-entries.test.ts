@@ -31,7 +31,10 @@ describe('listTimeEntries', () => {
 		expect(seen.params?.get('filter[person_id]')).toBe('1448639');
 		expect(seen.params?.get('filter[after]')).toBe('2026-09-15');
 		expect(seen.params?.get('filter[before]')).toBe('2026-09-15');
-		expect(seen.params?.get('include')).toBe('service');
+		// Four relationships deeper than the name on the card. The company a row leads with, the
+		// project it names, the section and the client behind that name all hang off the service,
+		// and all of them come back in this one request (UI-1, UI-2).
+		expect(seen.params?.get('include')).toBe('service.deal.company,service.deal.project.company,service.section');
 		expect(seen.params?.get('page[size]')).toBe('200');
 	});
 
@@ -45,7 +48,16 @@ describe('listTimeEntries', () => {
 		expect(seen.params?.get('fields[time_entries]')?.split(',')).toEqual(
 			expect.arrayContaining(['date', 'time', 'note', 'created_at', 'draft', 'service'])
 		);
-		expect(seen.params?.get('fields[services]')?.split(',')).toContain('name');
+		expect(seen.params?.get('fields[services]')?.split(',')).toEqual(
+			expect.arrayContaining(['name', 'deal', 'section'])
+		);
+		// `fields` governs relationships too, so the chain stops at the deal without `company` here.
+		expect(seen.params?.get('fields[deals]')?.split(',')).toEqual(
+			expect.arrayContaining(['name', 'company', 'project'])
+		);
+		expect(seen.params?.get('fields[projects]')?.split(',')).toEqual(expect.arrayContaining(['name', 'company']));
+		expect(seen.params?.get('fields[sections]')?.split(',')).toContain('name');
+		expect(seen.params?.get('fields[companies]')?.split(',')).toEqual(expect.arrayContaining(['name', 'avatar_url']));
 	});
 
 	it('never sends sort, which this endpoint rejects for anything but date', async () => {
@@ -63,7 +75,7 @@ describe('listTimeEntries', () => {
 	it('orders a day by created_at descending client-side (A-7)', async () => {
 		const entries = await listTimeEntries(auth, '1448639', '2026-09-15');
 
-		expect(entries.map((entry) => entry.id)).toEqual(['162921872', '162921848', '162903873']);
+		expect(entries.map((entry) => entry.id)).toEqual(['163073474', '162921848', '162903873']);
 	});
 
 	it('issues exactly one request for a day with no entries', async () => {

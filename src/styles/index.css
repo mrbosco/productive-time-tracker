@@ -24,12 +24,11 @@
 	--color-on-accent: #ffffff; /* --on-accent */
 
 	/*
-	 * The plate an uploaded avatar sits on. A logo is somebody else's artwork - often transparent,
-	 * often pale - so it cannot be trusted to define its own edge, and the accent tint behind the
-	 * initials would tint their brand. Neutral and cool, so it reads as a frame rather than as a
-	 * colour anyone chose.
+	 * The hairline that draws the edge of an uploaded avatar. The ground behind one is white, not a
+	 * tint: a logo is somebody else's artwork and usually carries its own white ground, so a tinted
+	 * plate frames a second white square inside itself. White makes the two the same surface and
+	 * leaves this line as the only edge - which is what the design asks for, and the reason it does.
 	 */
-	--color-avatar: #f0f2fa;
 	--color-avatar-line: #e6e9f5;
 
 	/* Colour — semantic (derived: the design system publishes no semantics) */

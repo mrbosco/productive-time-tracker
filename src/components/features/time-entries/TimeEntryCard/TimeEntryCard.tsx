@@ -1,6 +1,7 @@
 import { Link } from '@tanstack/react-router';
 import { useEffect, useId, useRef, useState } from 'react';
 import type { TimeEntry } from '@/api/types';
+import { Avatar } from '@/components/core/Avatar';
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -108,27 +109,34 @@ export function TimeEntryCard({
 			// No focus classes: `styles/index.css` draws one accent ring on `:focus-visible`
 			// everywhere, which is the ring the design brief asks cards to have.
 			className={cn(
-				'relative flex items-start gap-3 overflow-hidden rounded-entry border bg-surface p-4 md:gap-5 md:px-5 md:py-[18px]',
+				'relative flex items-start gap-3.5 overflow-hidden rounded-entry border bg-surface p-4 md:px-5 md:py-[18px]',
 				isTracking ? 'border-accent' : 'border-line'
 			)}
 		>
 			{/* The indigo edge the design gives a tracking row, so it is findable down a long day. */}
 			{isTracking && <span aria-hidden="true" className="absolute inset-y-0 left-0 w-1 bg-accent" />}
 			{/*
-			 * Tabular numerals so a column of durations lines up on the digits rather than
-			 * shifting with each glyph width (design brief 2).
+			 * The company the service is billed to, which is what the row used to lead with in
+			 * Productive's own UI and what UI-1 puts back. Its logo when there is one, its initials
+			 * when there is not, and a building when the service has no company at all - which is
+			 * the state an entry on a since-archived deal lands in, not a rendering fault.
 			 */}
-			<p
-				className={cn(
-					'min-w-[70px] flex-none text-duration leading-[120%] font-medium tracking-[-.01em] tabular-nums md:min-w-[84px]',
-					// The reserved 70px is for a column of durations lining up; a tracking row has a stop
-					// control to fit beside the note instead, and on a 390px screen that column is the
-					// space it needs (N-4). The desktop row keeps its alignment.
-					isTracking && 'min-w-0 pl-1 text-accent-dark md:min-w-[84px]'
+			<Avatar
+				name={entry.service?.companyName ?? ''}
+				src={entry.service?.companyAvatarUrl}
+				// `start`, not `edges`: an organisation is named by its first two words and the rest
+				// is usually a legal suffix, so "Vela Studio Group" is VS rather than VG.
+				initialsFrom="start"
+				// Contained and padded rather than cropped - a brand mark filled to the edges of a
+				// square is a brand mark with its corners cut off.
+				className="size-10 flex-none rounded-[10px] object-contain p-1.5"
+				fallbackClassName={cn(
+					'text-micro font-bold tracking-[.02em]',
+					entry.service?.companyName === null || entry.service?.companyName === undefined
+						? 'border border-line bg-subtle text-muted'
+						: 'bg-selection text-accent-dark'
 				)}
-			>
-				{formatDuration(minutes)}
-			</p>
+			/>
 
 			<div className="flex min-w-0 flex-1 flex-col gap-1.5">
 				{hasNote ? (
@@ -164,6 +172,23 @@ export function TimeEntryCard({
 					{entry.draft && <span>Draft</span>}
 				</p>
 			</div>
+
+			{/*
+			 * Tabular numerals so a column of durations lines up on the digits rather than shifting
+			 * with each glyph width (design brief 2). It sits at the trailing edge now: the leading
+			 * slot is the company's, and the space this leaves is what UI-4's play button goes in.
+			 *
+			 * No reserved width any more. A right-aligned column lines up on its own edge, which is
+			 * what the 70px was buying when the column was on the left.
+			 */}
+			<p
+				className={cn(
+					'flex-none pt-0.5 text-duration leading-[120%] font-medium tracking-[-.01em] tabular-nums',
+					isTracking && 'text-accent-dark'
+				)}
+			>
+				{formatDuration(minutes)}
+			</p>
 
 			{/*
 			 * The same control as the app bar's, so it is learned once - a square on mobile where

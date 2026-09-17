@@ -31,18 +31,41 @@ function buildPath(page: number): string {
 	);
 }
 
+/**
+ * Walks `service -> deal -> project -> company`, plus the section and the deal's own company.
+ *
+ * Which company is "the company" and which is "the client" is the one judgement in here. The
+ * project's is the work's - it is what a logo is recognised as - and the deal's is whoever is
+ * billed for it. They are the same record in every entry this account has; they come apart on
+ * subcontracted work, which is the case `Service Context.dc.html` designs the Client row for. The
+ * project's is used when there is one and the deal's stands in when there is not, so an avatar
+ * never goes missing over a deal that was never filed under a project.
+ */
 export function toService(document: JsonApiDocument, resource: Resource): Service {
 	const dealId = readRelationshipId(resource, 'deal');
 	const deal = findIncluded(document, 'deals', dealId);
-	const company =
+	const client =
 		deal === undefined ? undefined : findIncluded(document, 'companies', readRelationshipId(deal, 'company'));
+	const project =
+		deal === undefined ? undefined : findIncluded(document, 'projects', readRelationshipId(deal, 'project'));
+	const company =
+		project === undefined
+			? client
+			: (findIncluded(document, 'companies', readRelationshipId(project, 'company')) ?? client);
+	const section = findIncluded(document, 'sections', readRelationshipId(resource, 'section'));
 
 	return {
 		id: resource.id,
 		name: readAttributeString(resource, 'name') ?? '',
 		dealName: deal === undefined ? null : readAttributeString(deal, 'name'),
 		dealId,
+		projectName: project === undefined ? null : readAttributeString(project, 'name'),
 		companyName: company === undefined ? null : readAttributeString(company, 'name'),
+		companyId: company?.id ?? null,
+		companyAvatarUrl: company === undefined ? null : readAttributeString(company, 'avatar_url'),
+		clientName: client === undefined ? null : readAttributeString(client, 'name'),
+		clientId: client?.id ?? null,
+		sectionName: section === undefined ? null : readAttributeString(section, 'name'),
 	};
 }
 

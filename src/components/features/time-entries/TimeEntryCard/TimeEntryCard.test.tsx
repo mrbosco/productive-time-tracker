@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { TimeEntry } from '@/api/types';
 import { todayIso } from '@/lib/date';
-import { renderWithProviders, screen, userEvent } from '@/__tests__/test-utils';
+import { buildService, renderWithProviders, screen, userEvent } from '@/__tests__/test-utils';
 import { TimeEntryCard } from './TimeEntryCard';
 
 function buildEntry(overrides: Partial<TimeEntry> = {}): TimeEntry {
@@ -12,7 +12,7 @@ function buildEntry(overrides: Partial<TimeEntry> = {}): TimeEntry {
 		note: 'Standup and time logging.',
 		draft: false,
 		serviceId: '16887825',
-		service: { id: '16887825', name: 'Administrative work', dealName: null, dealId: null, companyName: null },
+		service: buildService(),
 		createdAt: '2026-09-15T16:08:26.527+02:00',
 		...overrides,
 	};
@@ -28,6 +28,47 @@ describe('TimeEntryCard', () => {
 		expect(screen.getByText('1h 30m')).toBeInTheDocument();
 		expect(screen.getByText('Standup and time logging.')).toBeInTheDocument();
 		expect(screen.getByText('Administrative work')).toBeInTheDocument();
+	});
+
+	/**
+	 * UI-1: the row leads with the company the service is billed to, which is what Productive's own
+	 * time screen does and what this card had dropped.
+	 */
+	it('leads with the company logo when the company has one', async () => {
+		await renderWithProviders(
+			<TimeEntryCard
+				onRequestDelete={noop}
+				entry={buildEntry({
+					service: buildService({ companyName: 'Anoda', companyAvatarUrl: 'https://files.productive.io/anoda.png' }),
+				})}
+			/>
+		);
+
+		expect(screen.getByRole('presentation')).toHaveAttribute('src', 'https://files.productive.io/anoda.png');
+	});
+
+	it('falls back to the company initials when it has no logo', async () => {
+		await renderWithProviders(
+			<TimeEntryCard
+				onRequestDelete={noop}
+				entry={buildEntry({
+					service: buildService({ companyName: 'Anoda Studio', companyAvatarUrl: null }),
+				})}
+			/>
+		);
+
+		expect(screen.getByText('AS')).toBeInTheDocument();
+	});
+
+	/**
+	 * A service on an archived deal comes back with no company at all. The glyph that stands in for
+	 * one is `Avatar`'s own business and is tested there; what matters here is that the card does
+	 * not invent a picture or a pair of letters for a company it does not have.
+	 */
+	it('shows neither a logo nor initials when the service has no company', async () => {
+		await renderWithProviders(<TimeEntryCard onRequestDelete={noop} entry={buildEntry()} />);
+
+		expect(screen.queryByRole('presentation')).not.toBeInTheDocument();
 	});
 
 	/** A-8: Productive writes zero-minute entries, and a running timer is one until it stops. */

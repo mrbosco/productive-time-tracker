@@ -36,3 +36,6 @@ timers-all.json                                      200
 timers-for-entry.json                                200
 time-entries-day-service-deal.json                   200
 organization-memberships-avatars.json                200
+service-show.json                                    200
+deal-show.json                                       200
+time-entries-day-service-context.json                200

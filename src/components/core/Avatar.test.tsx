@@ -3,17 +3,36 @@ import { fireEvent, render, screen } from '@/__tests__/test-utils';
 import { Avatar, toInitials } from './Avatar';
 
 describe('toInitials', () => {
-	it('takes the first and last word', () => {
+	it('takes the first and last word of a person, so a middle name is not what they are called', () => {
 		expect(toInitials('Ada Lovelace')).toBe('AL');
 		expect(toInitials('Ada Byron King Lovelace')).toBe('AL');
 	});
 
-	it('takes one letter from a single name', () => {
-		expect(toInitials('Ada')).toBe('A');
+	/** An organisation's first two words are its name; what follows is usually a legal suffix. */
+	it('takes the first two words of an organisation', () => {
+		expect(toInitials('Vela Studio Group', 'start')).toBe('VS');
+		expect(toInitials('Northlake Bank', 'start')).toBe('NB');
 	});
 
-	it('returns nothing for an empty name', () => {
+	it('takes one letter from a single name', () => {
+		expect(toInitials('Ada')).toBe('A');
+		expect(toInitials('Anoda', 'start')).toBe('A');
+	});
+
+	/** Otherwise "3M Company" reads as "3C", which is not anybody's initials. */
+	it('skips past non-letters rather than taking them', () => {
+		expect(toInitials('3M Company', 'start')).toBe('MC');
+		expect(toInitials('  Ada   Lovelace  ')).toBe('AL');
+	});
+
+	it('passes over a word with no letters in it at all', () => {
+		expect(toInitials('Studio 54 Partners', 'start')).toBe('SP');
+	});
+
+	it('returns nothing for an empty name, which is the glyph cue', () => {
 		expect(toInitials('')).toBe('');
+		expect(toInitials('   ')).toBe('');
+		expect(toInitials('42')).toBe('');
 	});
 });
 
@@ -22,6 +41,17 @@ describe('Avatar', () => {
 		render(<Avatar name="Ada Lovelace" />);
 
 		expect(screen.getByText('AL')).toBeInTheDocument();
+	});
+
+	/**
+	 * A service on an archived deal has no company at all (UI-1). That is a real state rather than
+	 * a picture that failed to load, so it gets a glyph rather than an empty tile.
+	 */
+	it('draws a glyph when there is not even a name to take initials from', () => {
+		const { container } = render(<Avatar name="" />);
+
+		expect(container.querySelector('svg')).toBeInTheDocument();
+		expect(container.textContent).toBe('');
 	});
 
 	it('shows the logo instead when there is one', () => {
@@ -58,8 +88,9 @@ describe('Avatar', () => {
 		const logo = screen.getByRole('presentation');
 		expect(logo).toHaveClass('size-6', 'rounded-[6px]');
 		expect(logo).not.toHaveClass('bg-accent-dark');
-		// It gets the neutral plate instead, so a transparent logo still has an edge.
-		expect(logo).toHaveClass('bg-avatar', 'border-avatar-line');
+		// It gets a white ground and a hairline instead, so a logo carrying its own white ground
+		// reads as one square rather than two, and a transparent one still has an edge.
+		expect(logo).toHaveClass('bg-surface', 'border-avatar-line');
 	});
 
 	/**
