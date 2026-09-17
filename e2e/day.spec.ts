@@ -84,15 +84,32 @@ test.describe('the day view', () => {
 		await expect(list.getByText('0h', { exact: true })).toBeVisible();
 	});
 
-	/** A-7: the API cannot sort on `created_at`, and the fixture stores the day newest-first. */
-	test('orders the entries by when they were logged', async ({ page }) => {
+	/**
+	 * A-7, amended: newest first. The API cannot sort on `created_at` at all, so this is entirely
+	 * the client-side sort - and the fixture's own order is neither ascending nor descending, which
+	 * is what makes the assertion mean something.
+	 */
+	test('puts the most recently logged entry at the top', async ({ page }) => {
 		await page.goto(`/day/${SEEDED_DATE}`);
 
 		const durations = page.getByRole('article');
 
-		await expect(durations.nth(0)).toContainText('5h');
+		await expect(durations.nth(0)).toContainText('4h');
 		await expect(durations.nth(1)).toContainText('0h');
-		await expect(durations.nth(2)).toContainText('4h');
+		await expect(durations.nth(2)).toContainText('5h');
+	});
+
+	/** The reason A-7 was amended: a new entry belongs where it can be seen (R-9). */
+	test('puts a newly added entry at the top rather than below the day', async ({ page }) => {
+		await page.goto(`/day/${SEEDED_DATE}`);
+		await expect(page.getByRole('article')).toHaveCount(3);
+
+		await page.getByRole('link', { name: 'Add entry' }).click();
+		await page.getByRole('textbox', { name: 'Duration' }).fill('25m');
+		await page.getByRole('button', { name: 'Save entry' }).click();
+
+		await expect(page.getByRole('article')).toHaveCount(4);
+		await expect(page.getByRole('article').first()).toContainText('25m');
 	});
 
 	/** X-1: the week around the selected day, from one request, grouped client-side. */
@@ -126,6 +143,21 @@ test.describe('the day view', () => {
 		await expect(page.getByText('Nothing logged for this day yet.')).toBeVisible();
 	});
 
+	/**
+	 * X-1, design brief 3.2: "with the selected cell centered". Seven cells and the week's own do
+	 * not fit a 390px screen and the row starts at Monday, so on Pixel 5 a Sunday is off the right
+	 * edge unless something scrolls it back. Asserted as geometry rather than as a scroll offset,
+	 * because "you can see the day you picked" is the behaviour and the offset is one way to get
+	 * there. On desktop the grid never overflows and this holds without anything scrolling.
+	 */
+	test('keeps the selected day on screen at the end of the week (X-1)', async ({ page }) => {
+		await page.goto('/day/2026-09-20');
+
+		// `ratio: 1` is the whole point: the default passes on a single visible pixel, which is
+		// exactly the state this is meant to catch.
+		await expect(page.getByRole('link', { name: /^Sun 20 Sep/ })).toBeInViewport({ ratio: 1 });
+	});
+
 	test('totals the day', async ({ page }) => {
 		await page.goto(`/day/${SEEDED_DATE}`);
 
@@ -142,7 +174,7 @@ test.describe('the day view', () => {
 		await page.goto(`/day/${SEEDED_DATE}`);
 
 		await expect(page.getByText('Probavam')).toBeVisible();
-		await expect(page.getByRole('article').first().locator('ul li')).toHaveCount(1);
+		await expect(page.getByRole('article').filter({ hasText: 'Probavam' }).locator('ul li')).toHaveCount(1);
 		// Still no markup leaking through as text.
 		await expect(page.getByText('<ul>')).toHaveCount(0);
 	});

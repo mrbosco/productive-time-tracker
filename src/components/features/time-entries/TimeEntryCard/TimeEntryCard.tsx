@@ -8,6 +8,9 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from '@/components/core/DropdownMenu';
+import { todayIso } from '@/lib/date';
+import { StopTimerButton, TimerDot } from '@/components/features/timer/TimerControl/TimerControl';
+import { useElapsedSeconds } from '@/components/features/timer/useTimer';
 import { formatDuration } from '@/lib/duration';
 import { Note } from '@/components/features/time-entries/Note/Note';
 import { toPlainText } from '@/lib/note';
@@ -23,32 +26,108 @@ function KebabIcon() {
 	);
 }
 
+interface TimeEntryCardProps {
+	entry: TimeEntry;
+	onRequestDelete: () => void;
+	/** The card the arrow keys are standing on (X-2). It pulls focus to itself when it becomes so. */
+	isFocused?: boolean;
+	/**
+	 * The list's single tab stop. Separate from `isFocused` because before any arrow key has been
+	 * pressed no card is chosen, and the list still has to be reachable by Tab.
+	 *
+	 * Defaults to true, which is what a card rendered on its own is: the roving part of a roving
+	 * tabindex belongs to the list, and a card outside one has nothing to rove against.
+	 */
+	isTabStop?: boolean;
+	/** The card took focus on its own - a click or a Tab - so the list can follow it. */
+	onTakeFocus?: () => void;
+	/** Starts a timer on this entry (X-4). Absent greys the item out - one timer at a time. */
+	onContinueTimer?: () => void;
+	/**
+	 * A timer is running against this entry (X-4). The card says so and carries a stop control of
+	 * its own, because the app bar can be scrolled a long way from the row it belongs to.
+	 */
+	trackingSince?: string | null;
+	onStopTimer?: () => void;
+}
+
 /**
  * One logged entry (R-6): duration, the description, and the service it was tracked against.
  *
  * The date is not repeated here. Every card on the screen is the same day, and that day is the
  * page's heading right above the list - printing it twenty times would be noise, not information.
  *
- * The card is focusable because X-2 moves between cards with the arrow keys; until then the focus
- * ring is the only thing that arrives, which is harmless and is what the design draws.
+ * The card is focusable, and is a tab stop only while it is the focused one: X-2 moves between
+ * cards with the arrow keys, and a roving tabindex is what keeps Tab from walking through twenty
+ * of them to reach whatever is below the list (guidebook 18).
  */
-export function TimeEntryCard({ entry, onRequestDelete }: { entry: TimeEntry; onRequestDelete: () => void }) {
+export function TimeEntryCard({
+	entry,
+	onRequestDelete,
+	isFocused = false,
+	isTabStop = true,
+	onTakeFocus,
+	onContinueTimer,
+	trackingSince = null,
+	onStopTimer,
+}: TimeEntryCardProps) {
+	const cardRef = useRef<HTMLElement>(null);
+	const trackedSeconds = useElapsedSeconds(trackingSince);
+	const isTracking = trackingSince !== null;
+	/*
+	 * The entry's real total, not the timer's: what is stored plus what is running. They are the
+	 * same number for a timer started from the bar, whose entry begins at zero - but an entry that
+	 * already had minutes on it would otherwise appear to have lost them while being tracked
+	 * (`Timer.dc.html`, "the number on the card is always the entry's real total").
+	 */
+	const minutes = isTracking ? entry.minutes + Math.floor(trackedSeconds / 60) : entry.minutes;
 	// `toPlainText` only to decide whether there is anything to show: a note that is all markup
 	// and no words - `<p></p>` - should read as no description rather than as an empty box. What
 	// is rendered is the markup itself (ADR-0010).
 	const hasNote = toPlainText(entry.note).trim() !== '';
 
+	/*
+	 * Focus follows the list's choice, because the arrow keys change which card is chosen and
+	 * nothing else would move the caret there. Focusing a card that already has it is a no-op, so
+	 * the click path - where `onTakeFocus` reports focus that has already landed - costs nothing.
+	 */
+	useEffect(() => {
+		if (isFocused) cardRef.current?.focus();
+	}, [isFocused]);
+
 	return (
-		// Not focusable yet. The design gives cards a focus ring because X-2 moves between them with
-		// the arrow keys; until that lands, `tabIndex={0}` would only add a tab stop to an element
-		// with nothing to activate. X-2 brings it back as a roving tabindex.
-		<article className="relative flex items-start gap-3 rounded-entry border border-line bg-surface p-4 md:gap-5 md:px-5 md:py-[18px]">
+		<article
+			ref={cardRef}
+			tabIndex={isTabStop ? 0 : -1}
+			// Narrowed to the card itself: focus events bubble, so without this, clicking the kebab
+			// would report the card as focused, the effect above would pull focus back out of the
+			// menu trigger, and the menu would never open.
+			onFocus={(event) => {
+				if (event.target === event.currentTarget) onTakeFocus?.();
+			}}
+			// No focus classes: `styles/index.css` draws one accent ring on `:focus-visible`
+			// everywhere, which is the ring the design brief asks cards to have.
+			className={cn(
+				'relative flex items-start gap-3 overflow-hidden rounded-entry border bg-surface p-4 md:gap-5 md:px-5 md:py-[18px]',
+				isTracking ? 'border-accent' : 'border-line'
+			)}
+		>
+			{/* The indigo edge the design gives a tracking row, so it is findable down a long day. */}
+			{isTracking && <span aria-hidden="true" className="absolute inset-y-0 left-0 w-1 bg-accent" />}
 			{/*
 			 * Tabular numerals so a column of durations lines up on the digits rather than
 			 * shifting with each glyph width (design brief 2).
 			 */}
-			<p className="min-w-[70px] flex-none text-duration leading-[120%] font-medium tracking-[-.01em] tabular-nums md:min-w-[84px]">
-				{formatDuration(entry.minutes)}
+			<p
+				className={cn(
+					'min-w-[70px] flex-none text-duration leading-[120%] font-medium tracking-[-.01em] tabular-nums md:min-w-[84px]',
+					// The reserved 70px is for a column of durations lining up; a tracking row has a stop
+					// control to fit beside the note instead, and on a 390px screen that column is the
+					// space it needs (N-4). The desktop row keeps its alignment.
+					isTracking && 'min-w-0 pl-1 text-accent-dark md:min-w-[84px]'
+				)}
+			>
+				{formatDuration(minutes)}
 			</p>
 
 			<div className="flex min-w-0 flex-1 flex-col gap-1.5">
@@ -58,17 +137,46 @@ export function TimeEntryCard({ entry, onRequestDelete }: { entry: TimeEntry; on
 					<p className="text-list text-muted italic">No description</p>
 				)}
 
-				<p className="text-caption font-medium text-muted">
-					{entry.service?.name ?? 'Unknown service'}
+				<p className="flex flex-wrap items-center gap-2 text-caption font-medium text-muted">
+					{/*
+					 * On the meta line at both widths rather than above the note, which is where the
+					 * design puts it on desktop - it keeps the row the same height whether or not a
+					 * timer is running on it, so the list does not jump when one starts.
+					 */}
+					{isTracking && (
+						<>
+							<span className="flex items-center gap-1.5 text-micro font-bold tracking-[.06em] text-accent uppercase">
+								Tracking
+								<TimerDot className="size-[7px]" />
+							</span>
+							{/* Desktop only: the meta line wraps on a phone, which would leave the rule
+							    dangling at the end of a line with nothing after it. */}
+							<span aria-hidden="true" className="hidden h-[11px] w-px bg-line md:block" />
+						</>
+					)}
+					<span>{entry.service?.name ?? 'Unknown service'}</span>
 					{/*
 					 * Productive's own draft flag, and read from nothing else (A-8). It is
 					 * independent of the duration: the recorded zero-minute entry is `draft:
 					 * false`, and a running timer is a zero-minute entry too, so deriving the
 					 * label from `minutes === 0` would mislabel both.
 					 */}
-					{entry.draft && <span className="ml-2">Draft</span>}
+					{entry.draft && <span>Draft</span>}
 				</p>
 			</div>
+
+			{/*
+			 * The same control as the app bar's, so it is learned once - a square on mobile where
+			 * space is short, and the word beside it on desktop where there is room. Both drive the
+			 * one timer and open the one stop sheet; the bar keeps its pill either way, because this
+			 * card can scroll out of sight.
+			 */}
+			{isTracking && onStopTimer !== undefined && (
+				<>
+					<StopTimerButton onStop={onStopTimer} className="md:hidden" />
+					<StopTimerButton onStop={onStopTimer} label="Stop" className="hidden md:flex" />
+				</>
+			)}
 
 			<DropdownMenu>
 				<DropdownMenuTrigger
@@ -88,6 +196,20 @@ export function TimeEntryCard({ entry, onRequestDelete }: { entry: TimeEntry; on
 				 * here to open it would drag the whole ProseMirror tree onto the screen SPEC 4.2
 				 * requires to render on one request.
 				 *
+				 * `Continue timer` starts a timer **on this entry** (X-4): `POST /timers` with a
+				 * `time_entry` relationship attaches to one that already exists rather than creating
+				 * another, and the stop adds the elapsed minutes to what it holds
+				 * (`docs/api/samples/timer-continue-entry-probe.txt`). So this row is the one that
+				 * starts counting, and no second row appears. Greyed out while a timer already runs,
+				 * here or anywhere: there is one timer, and starting a second silently would be the
+				 * worst of the three possible behaviours.
+				 *
+				 * `Duplicate` lands on **today**, not on the day the source entry is from (X-3, Toggl's
+				 * continue pattern): copying yesterday's standup is almost always about logging today's,
+				 * and the source date is one tap away in the picker if it was not. It carries the entry's
+				 * ID rather than its values - the form reads them back - so nobody's description ends up
+				 * in a URL.
+				 *
 				 * `Delete` is a handler rather than a link for the same reason read the other way:
 				 * it asks its question on this screen and stays here (design brief 5), so there is
 				 * no route to send anyone to. The dialog it opens lives on the day view, not on this
@@ -100,8 +222,14 @@ export function TimeEntryCard({ entry, onRequestDelete }: { entry: TimeEntry; on
 							Edit
 						</Link>
 					</DropdownMenuItem>
-					<DropdownMenuItem disabled>Continue timer (X-4)</DropdownMenuItem>
-					<DropdownMenuItem disabled>Duplicate (X-3)</DropdownMenuItem>
+					<DropdownMenuItem disabled={isTracking || onContinueTimer === undefined} onSelect={onContinueTimer}>
+						Continue timer
+					</DropdownMenuItem>
+					<DropdownMenuItem asChild>
+						<Link to="/entries/new" search={{ date: todayIso(), duplicate: entry.id }}>
+							Duplicate
+						</Link>
+					</DropdownMenuItem>
 					<DropdownMenuSeparator />
 					<DropdownMenuItem variant="destructive" onSelect={onRequestDelete}>
 						Delete

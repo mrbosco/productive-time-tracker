@@ -9,12 +9,24 @@ import {
 import { render, type RenderOptions, renderHook, type RenderHookOptions } from '@testing-library/react';
 import type { ReactElement, ReactNode } from 'react';
 import { SessionProvider } from '@/components/features/auth/useSession';
+import { TimerProvider } from '@/components/features/timer/TimerProvider';
 import { type Session, writeSession } from '@/lib/storage';
 
+/**
+ * The app's staleness, not zero.
+ *
+ * `staleTime: 0` is the usual advice for tests and it hid a real bug: `fetchQuery` inherits the
+ * client's staleness, so X-4's "refetch the timer to learn its entry" answered from a cache the
+ * app had filled a moment earlier and the pill never started. Under a zero-stale client that
+ * fetch always went to the network and the test passed. Matching `createQueryClient` costs
+ * nothing - every test starts with an empty cache - and keeps that class of bug catchable.
+ *
+ * `retry` stays off: a retried failure is a slow test, not a more realistic one.
+ */
 function createTestQueryClient() {
 	return new QueryClient({
 		defaultOptions: {
-			queries: { retry: false, staleTime: 0 },
+			queries: { retry: false, staleTime: 30_000, refetchOnWindowFocus: false },
 			mutations: { retry: false },
 		},
 	});
@@ -78,10 +90,18 @@ export async function renderWithProviders(ui: ReactElement, { session, initialEn
 	const router = createTestRouter(ui, initialEntry);
 	await router.load();
 
+	/*
+	 * `TimerProvider` only when there is a session, because it needs one - and because a screen
+	 * rendered without one is a screen behind the auth boundary, where no timer exists. Extended
+	 * here rather than wrapped per file (testing.md rule 1): the day view and the app bar both read
+	 * the timer now, and X-5's banner will be the third.
+	 */
 	function Wrapper({ children }: { children: ReactNode }) {
 		return (
 			<QueryClientProvider client={queryClient}>
-				<SessionProvider>{children}</SessionProvider>
+				<SessionProvider>
+					{session === undefined ? children : <TimerProvider session={session}>{children}</TimerProvider>}
+				</SessionProvider>
 			</QueryClientProvider>
 		);
 	}

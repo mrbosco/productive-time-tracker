@@ -8,10 +8,15 @@ import { DaySummary } from '@/components/features/time-entries/DaySummary/DaySum
 import { TimeEntryDeleteDialog } from '@/components/features/time-entries/TimeEntryDeleteDialog/TimeEntryDeleteDialog';
 import { ServiceTotals } from '@/components/features/time-entries/ServiceTotals/ServiceTotals';
 import { TimeEntryList } from '@/components/features/time-entries/TimeEntryList/TimeEntryList';
+import { useCopyDayForward } from '@/components/features/time-entries/useCopyDayForward';
 import { useDeleteTimeEntry } from '@/components/features/time-entries/useDeleteTimeEntry';
 import { useTimeEntries } from '@/components/features/time-entries/useTimeEntries';
+import { ActivityBanner } from '@/components/features/timer/ActivityBanner/ActivityBanner';
+import { useTimerContext } from '@/components/features/timer/TimerProvider';
 import { useWeekTotals } from '@/components/features/week/useWeekTotals';
 import { WeekStrip } from '@/components/features/week/WeekStrip/WeekStrip';
+import { useHotkeys } from '@/components/shared/useHotkeys';
+import { addDays, todayIso } from '@/lib/date';
 import type { Session } from '@/lib/storage';
 
 function PlusIcon() {
@@ -39,6 +44,8 @@ export function DayView({ session, date }: { session: Session; date: string }) {
 	const { data: entries, isPending, isFetching, refetch } = useTimeEntries(session, date);
 	const { data: weekTotals, isPending: isWeekPending, isError: isWeekError } = useWeekTotals(session, date);
 	const deleteEntry = useDeleteTimeEntry(session);
+	const copyDay = useCopyDayForward(session);
+	const timer = useTimerContext();
 
 	/** The entry the confirm dialog is asking about, and the only thing that opens it (R-12). */
 	const [entryPendingDelete, setEntryPendingDelete] = useState<TimeEntry | null>(null);
@@ -51,7 +58,86 @@ export function DayView({ session, date }: { session: Session; date: string }) {
 	 */
 	const [toast, setToast] = useState<{ message: string; variant: 'success' | 'error' } | null>(null);
 
+	/*
+	 * A start, a continue or a stop that failed. The pill has nowhere of its own to say so - it is
+	 * one control in a bar - so it is said here, on the screen the pill sits above, the same way a
+	 * failed delete is (SPEC 4.2).
+	 */
+	const timerError = timer.error;
+
 	const hasEntries = entries !== undefined && entries.length > 0;
+
+	/** The card the arrow keys are standing on, and what `e` and `Delete` act on (X-2). */
+	const [focusedEntryId, setFocusedEntryId] = useState<string | null>(null);
+	const focusedEntry = entries?.find((entry) => entry.id === focusedEntryId) ?? null;
+
+	function goToDay(next: string) {
+		void navigate({ to: '/day/$date', params: { date: next } });
+	}
+
+	/**
+	 * Moves the chosen card by one, and clamps rather than wrapping: a list that jumps from the last
+	 * entry back to the first reads as a bug the first time it happens, and there are never enough
+	 * entries in a day for wrapping to save anyone a keystroke.
+	 */
+	function moveFocus(step: number) {
+		if (entries === undefined || entries.length === 0) return;
+
+		const current = entries.findIndex((entry) => entry.id === focusedEntryId);
+		if (current === -1) return;
+
+		setFocusedEntryId(entries[Math.min(Math.max(current + step, 0), entries.length - 1)].id);
+	}
+
+	/*
+	 * The day's own shortcuts (SPEC 10, X-2). `useHotkeys` drops every one of them while an input,
+	 * the rich-text editor, a dialog or an open menu has focus - which is also what keeps them quiet
+	 * on `/entries/new` and `/entries/$id/edit`, where this screen renders behind a modal.
+	 *
+	 * `Backspace` alongside `Delete` because a Mac keyboard has no Delete key to speak of, and both
+	 * mean the same thing in every list that takes them.
+	 */
+	useHotkeys({
+		n: () => {
+			void navigate({ to: '/entries/new', search: { date } });
+		},
+		ArrowLeft: () => {
+			goToDay(addDays(date, -1));
+		},
+		ArrowRight: () => {
+			goToDay(addDays(date, 1));
+		},
+		t: () => {
+			goToDay(todayIso());
+		},
+		/*
+		 * Bound only once a card has focus, and that is the whole of what a roving tabindex means:
+		 * Tab is how you enter the list, the arrows are how you move *within* it.
+		 *
+		 * Binding them unconditionally took `preventDefault` with them, which killed arrow-key
+		 * scrolling on the whole day for anyone who had not entered the list - a keyboard user lost
+		 * the ordinary way down a long page in exchange for a shortcut they had not asked for.
+		 */
+		...(focusedEntry === null
+			? {}
+			: {
+					ArrowUp: () => {
+						moveFocus(-1);
+					},
+					ArrowDown: () => {
+						moveFocus(1);
+					},
+					e: () => {
+						void navigate({ to: '/entries/$id/edit', params: { id: focusedEntry.id } });
+					},
+					Delete: () => {
+						setEntryPendingDelete(focusedEntry);
+					},
+					Backspace: () => {
+						setEntryPendingDelete(focusedEntry);
+					},
+				}),
+	});
 
 	/**
 	 * Where focus goes once the card it was on is gone (guidebook 18).
@@ -66,6 +152,34 @@ export function DayView({ session, date }: { session: Session; date: string }) {
 	 * X-2 is what makes that cheap, because its roving tabindex owns focus inside the list already.
 	 */
 	const addEntryRef = useRef<HTMLAnchorElement>(null);
+
+	/**
+	 * X-3's `Copy from yesterday`, reported in one toast whatever happened (SPEC 10: "one toast with
+	 * count and failures").
+	 *
+	 * Four outcomes, because they are four different things to be told: nothing to copy, everything
+	 * copied, some copied, and the source day unreadable. Only the last is an error - a partial copy
+	 * put real entries on the day, and colouring it red would suggest they need undoing.
+	 */
+	async function copyFromYesterday() {
+		try {
+			const { copied, failed } = await copyDay.mutateAsync({ from: addDays(date, -1), to: date });
+
+			if (copied === 0 && failed === 0) {
+				setToast({ message: 'Nothing was logged yesterday.', variant: 'success' });
+
+				return;
+			}
+
+			const entries = copied === 1 ? '1 entry' : `${String(copied)} entries`;
+			setToast({
+				message: failed === 0 ? `${entries} copied from yesterday` : `${entries} copied, ${String(failed)} failed`,
+				variant: failed === 0 ? 'success' : 'error',
+			});
+		} catch {
+			setToast({ message: "Could not read yesterday's entries.", variant: 'error' });
+		}
+	}
 
 	async function confirmDelete(entry: TimeEntry) {
 		// Closed first: the row is already gone from the cache by the time the request is sent
@@ -132,6 +246,19 @@ export function DayView({ session, date }: { session: Session; date: string }) {
 						 */}
 						{hasEntries && <DaySummary entries={entries} />}
 
+						{/*
+						 * X-5, above the list where the design puts it. Rendered here rather than in
+						 * the app bar because it is a paragraph and two choices, not a control - and
+						 * because this is the screen where the minutes it talks about are visible.
+						 */}
+						{timer.concern !== null && (
+							<ActivityBanner
+								concern={timer.concern}
+								onDiscard={timer.pauseAndDiscardIdle}
+								onKeepRunning={timer.keepRunning}
+							/>
+						)}
+
 						{/* P-1, drawn but inert. Absent while loading or failing, as the design has it. */}
 						{entries !== undefined && <QuickAddInput date={date} />}
 
@@ -144,6 +271,42 @@ export function DayView({ session, date }: { session: Session; date: string }) {
 								void refetch();
 							}}
 							onRequestDelete={setEntryPendingDelete}
+							focusedEntryId={focusedEntryId}
+							onFocusEntry={setFocusedEntryId}
+							onCopyFromYesterday={() => {
+								void copyFromYesterday();
+							}}
+							isCopying={copyDay.isPending}
+							/*
+							 * X-4. The day view passes it down rather than the card reaching for the
+							 * context itself, so a card stays renderable on its own - the same reason
+							 * `onRequestDelete` is a prop.
+							 */
+							/*
+							 * One timer at a time: with one running there is nothing to continue, and
+							 * an item that silently started a second one would be worse than a
+							 * disabled one. `TimeEntryCard` greys it out when this is absent.
+							 */
+							/*
+							 * The timer attaches to the entry rather than making a new one (SPEC 11,
+							 * finding 4), so the row that was clicked is the row that starts counting
+							 * - on whatever day it is on. Nothing navigates, and nothing is copied.
+							 */
+							onContinueTimer={
+								timer.running === null
+									? (entry) => {
+											timer.continueEntry(entry.id, entry.minutes);
+										}
+									: undefined
+							}
+							/*
+							 * The row a timer is running against says so, and carries a stop of its
+							 * own: the app bar's pill can be scrolled a long way from it on a full
+							 * day (`Timer.dc.html`). Both drive the same timer.
+							 */
+							trackingEntryId={timer.running?.entryId ?? null}
+							trackingSince={timer.running?.startedAt ?? null}
+							onStopTimer={timer.stop}
 						/>
 					</div>
 
@@ -169,6 +332,12 @@ export function DayView({ session, date }: { session: Session; date: string }) {
 					void confirmDelete(entry);
 				}}
 			/>
+
+			{timerError !== null && (
+				<Toast variant="error" onDismiss={timer.dismissError}>
+					{timerError}
+				</Toast>
+			)}
 
 			{toast !== null && (
 				<Toast

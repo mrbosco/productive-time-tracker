@@ -15,6 +15,21 @@ interface TimeEntryListProps {
 	date: string;
 	/** Asks the day view to confirm a delete (R-12). The dialog and the toast belong to the screen. */
 	onRequestDelete: (entry: TimeEntry) => void;
+	/**
+	 * The card the arrow keys are standing on (X-2), or `null` before they have been used. The day
+	 * view owns it because the keys are bound there and because `e` and `Delete` act on it.
+	 */
+	focusedEntryId?: string | null;
+	onFocusEntry?: (id: string) => void;
+	/** X-3: fills an empty day from the one before it. The day view owns the copy and its toast. */
+	onCopyFromYesterday?: () => void;
+	isCopying?: boolean;
+	/** X-4: starts a timer on that entry, which the stop then adds to. */
+	onContinueTimer?: (entry: TimeEntry) => void;
+	/** The entry a timer is running against, and when it started (X-4). */
+	trackingEntryId?: string | null;
+	trackingSince?: string | null;
+	onStopTimer?: () => void;
 }
 
 /** The card the empty and error states share, so the list never collapses to nothing. */
@@ -62,6 +77,14 @@ export function TimeEntryList({
 	onRetry,
 	date,
 	onRequestDelete,
+	focusedEntryId = null,
+	onFocusEntry,
+	onCopyFromYesterday,
+	isCopying = false,
+	onContinueTimer,
+	trackingEntryId = null,
+	trackingSince = null,
+	onStopTimer,
 }: TimeEntryListProps) {
 	if (isPending) {
 		return (
@@ -119,19 +142,27 @@ export function TimeEntryList({
 					</Link>
 				</Button>
 				{/*
-				 * X-3 copies yesterday's entries into this day. Drawn here because the design puts
-				 * it in this state; it does nothing until that story lands.
+				 * X-3. Secondary to `Add entry` and styled as a link, because it is a shortcut for
+				 * a day that looks like the one before it rather than the way to fill a day in.
 				 */}
 				<button
 					type="button"
-					disabled
+					disabled={onCopyFromYesterday === undefined || isCopying}
+					onClick={onCopyFromYesterday}
 					className="rounded-input text-meta font-medium text-accent underline underline-offset-[3px] disabled:opacity-60"
 				>
-					Copy from yesterday (X-3)
+					{isCopying ? 'Copying...' : 'Copy from yesterday'}
 				</button>
 			</ListState>
 		);
 	}
+
+	/*
+	 * A roving tabindex needs exactly one tab stop, and before any arrow key has been pressed there
+	 * is no chosen card - so the first one stands in. Without this the whole list is skipped by Tab
+	 * and there is no way in from the keyboard at all (guidebook 18).
+	 */
+	const tabStopId = focusedEntryId ?? entries[0]?.id;
 
 	return (
 		<ul className="flex flex-col gap-3">
@@ -139,9 +170,25 @@ export function TimeEntryList({
 				<li key={entry.id}>
 					<TimeEntryCard
 						entry={entry}
+						// Only a card the day view has actually chosen pulls focus to itself; the
+						// stand-in above is a tab stop and nothing more.
+						isFocused={entry.id === focusedEntryId}
+						isTabStop={entry.id === tabStopId}
+						onTakeFocus={() => {
+							onFocusEntry?.(entry.id);
+						}}
 						onRequestDelete={() => {
 							onRequestDelete(entry);
 						}}
+						onContinueTimer={
+							onContinueTimer === undefined
+								? undefined
+								: () => {
+										onContinueTimer(entry);
+									}
+						}
+						trackingSince={entry.id === trackingEntryId ? trackingSince : null}
+						onStopTimer={onStopTimer}
 					/>
 				</li>
 			))}

@@ -64,8 +64,9 @@ describe('useTimeEntries', () => {
 			expect(result.current.isSuccess).toBe(true);
 		});
 
-		// The fixture stores them newest first, so this order is the client-side sort at work.
-		expect(result.current.data?.map((entry) => entry.id)).toEqual(['162903873', '162921848', '162921872']);
+		// Newest first (A-7, amended). The fixture's own order is neither, so this is the client-side
+		// sort at work rather than the response being passed through.
+		expect(result.current.data?.map((entry) => entry.id)).toEqual(['162921872', '162921848', '162903873']);
 	});
 
 	it('filters by the session person, so another person is never in the response (R-4)', async () => {

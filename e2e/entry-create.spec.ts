@@ -157,6 +157,32 @@ test.describe('adding a time entry', () => {
 	 * for `beforeinput` and composition events jsdom does not implement, so the editor only really
 	 * runs in a browser.
 	 */
+	/**
+	 * The placeholder is one absolutely positioned line behind the document, so if it outstays the
+	 * first keystroke it sits *under* what is being typed. Only a browser can catch it: TipTap 3's
+	 * `useEditor` no longer re-renders on every transaction, so whether the editor's emptiness is
+	 * subscribed to or merely read once is invisible to a test that cannot type.
+	 */
+	test('drops the placeholder as soon as there is something written', async ({ page }) => {
+		await openForm(page);
+
+		const description = page.getByRole('textbox', { name: 'Description' });
+		const placeholder = page.getByText('What did you work on?');
+		await expect(placeholder).toBeVisible();
+
+		await description.click();
+		await page.keyboard.type('Paired on the duration parser');
+
+		await expect(placeholder).toBeHidden();
+
+		// And back, which is the half that no amount of re-rendering elsewhere would have covered:
+		// emptying the field changes nothing the form is subscribed to.
+		await page.keyboard.press('ControlOrMeta+a');
+		await page.keyboard.press('Backspace');
+
+		await expect(placeholder).toBeVisible();
+	});
+
 	test('starts a list from a dash, and saves it as one', async ({ page }) => {
 		await openForm(page);
 
@@ -173,7 +199,8 @@ test.describe('adding a time entry', () => {
 
 		// And the day renders it as a list too, rather than flattening it back to lines.
 		await expect(page).toHaveURL(new RegExp(`/day/${SEEDED_DATE}$`));
-		await expect(page.getByRole('article').last().locator('ul li')).toHaveCount(2);
+		// First, not last: A-7 puts the newest entry at the top.
+		await expect(page.getByRole('article').first().locator('ul li')).toHaveCount(2);
 	});
 
 	test('bolds the selection with the usual shortcut', async ({ page }) => {

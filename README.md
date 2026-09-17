@@ -6,19 +6,48 @@ day. No server-side code — the browser talks to the Productive API directly.
 
 Full specification: [`docs/SPEC.md`](docs/SPEC.md). Decisions: [`docs/adr/`](docs/adr/).
 
-> **Status: US-2.** Logging in and staying logged in (US-0), the day view (US-1, with the week strip
-> from X-1) and adding an entry (US-2) are in, along with the default-service setting the create
-> path needs (A-1). Editing and deleting an entry (US-3, US-4) land in the pull requests that
-> <<<<<<< HEAD
-> follow. Descriptions are rich text in both directions (ADR-0010): a list written here is stored
-> as the HTML Productive's own editor produces, and one written there renders as a list.
-> Parts of the day view are drawn but not yet wired — the timer control, the quick-add
-> \=======
-> follow. Parts of the day view are drawn but not yet wired — the timer control, the quick-add
->
-> > > > > > > origin/main
-> > > > > > > line, the entry menu and `Copy from yesterday` all belong to later stories; CLAUDE.md lists
-> > > > > > > which.
+## What shipped
+
+All four assignment stories, the login and session they rest on, and every extra from
+[`docs/SPEC.md`](docs/SPEC.md) section 10 except one.
+
+|          |                                                                                        |
+| -------- | -------------------------------------------------------------------------------------- |
+| **US-0** | Log in with an API token and organization ID, stay logged in across refreshes, log out |
+| **US-1** | The entries for a selected date, with the week around it and totals by service         |
+| **US-2** | Add an entry: duration, description, date                                              |
+| **US-3** | Edit an entry in its own route                                                         |
+| **US-4** | Delete an entry, behind one confirmation                                               |
+| **X-1**  | Week strip and totals: seven days and a weekly total, one request, three cell states   |
+| **X-2**  | Keyboard shortcuts: `n`, `←` `→`, `t`, `↑` `↓`, `e`, `Del`, `s`, `?`, `Esc`            |
+| **P-2**  | Start/end range mode: log an entry as "nine to half ten" instead of a duration         |
+| **X-3**  | Duplicate an entry, and fill an empty day from the day before it                       |
+| **X-4**  | Timer: start, stop, continue an existing entry, and survive a refresh                  |
+| **X-5**  | Activity awareness: notice a timer running with nobody there, and offer a choice       |
+
+Descriptions are rich text in both directions (ADR-0010): a list written here is stored as the HTML
+Productive's own editor produces, and one written there renders as a list.
+
+## What was cut
+
+**P-1, the quick-add line.** SPEC 10 ranks it last and says to cut it first; it is the only extra
+that needed a parser of its own (`1.5h client call yesterday` into a date, a duration and a note)
+rather than reusing what was already there. The input is still on the day view, because the design
+puts it there and it does something useful without the parser: it opens the entry form. It does not
+read what you typed.
+
+**The synthetic-input heuristic is built but off.** X-5 can also notice input that looks automated -
+regular as a metronome, barely moving - and `detectSyntheticInput` in
+`src/components/features/timer/useActivityMonitor.ts` turns it on. It ships `false`, and that is the
+decision rather than the default: Harvest and Toggl both advertise that they do not watch how you
+type, and this is a tool people use to bill clients. It is written and tested so the choice is
+reversible and so it can be argued about with something real; idle detection, which needs no such
+watching, is on.
+
+**Two smaller things worth knowing.** A stored entry does not remember that it was entered as a
+range - Productive stores minutes and nothing else - so an entry logged as 09:00 to 10:30 reopens as
+`1h 30m`. And the timer control in the app bar does not animate its width between states; everything
+else from the design's motion spec is there.
 
 ## Requirements
 

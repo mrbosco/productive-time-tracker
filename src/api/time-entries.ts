@@ -71,11 +71,17 @@ function buildRangePath(personId: string, from: string, to: string, page: number
 }
 
 /**
- * `created_at` ascending (A-7). The API rejects `sort=created_at`, so it happens here. Parsed
- * rather than string-compared: the timestamps carry UTC offsets, which text ordering gets wrong.
+ * `created_at` **descending** - newest first (A-7, amended). The API rejects `sort=created_at`, so
+ * it happens here. Parsed rather than string-compared: the timestamps carry UTC offsets, which text
+ * ordering gets wrong.
+ *
+ * Newest first because the top of the list is where a day is read and written: the entry just
+ * logged, and the timer just started, are what someone is looking for, and appending them to the
+ * bottom of a full day puts them off the screen. A-7 originally said ascending, "order of logging",
+ * which is the right order for a ledger and the wrong one for a screen you work from.
  */
 function compareByCreatedAt(a: TimeEntry, b: TimeEntry): number {
-	return Date.parse(a.createdAt) - Date.parse(b.createdAt);
+	return Date.parse(b.createdAt) - Date.parse(a.createdAt);
 }
 
 /**

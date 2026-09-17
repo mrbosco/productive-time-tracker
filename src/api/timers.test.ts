@@ -9,7 +9,14 @@ import { getRunningTimer, startTimer, stopTimer } from './timers';
 const auth = { token: 'test-token', organizationId: '999999' };
 
 describe('getRunningTimer', () => {
+	/**
+	 * The recorded document, installed rather than left to the shared handler: that one answers from
+	 * whatever this run has started (X-4), and a session that has started nothing has no timer -
+	 * which is the next test, not this one.
+	 */
 	it('reads the running timer, resolving person_id from the plain attribute', async () => {
+		server.use(http.get('*/timers', () => HttpResponse.json(timersRunning)));
+
 		const timer = await getRunningTimer(auth, '1448639');
 
 		expect(timer).toMatchObject({ id: '14335645', personId: '1448639', stoppedAt: null });

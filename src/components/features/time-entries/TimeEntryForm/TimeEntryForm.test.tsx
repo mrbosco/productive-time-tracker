@@ -433,6 +433,110 @@ describe('TimeEntryForm', () => {
  * start, what the buttons say, what goes on the wire, and the two things editing deliberately does
  * not do - wait on a service, or offer to change one.
  */
+/**
+ * P-2. Only `time` is ever stored, so what is tested here is the swap and the arithmetic in front
+ * of it - that the right fields are asked for, that the preview agrees with them, and that the
+ * minutes reaching the API are the same whichever way they were entered.
+ */
+describe('TimeEntryForm in range mode (P-2)', () => {
+	/** The toggle's label names the action, so it reads as the mode you are not in. */
+	async function switchToRange(user: ReturnType<typeof userEvent.setup>) {
+		await user.click(await screen.findByRole('button', { name: 'Enter start and end instead' }));
+	}
+
+	it('swaps the duration field for a start and an end', async () => {
+		const user = userEvent.setup();
+		await renderForm();
+
+		expect(screen.getByRole('textbox', { name: 'Duration' })).toBeInTheDocument();
+
+		await switchToRange(user);
+
+		expect(screen.queryByRole('textbox', { name: 'Duration' })).not.toBeInTheDocument();
+		expect(screen.getByLabelText('From')).toBeInTheDocument();
+		expect(screen.getByLabelText('To')).toBeInTheDocument();
+	});
+
+	it('switches back, and the label says which way it goes', async () => {
+		const user = userEvent.setup();
+		await renderForm();
+
+		await switchToRange(user);
+		await user.click(screen.getByRole('button', { name: 'Enter a duration instead' }));
+
+		expect(screen.getByRole('textbox', { name: 'Duration' })).toBeInTheDocument();
+	});
+
+	it('previews the span the two times describe', async () => {
+		const user = userEvent.setup();
+		await renderForm();
+		await switchToRange(user);
+
+		await user.type(screen.getByLabelText('From'), '09:00');
+		await user.type(screen.getByLabelText('To'), '10:30');
+
+		expect(await screen.findByText('= 1h 30m')).toBeInTheDocument();
+	});
+
+	it('previews nothing while the end is before the start', async () => {
+		const user = userEvent.setup();
+		await renderForm();
+		await switchToRange(user);
+
+		await user.type(screen.getByLabelText('From'), '10:30');
+		await user.type(screen.getByLabelText('To'), '09:00');
+
+		expect(screen.queryByText(/^= /)).not.toBeInTheDocument();
+	});
+
+	/** SPEC 10: an end before its start is a validation error, never a span across midnight. */
+	it('refuses an end before its start on submit', async () => {
+		const user = userEvent.setup();
+		await renderForm();
+		await switchToRange(user);
+
+		await user.type(screen.getByLabelText('From'), '10:30');
+		await user.type(screen.getByLabelText('To'), '09:00');
+		await user.click(await saveButton());
+
+		expect(await screen.findByText('End must be after start.')).toBeInTheDocument();
+	});
+
+	it('asks for both ends before it will save', async () => {
+		const user = userEvent.setup();
+		await renderForm();
+		await switchToRange(user);
+
+		await user.click(await saveButton());
+
+		expect(await screen.findByText('Start and end are required.')).toBeInTheDocument();
+	});
+
+	/** The wire never learns which mode produced them: `time` is minutes either way. */
+	it('sends the computed minutes and nothing about the range (R-9)', async () => {
+		const bodies: unknown[] = [];
+		server.use(
+			http.post('*/time_entries', async ({ request }) => {
+				bodies.push(await request.json());
+
+				return HttpResponse.json({ data: { id: '1', type: 'time_entries', attributes: {} } }, { status: 201 });
+			})
+		);
+		const user = userEvent.setup();
+		await renderForm();
+		await switchToRange(user);
+
+		await user.type(screen.getByLabelText('From'), '09:00');
+		await user.type(screen.getByLabelText('To'), '10:30');
+		await user.click(await saveButton());
+
+		await waitFor(() => {
+			expect(bodies).toHaveLength(1);
+		});
+		expect(bodies[0]).toMatchObject({ data: { attributes: { date: DATE, time: 90 } } });
+	});
+});
+
 describe('TimeEntryForm, editing an entry', () => {
 	it('opens prefilled with the entry own values (R-11)', async () => {
 		await renderEditForm();
@@ -695,5 +799,17 @@ describe('TimeEntryForm, editing an entry', () => {
 			expect(router.state.location.pathname).toBe(`/day/${DATE}`);
 		});
 		expect(screen.queryByRole('dialog', { name: 'Save your changes?' })).not.toBeInTheDocument();
+	});
+
+	/**
+	 * P-2: only `time` reaches the API, so there is no range to reopen. An entry logged as 09:00 to
+	 * 10:30 comes back as `1h 30m`, which is the whole truth the record holds about it.
+	 */
+	it('opens in duration mode whatever the entry was logged with (P-2)', async () => {
+		await renderEditForm();
+
+		expect(await screen.findByRole('textbox', { name: 'Duration' })).toHaveValue('1h 30m');
+		expect(screen.queryByLabelText('From')).not.toBeInTheDocument();
+		expect(screen.getByRole('button', { name: 'Enter start and end instead' })).toBeInTheDocument();
 	});
 });

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatDuration, parseDuration } from './duration';
+import { formatDuration, formatElapsed, parseDuration, toMinutesOfDay } from './duration';
 
 describe('formatDuration', () => {
 	it.each([
@@ -91,5 +91,64 @@ describe('parseDuration', () => {
 	/** Empty and unreadable are both null on purpose - the form distinguishes them by the input. */
 	it('does not distinguish empty from unreadable', () => {
 		expect(parseDuration('')).toBe(parseDuration('half a day'));
+	});
+});
+
+describe('toMinutesOfDay', () => {
+	it.each([
+		['00:00', 0],
+		['09:00', 540],
+		['09:30', 570],
+		['23:59', 1439],
+		['9:05', 545],
+	])('reads %s as %i minutes past midnight', (value, expected) => {
+		expect(toMinutesOfDay(value)).toBe(expected);
+	});
+
+	/** Anything an `<input type="time">` would not produce, the empty value first. */
+	it.each(['', '  ', '9', '9am', '09.30', '09:5', '24:00', '09:60', '1h 30m'])('reads %s as nothing', (value) => {
+		expect(toMinutesOfDay(value)).toBeNull();
+	});
+
+	/**
+	 * Why P-2 got a second function rather than another pattern inside the first: the two read the
+	 * same shape differently. `1:75` is an hour and seventy-five minutes of work, which is a real
+	 * duration; it is not a time of day, and a clock that accepted it would be inventing one.
+	 */
+	it('reads a clock where parseDuration reads a length', () => {
+		expect(parseDuration('1:75')).toBe(135);
+		expect(toMinutesOfDay('1:75')).toBeNull();
+
+		expect(parseDuration('25:00')).toBe(1500);
+		expect(toMinutesOfDay('25:00')).toBeNull();
+	});
+});
+
+describe('formatElapsed', () => {
+	it.each([
+		[0, '0:00'],
+		[9, '0:09'],
+		[42, '0:42'],
+		[60, '1:00'],
+		[725, '12:05'],
+		[3600, '1:00:00'],
+		[3750, '1:02:30'],
+		[36_000, '10:00:00'],
+	])('renders %i seconds as %s', (seconds, expected) => {
+		expect(formatElapsed(seconds)).toBe(expected);
+	});
+
+	/** A clock that ran backwards would be a stranger thing to show than one that reads zero. */
+	it.each([-1, Number.NaN, Number.POSITIVE_INFINITY])('renders %s as zero', (seconds) => {
+		expect(formatElapsed(seconds)).toBe('0:00');
+	});
+
+	/**
+	 * Why X-4 does not reuse `formatDuration`: that one answers "what is this entry worth" in whole
+	 * minutes, and `0h` for a timer forty seconds old hides the only sign it is running.
+	 */
+	it('shows seconds where formatDuration shows nothing', () => {
+		expect(formatElapsed(40)).toBe('0:40');
+		expect(formatDuration(0)).toBe('0h');
 	});
 });

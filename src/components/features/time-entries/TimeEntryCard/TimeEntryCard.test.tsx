@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { TimeEntry } from '@/api/types';
+import { todayIso } from '@/lib/date';
 import { renderWithProviders, screen, userEvent } from '@/__tests__/test-utils';
 import { TimeEntryCard } from './TimeEntryCard';
 
@@ -162,18 +163,40 @@ describe('TimeEntryCard', () => {
 	});
 
 	/**
-	 * The rest of the menu is drawn because the design puts it on the card, but each item belongs to
-	 * a later story, so it says which and does not activate.
+	 * X-4. A real continuation: the timer attaches to this entry, so this row is the one that starts
+	 * counting and the stop adds to what it already holds (SPEC 11, finding 4).
 	 */
-	it('leaves the actions later stories own marked as not yet wired', async () => {
+	it('asks for a timer to be continued on itself (X-4)', async () => {
+		const onContinueTimer = vi.fn();
+		const user = userEvent.setup();
+		await renderWithProviders(
+			<TimeEntryCard onRequestDelete={noop} entry={buildEntry()} onContinueTimer={onContinueTimer} />
+		);
+
+		await user.click(screen.getByRole('button', { name: 'Entry actions' }));
+		await user.click(await screen.findByRole('menuitem', { name: 'Continue timer' }));
+
+		expect(onContinueTimer).toHaveBeenCalledTimes(1);
+	});
+
+	/**
+	 * X-3. Today, not the entry's own day: copying yesterday's standup is almost always about
+	 * logging today's. The entry travels as an ID, so nobody's description ends up in a URL.
+	 */
+	it('duplicates onto today, carrying the entry by id (X-3)', async () => {
 		const user = userEvent.setup();
 		await renderWithProviders(<TimeEntryCard onRequestDelete={noop} entry={buildEntry()} />);
 
 		await user.click(screen.getByRole('button', { name: 'Entry actions' }));
 
-		for (const name of [/^Continue timer/, /^Duplicate/]) {
-			expect(await screen.findByRole('menuitem', { name })).toHaveAttribute('aria-disabled', 'true');
-		}
+		const duplicate = await screen.findByRole('menuitem', { name: 'Duplicate' });
+		/*
+		 * The id arrives percent-encoded and quoted because the router JSON-encodes any search value
+		 * that is itself valid JSON, and an id of digits is a valid JSON number. That is the round
+		 * trip working, not a bug: `validateSearch` reads a string back out of it.
+		 */
+		expect(duplicate).toHaveAttribute('href', `/entries/new?date=${todayIso()}&duplicate=%22162903873%22`);
+		expect(duplicate).not.toHaveAttribute('aria-disabled', 'true');
 	});
 
 	/** R-12 starts here: the card asks, and the day view is what confirms and deletes. */
@@ -188,11 +211,102 @@ describe('TimeEntryCard', () => {
 		expect(onRequestDelete).toHaveBeenCalledTimes(1);
 	});
 
-	/** X-2 brings the roving tabindex; until then the card has nothing to activate. */
-	it('is not a tab stop of its own', async () => {
+	/**
+	 * X-2's roving tabindex, from the card's side: the list nominates one tab stop and the rest are
+	 * reachable only by arrow key, so Tab does not walk through twenty cards to get past the list
+	 * (guidebook 18).
+	 */
+	it('is a tab stop only when the list says so (X-2)', async () => {
+		const { rerender } = await renderWithProviders(
+			<TimeEntryCard onRequestDelete={noop} entry={buildEntry()} isTabStop={false} />
+		);
+
+		expect(screen.getByRole('article')).toHaveAttribute('tabindex', '-1');
+
+		rerender(<TimeEntryCard onRequestDelete={noop} entry={buildEntry()} isTabStop />);
+
+		expect(screen.getByRole('article')).toHaveAttribute('tabindex', '0');
+	});
+
+	/** The arrow keys choose a card, and nothing else would move the caret onto it (X-2). */
+	it('takes focus when it becomes the chosen card (X-2)', async () => {
+		const { rerender } = await renderWithProviders(<TimeEntryCard onRequestDelete={noop} entry={buildEntry()} />);
+
+		expect(screen.getByRole('article')).not.toHaveFocus();
+
+		rerender(<TimeEntryCard onRequestDelete={noop} entry={buildEntry()} isFocused />);
+
+		expect(screen.getByRole('article')).toHaveFocus();
+	});
+
+	/**
+	 * Focus events bubble. Without narrowing to the card itself, opening the menu would report the
+	 * card as focused, the card would pull focus back out of the trigger, and the menu would never
+	 * open - so this is asserted from the outside, by the menu still working.
+	 */
+	it('does not claim focus that landed on the menu trigger (X-2)', async () => {
+		const onTakeFocus = vi.fn();
+		const user = userEvent.setup();
+		await renderWithProviders(<TimeEntryCard onRequestDelete={noop} entry={buildEntry()} onTakeFocus={onTakeFocus} />);
+
+		await user.click(screen.getByRole('button', { name: 'Entry actions' }));
+
+		expect(await screen.findByRole('menuitem', { name: 'Edit' })).toBeInTheDocument();
+		expect(onTakeFocus).not.toHaveBeenCalled();
+	});
+
+	/**
+	 * X-4, `Timer.dc.html`: the app bar is the only sign a timer is running, and on a full day the
+	 * row it belongs to can be scrolled far away from it. The tracking row says so itself.
+	 */
+	it('says when a timer is running against it (X-4)', async () => {
+		const startedAt = new Date(Date.now() - 180_000).toISOString();
+		await renderWithProviders(
+			<TimeEntryCard onRequestDelete={noop} entry={buildEntry()} trackingSince={startedAt} onStopTimer={noop} />
+		);
+
+		expect(screen.getByText('Tracking')).toBeInTheDocument();
+		expect(screen.getAllByRole('button', { name: 'Stop timer' }).length).toBeGreaterThan(0);
+	});
+
+	/**
+	 * The entry's real total, not the timer's: what is stored plus what is running. An entry that
+	 * already had minutes would otherwise look like it had lost them while being tracked.
+	 */
+	it('counts the running time on top of what the entry already holds (X-4)', async () => {
+		const startedAt = new Date(Date.now() - 180_000).toISOString();
+		await renderWithProviders(
+			<TimeEntryCard onRequestDelete={noop} entry={buildEntry()} trackingSince={startedAt} onStopTimer={noop} />
+		);
+
+		// 1h 30m logged, three minutes running.
+		expect(screen.getByText('1h 33m')).toBeInTheDocument();
+	});
+
+	it('shows only what is stored when no timer is running on it', async () => {
 		await renderWithProviders(<TimeEntryCard onRequestDelete={noop} entry={buildEntry()} />);
 
-		expect(screen.getByRole('article')).not.toHaveAttribute('tabindex');
+		expect(screen.getByText('1h 30m')).toBeInTheDocument();
+		expect(screen.queryByText('Tracking')).not.toBeInTheDocument();
+		expect(screen.queryByRole('button', { name: 'Stop timer' })).not.toBeInTheDocument();
+	});
+
+	/** One timer at a time, so the entry already carrying it cannot be asked to start another. */
+	it('cannot be continued while it is already being tracked (X-4)', async () => {
+		const user = userEvent.setup();
+		await renderWithProviders(
+			<TimeEntryCard
+				onRequestDelete={noop}
+				entry={buildEntry()}
+				trackingSince={new Date().toISOString()}
+				onStopTimer={noop}
+				onContinueTimer={noop}
+			/>
+		);
+
+		await user.click(screen.getByRole('button', { name: 'Entry actions' }));
+
+		expect(await screen.findByRole('menuitem', { name: 'Continue timer' })).toHaveAttribute('aria-disabled', 'true');
 	});
 
 	it('offers no More on a note that fits', async () => {

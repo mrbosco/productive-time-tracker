@@ -68,4 +68,76 @@ export function clearSession(): void {
 	} catch {
 		// Nothing was stored in the first place.
 	}
+
+	// A timer belongs to the person who started it, so logging out has to forget it too - otherwise
+	// the next person to log in on this browser opens with someone else's timer running.
+	clearTimerState();
+}
+
+/**
+ * The running timer, so a refresh shows it before `['timer', personId]` has answered (SPEC 10, X-4).
+ *
+ * Its own key rather than a field on the session: the session is re-validated and rewritten on every
+ * login, and a timer is not a credential. Same namespace, because both are cleared together.
+ */
+export const TIMER_STORAGE_KEY = 'tracktive.timer';
+
+const timerStateSchema = z.object({
+	timerId: z.string().min(1),
+	startedAt: z.string().min(1),
+	/**
+	 * The entry the start created. Absent only in the window between starting a timer and the one
+	 * request that returns the link (api-client rule 10).
+	 */
+	entryId: z.string().min(1).optional(),
+	/**
+	 * What that entry already held when the timer attached to it (X-4's `Continue`). Absent for a
+	 * bare start, whose entry the timer created - which is what tells `Discard` whether throwing the
+	 * tracked time away means deleting the entry or putting its minutes back.
+	 */
+	loggedBefore: z.number().int().nonnegative().optional(),
+});
+
+export type TimerState = z.infer<typeof timerStateSchema>;
+
+/**
+ * Parsed on every read, like the session and for the same reason: what comes back is whatever is in
+ * the browser, and anything this app cannot use is "no timer" rather than a crash on boot.
+ */
+export function readTimerState(): TimerState | null {
+	let raw: string | null;
+
+	try {
+		raw = window.localStorage.getItem(TIMER_STORAGE_KEY);
+	} catch {
+		return null;
+	}
+
+	if (raw === null) return null;
+
+	try {
+		const parsed: unknown = JSON.parse(raw);
+		const result = timerStateSchema.safeParse(parsed);
+
+		return result.success ? result.data : null;
+	} catch {
+		return null;
+	}
+}
+
+export function writeTimerState(state: TimerState): void {
+	try {
+		window.localStorage.setItem(TIMER_STORAGE_KEY, JSON.stringify(state));
+	} catch {
+		// Out of quota or storage disabled. The timer still runs; only the head start on a refresh
+		// is lost, and the query answers a moment later with the same thing.
+	}
+}
+
+export function clearTimerState(): void {
+	try {
+		window.localStorage.removeItem(TIMER_STORAGE_KEY);
+	} catch {
+		// Nothing was stored in the first place.
+	}
 }

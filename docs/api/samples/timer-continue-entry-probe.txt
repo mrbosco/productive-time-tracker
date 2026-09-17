@@ -1,0 +1,62 @@
+Continuing a timer on an existing time entry, observed 2026-09-17 against the live API by watching
+Productive's own web client (app.productive.io > Time > My time) start and stop a timer from the
+play button on an entry row. Organization id replaced with 999999 throughout; person 1448639 is the
+same account every other sample in this folder was recorded from.
+
+This answers the question SPEC 10's X-4 row was amended over, and the amendment was wrong:
+continuing an entry does NOT require folding a second entry into the first. `POST /timers` takes a
+`time_entry` relationship, and given one it attaches to that entry instead of creating a new one.
+
+REQUEST (verbatim, as Productive's client sends it)
+
+  POST /timers?include=time_entry.person
+
+  {"data":{"attributes":{"started_at":null,"stopped_at":null,"total_time":null,"person_id":null},
+   "relationships":{"time_entry":{"data":{"type":"time-entries","id":"163140186"}},
+   "organization":{"data":{"type":"organizations","id":"999999"}}},"type":"timers"}}
+
+  Note the **dasherized** member type: `time-entries`, not `time_entries`. That is what the client
+  sends and what was observed to work. The response echoes it back underscored (`time_entries`), so
+  the API normalises, but the underscored form has NOT been tested on the way in - send what is
+  known to work.
+
+RESPONSE 201 (fields that matter; the included entry is the full record this folder's other
+time-entry samples show)
+
+  data.id                                   "14349745"
+  data.attributes.started_at                "2026-09-17T10:20:21.000+02:00"
+  data.attributes.stopped_at                null
+  data.attributes.total_time                0
+  data.relationships.time_entry.data        { "type": "time_entries", "id": "163140186" }
+  included[0].type                          "time_entries"
+  included[0].id                            "163140186"          <- the entry that already existed
+  included[0].attributes.time               3                    <- unchanged by the start
+  included[0].attributes.timer_started_at   "2026-09-17T10:20:22.000+02:00"
+
+  No second entry appears: the day list is the same length before and after, and the row that was
+  clicked is the one that starts counting.
+
+  `include=time_entry` is also how the create response carries the linked id at all. Without it the
+  relationship serialises as `{"meta":{"included":false}}` - see `timer-create.json`, recorded
+  without one - which is why the app otherwise learns the id from `GET /timers`.
+
+STOPPING ADDS, IT DOES NOT OVERWRITE
+
+  Measured twice, on two entries:
+
+    entry 163140186   time 2  ->  timer ran 10:18:58 to 10:19:32 (34s)  ->  time 3
+    entry (first row) time 26 ->  timer ran ~1 minute                   ->  time 27
+
+  The stop response reports `data.attributes.total_time: 3` and `included` carries the same entry
+  with `time: 3`. So `total_time` on a continued timer is the entry's **cumulative** total, not the
+  elapsed - the elapsed whole minutes are added to what was already logged.
+
+  That is what makes the design's tracking card honest: the number on the row is the entry's real
+  total, counting up from its logged minutes, and the stop writes exactly what the row was showing.
+
+VERB
+
+  Productive's own client uses `PATCH /timers/{id}/stop`. `timer-stop-endpoint-probes.txt` recorded
+  `PUT` returning 200 and `PATCH` reaching the same route (409 on an already-stopped timer), so both
+  work and this app's `PUT` needs no change. Noted only so the next reader is not surprised by the
+  network tab.
