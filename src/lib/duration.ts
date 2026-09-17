@@ -60,3 +60,26 @@ export function parseDuration(input: string): number | null {
 
 	return null;
 }
+
+/**
+ * `09:30` into minutes since midnight, for the start/end range mode (P-2). `null` for anything an
+ * `<input type="time">` would not produce, the empty value included.
+ *
+ * Separate from `parseDuration` rather than another pattern inside it: `1:30` already means "one
+ * hour thirty" there, and the same string means half past one here. One function that had to read
+ * both would need a caller to tell it which, which is two functions wearing one name.
+ *
+ * No date arithmetic and no wrapping. SPEC 10 makes an end before its start a validation error, so
+ * this returns a point on a clock and the schema does the subtracting - a parser that silently read
+ * `23:00` to `01:00` as two hours would invent a day boundary the form never asked about.
+ */
+export function toMinutesOfDay(value: string): number | null {
+	const match = /^(\d{1,2}):(\d{2})$/.exec(value.trim());
+	if (match === null) return null;
+
+	const hours = Number(match[1]);
+	const minutes = Number(match[2]);
+	if (hours > 23 || minutes > 59) return null;
+
+	return hours * 60 + minutes;
+}

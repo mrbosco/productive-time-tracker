@@ -15,8 +15,10 @@ import { useDeleteTimeEntry } from '@/components/features/time-entries/useDelete
 import { useUpdateTimeEntry } from '@/components/features/time-entries/useUpdateTimeEntry';
 import { UnsavedChangesDialog } from '@/components/features/time-entries/TimeEntryForm/UnsavedChangesDialog';
 import {
+	type DurationMode,
 	isServiceRefusal,
 	MAX_NOTE_LENGTH,
+	rangeMinutes,
 	type TimeEntryFormOutput,
 	type TimeEntryFormValues,
 	summariseUnsavedEntry,
@@ -27,6 +29,7 @@ import { DatePicker } from '@/components/shared/DatePicker/DatePicker';
 import { formatDayWithYear } from '@/lib/date';
 import { formatDuration, parseDuration } from '@/lib/duration';
 import type { Session } from '@/lib/storage';
+import { cn } from '@/lib/utils';
 
 function AlertIcon() {
 	return (
@@ -79,10 +82,11 @@ interface TimeEntryFormProps {
  * invalid input: pressing it is how someone is told what is wrong. It disables only while the save
  * is in flight, and while no service has resolved, because a create without one cannot be sent.
  *
- * P-2 (SPEC 10) adds a toggle here that swaps Duration for From/To time inputs; the design has that
- * branch in full under `modeRange` in `TimeTracker.dc.html`. X-4's stop-timer sheet is this same
- * form with a "Tracked from 09:18 to 10:00" caption and Discard in place of Cancel - but per
- * SPEC 11 it edits the entry the timer already created rather than creating one.
+ * P-2's toggle swaps Duration for From/To time inputs (`03-new-entry-mobile-range.png`). Only the
+ * minutes are ever stored, so nothing downstream knows which mode produced them - and nothing can
+ * reopen a range, which is why editing always starts back in duration mode. X-4's stop-timer sheet
+ * is a surface of its own rather than a third mode here: per SPEC 11 it edits the entry the timer
+ * already created, and it has no date, no service and no draft to protect.
  */
 export function TimeEntryForm({ session, date, entry, maxNoteLength = MAX_NOTE_LENGTH }: TimeEntryFormProps) {
 	const navigate = useNavigate();
@@ -114,12 +118,21 @@ export function TimeEntryForm({ session, date, entry, maxNoteLength = MAX_NOTE_L
 	 * not someone walking away from a draft.
 	 */
 	const [isDeleting, setIsDeleting] = useState(false);
+	/**
+	 * P-2. Always `duration` on the way in, editing included: the API stores minutes and keeps no
+	 * range, so an entry logged as 09:00 to 10:30 reopens as `1h 30m` because that is all there is
+	 * to reopen. Local state rather than a form field - it decides which fields are asked for, and a
+	 * field that changed the shape of its own form would be dirty for having been looked at.
+	 */
+	const [mode, setMode] = useState<DurationMode>('duration');
 	const fieldId = useId();
 
 	/** What the fields start from: blank for a new entry, the entry's own values for an edit. */
 	const seed = {
 		date: dayDate,
 		duration: entry === undefined ? '' : formatDuration(entry.minutes),
+		from: '',
+		to: '',
 		note: entry?.note ?? '',
 	};
 
@@ -131,7 +144,7 @@ export function TimeEntryForm({ session, date, entry, maxNoteLength = MAX_NOTE_L
 		getValues,
 		formState: { errors, dirtyFields, isDirty, isSubmitting },
 	} = useForm<TimeEntryFormValues, unknown, TimeEntryFormOutput>({
-		resolver: zodResolver(timeEntrySchema(maxNoteLength)),
+		resolver: zodResolver(timeEntrySchema(maxNoteLength, mode)),
 		mode: 'onSubmit',
 		reValidateMode: 'onSubmit',
 		/*
@@ -208,9 +221,15 @@ export function TimeEntryForm({ session, date, entry, maxNoteLength = MAX_NOTE_L
 
 	const selectedDate = useWatch({ control, name: 'date' });
 	const durationMinutes = parseDuration(useWatch({ control, name: 'duration' }));
-	// The only confirmation before saving that `1.5h` was read the way it was meant, so it tracks
-	// every keystroke - and stays blank rather than guessing while the value is unreadable.
-	const preview = durationMinutes !== null && durationMinutes > 0 ? `= ${formatDuration(durationMinutes)}` : '';
+	const spanMinutes = rangeMinutes(useWatch({ control, name: 'from' }), useWatch({ control, name: 'to' }));
+	const minutes = mode === 'range' ? spanMinutes : durationMinutes;
+	// The only confirmation before saving that `1.5h`, or 09:00 to 10:30, was read the way it was
+	// meant, so it tracks every keystroke - and stays blank rather than guessing while the value is
+	// unreadable or the end is before the start.
+	const preview = minutes !== null && minutes > 0 ? `= ${formatDuration(minutes)}` : '';
+	// Both messages land under the pair on one line, the way the duration field's does. `from`
+	// carries "required" when it is the empty one; everything else is answerable at `to`.
+	const rangeError = errors.from?.message ?? errors.to?.message;
 
 	/**
 	 * Dismissal (Improvements 10). Anything that closes the form comes through here - the backdrop,
@@ -368,8 +387,14 @@ export function TimeEntryForm({ session, date, entry, maxNoteLength = MAX_NOTE_L
 						</div>
 
 						<div className="flex min-h-0 flex-1 flex-col gap-[22px] overflow-y-auto px-4 pt-6 pb-32 md:overflow-visible md:p-0 md:pb-0">
-							{/* Date and Duration share a row on desktop, stack on mobile. */}
-							<div className="flex flex-col gap-[22px] md:flex-row md:items-start md:gap-4">
+							{/*
+							 * Date and Duration share a row on desktop and stack on mobile. In range
+							 * mode they stack at every width, as the design draws it: two time inputs
+							 * and the preview do not fit half of a 560px dialog.
+							 */}
+							<div
+								className={cn('flex flex-col gap-[22px] md:items-start md:gap-4', mode === 'duration' && 'md:flex-row')}
+							>
 								<div className="flex flex-col gap-1.5 md:min-w-0 md:flex-1">
 									<span id={`${fieldId}-date-label`} className="text-label font-medium text-muted">
 										Date
@@ -395,53 +420,144 @@ export function TimeEntryForm({ session, date, entry, maxNoteLength = MAX_NOTE_L
 									</DatePicker>
 								</div>
 
-								<div className="flex flex-col gap-1.5 md:min-w-0 md:flex-1">
-									<label htmlFor={`${fieldId}-duration`} className="text-label font-medium text-muted">
-										Duration
-									</label>
-									<div className="flex items-center gap-3 md:gap-2.5">
-										<Input
-											id={`${fieldId}-duration`}
-											placeholder="1h 30m"
-											autoComplete="off"
-											autoCapitalize="none"
-											spellCheck={false}
-											aria-invalid={errors.duration !== undefined}
-											aria-describedby={`${fieldId}-duration-preview ${fieldId}-duration-hint`}
-											className="min-w-0 flex-1 tabular-nums md:h-13 md:px-3.5 md:text-list"
-											{...register('duration')}
-										/>
+								{mode === 'duration' ? (
+									<div className="flex flex-col gap-1.5 md:min-w-0 md:flex-1">
+										<label htmlFor={`${fieldId}-duration`} className="text-label font-medium text-muted">
+											Duration
+										</label>
+										<div className="flex items-center gap-3 md:gap-2.5">
+											<Input
+												id={`${fieldId}-duration`}
+												placeholder="1h 30m"
+												autoComplete="off"
+												autoCapitalize="none"
+												spellCheck={false}
+												aria-invalid={errors.duration !== undefined}
+												aria-describedby={`${fieldId}-duration-preview ${fieldId}-duration-hint`}
+												className="min-w-0 flex-1 tabular-nums md:h-13 md:px-3.5 md:text-list"
+												{...register('duration')}
+											/>
+											{/*
+											 * Reserves its width so the field does not resize as you
+											 * type. Described by the input rather than hidden from
+											 * assistive technology: this is the only confirmation
+											 * that `1.5h` was read as ninety minutes, and an empty
+											 * described node costs nothing.
+											 */}
+											<span
+												id={`${fieldId}-duration-preview`}
+												className="min-w-[74px] flex-none text-base font-medium text-accent tabular-nums md:min-w-[66px] md:text-list"
+											>
+												{preview}
+											</span>
+										</div>
 										{/*
-										 * Reserves its width so the field does not resize as you
-										 * type. Described by the input rather than hidden from
-										 * assistive technology: this is the only confirmation
-										 * that `1.5h` was read as ninety minutes, and an empty
-										 * described node costs nothing.
+										 * One line under the field, never two: the error replaces the
+										 * helper caption rather than pushing it down, so nothing below
+										 * moves when a save is rejected.
 										 */}
-										<span
-											id={`${fieldId}-duration-preview`}
-											className="min-w-[74px] flex-none text-base font-medium text-accent tabular-nums md:min-w-[66px] md:text-list"
+										<p
+											id={`${fieldId}-duration-hint`}
+											className={
+												errors.duration === undefined
+													? 'text-label text-muted md:text-caption'
+													: 'text-label leading-[1.4] text-danger'
+											}
 										>
-											{preview}
-										</span>
+											{errors.duration?.message ?? 'Accepts 1h 30m, 1:30, 1.5h or 90'}
+										</p>
 									</div>
-									{/*
-									 * One line under the field, never two: the error replaces the
-									 * helper caption rather than pushing it down, so nothing below
-									 * moves when a save is rejected.
-									 */}
-									<p
-										id={`${fieldId}-duration-hint`}
-										className={
-											errors.duration === undefined
-												? 'text-label text-muted md:text-caption'
-												: 'text-label leading-[1.4] text-danger'
-										}
-									>
-										{errors.duration?.message ?? 'Accepts 1h 30m, 1:30, 1.5h or 90'}
-									</p>
-								</div>
+								) : (
+									<div className="flex w-full flex-col gap-1.5">
+										<span className="text-label font-medium text-muted">Start and end</span>
+										<div className="flex items-end gap-3 md:gap-2.5">
+											{/*
+											 * `<input type="time">`, not a picker: the platform already
+											 * has one, it is keyboard-operable and locale-aware, and it
+											 * opens the phone's own time wheel on mobile (N-4). Its
+											 * value is always `HH:MM`, which is what `toMinutesOfDay`
+											 * reads.
+											 */}
+											<div className="flex min-w-0 flex-1 flex-col gap-1">
+												<label htmlFor={`${fieldId}-from`} className="text-label text-muted md:text-caption">
+													From
+												</label>
+												<Input
+													id={`${fieldId}-from`}
+													type="time"
+													aria-invalid={errors.from !== undefined}
+													aria-describedby={`${fieldId}-range-preview ${fieldId}-range-hint`}
+													className="min-w-0 tabular-nums md:h-13 md:px-3.5 md:text-list"
+													{...register('from')}
+												/>
+											</div>
+											<div className="flex min-w-0 flex-1 flex-col gap-1">
+												<label htmlFor={`${fieldId}-to`} className="text-label text-muted md:text-caption">
+													To
+												</label>
+												<Input
+													id={`${fieldId}-to`}
+													type="time"
+													aria-invalid={errors.to !== undefined}
+													aria-describedby={`${fieldId}-range-preview ${fieldId}-range-hint`}
+													className="min-w-0 tabular-nums md:h-13 md:px-3.5 md:text-list"
+													{...register('to')}
+												/>
+											</div>
+											{/* The same reserved-width preview the duration field carries. */}
+											<span
+												id={`${fieldId}-range-preview`}
+												className="min-w-[74px] flex-none pb-3.5 text-base font-medium text-accent tabular-nums md:min-w-[66px] md:pb-3 md:text-list"
+											>
+												{preview}
+											</span>
+										</div>
+										<p
+											id={`${fieldId}-range-hint`}
+											className={
+												rangeError === undefined
+													? 'text-label text-muted md:text-caption'
+													: 'text-label leading-[1.4] text-danger'
+											}
+										>
+											{rangeError ?? 'Both on the day above; the end must come after the start'}
+										</p>
+									</div>
+								)}
 							</div>
+
+							{/*
+							 * P-2's toggle. A plain button, not `role="switch"`: its label names the
+							 * action rather than the state ("Enter start and end instead"), and a
+							 * switch announcing that label with `aria-checked` would be telling a
+							 * screen-reader user two contradictory things. The pill beside it is the
+							 * control the design draws, and is decoration to assistive technology.
+							 */}
+							<button
+								type="button"
+								onClick={() => {
+									setMode((current) => (current === 'duration' ? 'range' : 'duration'));
+								}}
+								className="flex items-center gap-3 self-start rounded-pill"
+							>
+								<span
+									aria-hidden="true"
+									className={cn(
+										'duration-ui relative h-6.5 w-11 flex-none rounded-pill transition-colors ease-ui',
+										mode === 'range' ? 'bg-accent' : 'bg-line'
+									)}
+								>
+									<span
+										className={cn(
+											'duration-ui absolute top-[3px] size-[19px] rounded-pill bg-surface transition-all ease-ui',
+											mode === 'range' ? 'left-[23px]' : 'left-[3px]'
+										)}
+									/>
+								</span>
+								<span className="text-base font-medium md:text-meta">
+									{mode === 'range' ? 'Enter a duration instead' : 'Enter start and end instead'}
+								</span>
+							</button>
 
 							<div className="flex flex-col gap-1.5">
 								{/*
@@ -606,7 +722,7 @@ export function TimeEntryForm({ session, date, entry, maxNoteLength = MAX_NOTE_L
 					// Staying put is what "Continue editing" means to the router too.
 					if (blocker.status === 'blocked') blocker.reset();
 				}}
-				{...summariseUnsavedEntry(getValues())}
+				{...summariseUnsavedEntry(getValues(), mode)}
 				onDiscard={() => {
 					setIsUnsavedOpen(false);
 					if (blocker.status === 'blocked') {
