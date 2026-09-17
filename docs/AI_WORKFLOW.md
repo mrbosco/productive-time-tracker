@@ -161,6 +161,12 @@ and wrong for a screen you work from. X-4 made it plain: starting a timer create
 immediately, and it appeared below everything else, off the bottom of a full day. A-7 is amended
 with the reasoning rather than quietly contradicted.
 
+**A third came out of running the production build.** `StopTimerSheet` writes rich text and is
+mounted in the app bar, so TipTap - 392 kB, the cost ADR-0010 measured and accepted for one screen -
+had become a static import of `_authenticated`, and every authenticated route was paying for it. The
+ADR had verified the opposite by grepping the built assets; this was caught the same way. Neither
+`tsc` nor either test suite has an opinion about which chunk a module lands in.
+
 ## What the tooling caught, and what it did not
 
 The unit suite (661 tests) caught regressions in everything it covered and was silent on all four of
@@ -170,5 +176,9 @@ overrode, a question about what a control looks like, or a fact about the real A
 in one go — five in the specs, one a harness limitation where the MSW worker forgot a running timer
 across a page reload, which made X-4's persistence look broken.
 
+`pnpm build` caught the one thing neither suite could see, and it was the last check run rather than
+the first.
+
 The lesson worth writing down: the parts were well covered and the seams were not. Every finding
-above came from assembling the thing and looking at it.
+above came from assembling the thing and looking at it - in a browser, against the real API, or in
+the built output.
