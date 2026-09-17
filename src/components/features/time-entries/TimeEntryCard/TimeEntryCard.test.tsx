@@ -207,7 +207,10 @@ describe('TimeEntryCard', () => {
 	 * X-4. A real continuation: the timer attaches to this entry, so this row is the one that starts
 	 * counting and the stop adds to what it already holds (SPEC 11, finding 4).
 	 */
-	/** UI-4 moved this out of the kebab and onto the row: one tap rather than two. */
+	/**
+	 * UI-4 moved this onto the row as a play button - but only where there is a pointer to reveal
+	 * it. `Card Actions.dc.html` keeps the kebab item on touch, which is the branch jsdom takes.
+	 */
 	it('asks for a timer to be continued on itself (X-4)', async () => {
 		const onContinueTimer = vi.fn();
 		const user = userEvent.setup();
@@ -215,7 +218,8 @@ describe('TimeEntryCard', () => {
 			<TimeEntryCard onRequestDelete={noop} entry={buildEntry()} onContinueTimer={onContinueTimer} />
 		);
 
-		await user.click(screen.getByRole('button', { name: 'Continue timer on this entry' }));
+		await user.click(screen.getByRole('button', { name: 'Entry actions' }));
+		await user.click(await screen.findByRole('menuitem', { name: 'Continue timer' }));
 
 		expect(onContinueTimer).toHaveBeenCalledTimes(1);
 	});
@@ -334,6 +338,29 @@ describe('TimeEntryCard', () => {
 
 	/** One timer at a time, so the entry already carrying it cannot be asked to start another. */
 	it('cannot be continued while it is already being tracked (X-4)', async () => {
+		const user = userEvent.setup();
+		await renderWithProviders(
+			<TimeEntryCard
+				onRequestDelete={noop}
+				entry={buildEntry()}
+				trackingSince={new Date().toISOString()}
+				onStopTimer={noop}
+				onContinueTimer={noop}
+			/>
+		);
+
+		await user.click(screen.getByRole('button', { name: 'Entry actions' }));
+
+		expect(await screen.findByRole('menuitem', { name: 'Continue timer' })).toHaveAttribute('aria-disabled', 'true');
+	});
+
+	it('offers no More on a note that fits', async () => {
+		await renderWithProviders(<TimeEntryCard onRequestDelete={noop} entry={buildEntry({ note: 'Short.' })} />);
+
+		expect(screen.queryByRole('button', { name: 'More' })).not.toBeInTheDocument();
+	});
+
+	it('cannot be continued while it is already being tracked (X-4)', async () => {
 		await renderWithProviders(
 			<TimeEntryCard
 				onRequestDelete={noop}
@@ -353,37 +380,18 @@ describe('TimeEntryCard', () => {
 		expect(screen.queryByRole('button', { name: 'More' })).not.toBeInTheDocument();
 	});
 
-	/** UI-4: the most common edit there is, without a trip to the edit screen and back. */
-	it('saves a corrected duration from the card', async () => {
+	/**
+	 * Touch has no hover to reveal a pencil and no room for a 112px field beside the note, so the
+	 * duration stays plain text there and `Edit` in the kebab is the way in. The pointer's inline
+	 * editor is exercised in `e2e/entry-card.spec.ts`, which is the only place a hover exists.
+	 */
+	it('leaves the duration as plain text where there is no pointer', async () => {
 		const onSaveDuration = vi.fn().mockResolvedValue(undefined);
-		const user = userEvent.setup();
 		await renderWithProviders(
 			<TimeEntryCard onRequestDelete={noop} entry={buildEntry()} onSaveDuration={onSaveDuration} />
 		);
 
-		await user.click(screen.getByRole('button', { name: 'Edit duration, 1h 30m' }));
-		const field = await screen.findByRole('textbox', { name: 'Duration' });
-		await user.clear(field);
-		await user.type(field, '1h 45m{Enter}');
-
-		expect(onSaveDuration).toHaveBeenCalledWith(105);
-		// Once, not twice: Enter submits and the blur that follows used to commit again.
-		expect(onSaveDuration).toHaveBeenCalledTimes(1);
-	});
-
-	it('rejects what the entry form rejects, in the same words', async () => {
-		const onSaveDuration = vi.fn().mockResolvedValue(undefined);
-		const user = userEvent.setup();
-		await renderWithProviders(
-			<TimeEntryCard onRequestDelete={noop} entry={buildEntry()} onSaveDuration={onSaveDuration} />
-		);
-
-		await user.click(screen.getByRole('button', { name: 'Edit duration, 1h 30m' }));
-		const field = await screen.findByRole('textbox', { name: 'Duration' });
-		await user.clear(field);
-		await user.type(field, '99h{Enter}');
-
-		expect(await screen.findByText('Duration cannot be more than 24h.')).toBeInTheDocument();
-		expect(onSaveDuration).not.toHaveBeenCalled();
+		expect(screen.getByText('1h 30m')).toBeInTheDocument();
+		expect(screen.queryByRole('button', { name: /Edit logged time/ })).not.toBeInTheDocument();
 	});
 });

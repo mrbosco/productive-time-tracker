@@ -279,7 +279,17 @@ export function DayView({ session, date }: { session: Session; date: string }) {
 						 * a lie while the day is loading or failing, and on a genuinely empty day it
 						 * only restates the sentence in the empty state below it.
 						 */}
-						{hasEntries && <DaySummary entries={entries} />}
+						{/*
+						 * A placeholder of the same height while the day loads, so the summary does
+						 * not push everything under it down the moment it arrives. Starting a timer
+						 * fires two invalidations in a row, and a line that appears between them is
+						 * what made the page look like it was assembling itself in pieces.
+						 */}
+						{isPending ? (
+							<span aria-hidden="true" className="h-5 w-40 animate-pulse rounded-[5px] bg-subtle" />
+						) : (
+							hasEntries && <DaySummary entries={entries} />
+						)}
 
 						{/*
 						 * X-5, above the list where the design puts it. Rendered here rather than in
@@ -295,7 +305,12 @@ export function DayView({ session, date }: { session: Session; date: string }) {
 						)}
 
 						{/* P-1, drawn but inert. Absent while loading or failing, as the design has it. */}
-						{entries !== undefined && <QuickAddInput date={date} />}
+						{/*
+						 * Always mounted. It used to wait for the day, which meant the row someone had
+						 * just typed into vanished while the entry they created was being fetched back
+						 * - the jumpiest thing on the screen, and on the one control they were using.
+						 */}
+						<QuickAddInput date={date} />
 
 						<TimeEntryList
 							entries={entries}

@@ -51,7 +51,7 @@ export function TimesheetCellEditor({
 
 	if (isTracking) {
 		return (
-			<div className="grid place-items-center px-1.5 py-3">
+			<div className="grid h-full place-items-center px-1.5 py-3">
 				<button
 					type="button"
 					aria-label={`Stop the timer on ${rowName}`}
@@ -66,13 +66,13 @@ export function TimesheetCellEditor({
 	}
 
 	if (isNonWorking && cell.minutes === 0) {
-		return <div className="grid place-items-center px-1.5 py-3 text-meta text-muted">—</div>;
+		return <div className="grid h-full place-items-center px-1.5 py-3 text-meta text-muted">—</div>;
 	}
 
 	if (draft !== null) {
 		return (
 			<form
-				className="grid place-items-center px-2.5 py-3"
+				className="grid h-full place-items-center px-2.5 py-3"
 				onSubmit={(event) => {
 					event.preventDefault();
 					void commit();
@@ -112,11 +112,12 @@ export function TimesheetCellEditor({
 					+
 				</span>
 			) : (
-				<span className="flex items-baseline gap-1">
-					{formatDuration(cell.minutes)}
-					{/* Says how many entries are behind the sum, because editing moves the newest. */}
-					{cell.entries.length > 1 && <span className="text-micro font-normal text-muted">×{cell.entries.length}</span>}
-				</span>
+				/*
+				 * The sum, and only the sum. A tally of the entries behind it sat beside a duration
+				 * and read as a multiplier - "8h 21m ×4" looks like four times the time rather than
+				 * four entries - so what it was there to warn about is said in the toast instead.
+				 */
+				formatDuration(cell.minutes)
 			)}
 		</button>
 	);

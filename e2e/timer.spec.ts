@@ -1,4 +1,4 @@
-import { expect, type Page, test } from '@playwright/test';
+import { expect, type Locator, type Page, test } from '@playwright/test';
 
 /**
  * X-4 on both projects: starting a timer, seeing it run, and turning it into a described entry.
@@ -141,13 +141,26 @@ test.describe('timer (X-4)', () => {
 	 * entry instead of creating one (SPEC 11, finding 4). So the row that was clicked is the row
 	 * that counts up, on its own day, and the day is no longer than it was.
 	 */
-	test('continues the entry it was started from, on its own day', async ({ page }) => {
+	/**
+	 * `Card Actions.dc.html` puts this on the row as a play button where there is a pointer to
+	 * reveal it, and leaves it in the kebab on touch - no hover, and no room beside a 15px note.
+	 */
+	async function continueTimerOn(entry: Locator, page: Page, project: string) {
+		if (project === 'mobile-chrome') {
+			await entry.getByRole('button', { name: 'Entry actions' }).click();
+			await page.getByRole('menuitem', { name: 'Continue timer' }).click();
+
+			return;
+		}
+		await entry.getByRole('button', { name: 'Continue timer on this entry' }).click();
+	}
+
+	test('continues the entry it was started from, on its own day', async ({ page }, testInfo) => {
 		await page.goto(`/day/${SEEDED_DATE}`);
 		await expect(page.getByRole('article')).toHaveCount(3);
 
-		// UI-4 moved this out of the kebab and onto the row itself.
 		const entry = notedEntry(page);
-		await entry.getByRole('button', { name: 'Continue timer on this entry' }).click();
+		await continueTimerOn(entry, page, testInfo.project.name);
 
 		// Still here, still three rows, and the first one is the one running.
 		await expect(page).toHaveURL(`/day/${SEEDED_DATE}`);
@@ -165,13 +178,21 @@ test.describe('timer (X-4)', () => {
 	 * page, so a `page.goto` between them would reload it away and the second half would be asking
 	 * about a timer the mock had already forgotten.
 	 */
-	test('will not continue a second entry while one is running', async ({ page }) => {
+	test('will not continue a second entry while one is running', async ({ page }, testInfo) => {
 		await page.goto(`/day/${SEEDED_DATE}`);
-		await notedEntry(page).getByRole('button', { name: 'Continue timer on this entry' }).click();
+		await continueTimerOn(notedEntry(page), page, testInfo.project.name);
 		await expect(notedEntry(page).getByText('Tracking')).toBeVisible();
 
-		// Nowhere on the day offers to start a second one - not on the running row, which is
-		// tracking, and not on any other, which UI-4 leaves without a play button at all.
+		if (testInfo.project.name === 'mobile-chrome') {
+			// The item is still there on touch, and refuses.
+			await page.getByRole('article').first().getByRole('button', { name: 'Entry actions' }).click();
+			await expect(page.getByRole('menuitem', { name: 'Continue timer' })).toHaveAttribute('aria-disabled', 'true');
+
+			return;
+		}
+
+		// On a pointer nowhere offers it: the running row is tracking, and every other row loses
+		// its play button while one runs.
 		await expect(page.getByRole('button', { name: 'Continue timer on this entry' })).toHaveCount(0);
 	});
 

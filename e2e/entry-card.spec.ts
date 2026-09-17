@@ -100,3 +100,38 @@ test('reaches the context from the keyboard, so it is not hover-only', async ({ 
 	await page.keyboard.press('Escape');
 	await expect(page.getByRole('tooltip')).toHaveCount(0);
 });
+
+/**
+ * The inline editor and the play button are a pointer's affordances (`Card Actions.dc.html`): a
+ * 112px field and a chip row do not fit beside a note at 390, and there is no hover to reveal a
+ * pencil. jsdom reports no hover either, so this is the only place the desktop row is exercised.
+ */
+test('corrects a duration in place, on a pointer', async ({ page }, testInfo) => {
+	test.skip(testInfo.project.name === 'mobile-chrome', 'touch keeps both actions in the kebab');
+	await page.goto(`/day/${SEEDED_DATE}`);
+
+	const card = page.getByRole('article').filter({ hasText: 'Probavam' });
+	await card.getByRole('button', { name: /Edit logged time/ }).click();
+
+	const field = page.getByRole('textbox', { name: 'Duration' });
+	await expect(field).toBeFocused();
+	await field.fill('1h 45m');
+	await expect(page.getByText('= 1h 45m')).toBeVisible();
+	await page.keyboard.press('Enter');
+
+	await expect(card.getByRole('button', { name: 'Edit logged time, 1h 45m' })).toBeVisible();
+});
+
+test('refuses what the entry form refuses, and Escape restores', async ({ page }, testInfo) => {
+	test.skip(testInfo.project.name === 'mobile-chrome', 'touch keeps both actions in the kebab');
+	await page.goto(`/day/${SEEDED_DATE}`);
+
+	const card = page.getByRole('article').filter({ hasText: 'Probavam' });
+	await card.getByRole('button', { name: /Edit logged time/ }).click();
+	await page.getByRole('textbox', { name: 'Duration' }).fill('half a day');
+
+	await expect(page.getByText('Enter a duration like 1h 30m, 1:30, 1.5h or 90.')).toBeVisible();
+
+	await page.keyboard.press('Escape');
+	await expect(card.getByRole('button', { name: 'Edit logged time, 5h' })).toBeVisible();
+});

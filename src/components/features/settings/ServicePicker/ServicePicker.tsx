@@ -97,7 +97,9 @@ export function ServicePicker({
 						autoFocus
 						ref={searchRef}
 						id={searchId}
-						type="search"
+						// Not `type="search"`: Chrome draws its own clear button inside one, so the
+						// field had two crosses in it - the browser's and the design's.
+						type="text"
 						role="combobox"
 						aria-expanded
 						aria-controls={listId}

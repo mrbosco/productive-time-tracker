@@ -1,7 +1,7 @@
 import { useNavigate } from '@tanstack/react-router';
 import { useState } from 'react';
-import type { Service } from '@/api/types';
 import { Toast } from '@/components/core/Toast';
+import { TimerDot } from '@/components/features/timer/TimerControl/TimerControl';
 import { useTimerContext } from '@/components/features/timer/TimerProvider';
 import { useCreateTimeEntry } from '@/components/features/time-entries/useCreateTimeEntry';
 import { useUpdateTimeEntry } from '@/components/features/time-entries/useUpdateTimeEntry';
@@ -12,7 +12,6 @@ import { addDays, dayOfMonth, formatDayShort, formatWeekdayAndDay, isWeekend, to
 import { formatDuration } from '@/lib/duration';
 import type { Session } from '@/lib/storage';
 import { cn } from '@/lib/utils';
-import { AddRowSheet } from './AddRowSheet';
 import { TimesheetCellEditor } from './TimesheetCellEditor';
 import { type TimesheetCell, toTimesheet } from './Timesheet.utils';
 
@@ -62,16 +61,24 @@ export function TimesheetView({ session, date }: { session: Session; date: strin
 	const createEntry = useCreateTimeEntry(session);
 	const updateEntry = useUpdateTimeEntry(session);
 
-	const [addedServiceIds, setAddedServiceIds] = useState<string[]>([]);
-	const [isAdding, setIsAdding] = useState(false);
 	const [toast, setToast] = useState<string | null>(null);
 
-	const sheet = toTimesheet(entries ?? [], days, addedServiceIds);
+	const sheet = toTimesheet(entries ?? [], days);
 	const expected = days.reduce<number | null>((sum, day) => {
 		const minutes = expectedMinutesOn(availability, day);
 
 		return minutes === null ? sum : (sum ?? 0) + minutes;
 	}, null);
+	/** What the header pill names: the row a timer is running on, and what it has put on it. */
+	const trackingRow = sheet.rows.find((row) =>
+		row.cells.some((cell) => cell.entries.some((entry) => entry.id === timer.running?.entryId))
+	);
+	const trackingMinutes =
+		trackingRow?.cells
+			.flatMap((cell) => cell.entries)
+			.filter((entry) => entry.id === timer.running?.entryId)
+			.reduce((sum, entry) => sum + entry.minutes, 0) ?? 0;
+
 	const isNonWorking = (day: string) => {
 		const minutes = expectedMinutesOn(availability, day);
 
@@ -80,8 +87,8 @@ export function TimesheetView({ session, date }: { session: Session; date: strin
 
 	/**
 	 * A cell is a sum, so writing one back is only unambiguous when it holds nothing or one entry.
-	 * With several the design's own answer applies: adjust the most recent, and the cell says how
-	 * many sit behind it so nobody is surprised by which one moved.
+	 * With several the design's own answer applies: adjust the most recent. Which one moved is said
+	 * in the toast rather than marked on the cell - a count next to a duration read as a multiplier.
 	 */
 	async function saveCell(serviceId: string, cell: TimesheetCell, minutes: number) {
 		const [newest] = cell.entries;
@@ -98,7 +105,11 @@ export function TimesheetView({ session, date }: { session: Session; date: strin
 					changes: { minutes: Math.max(0, minutes - rest) },
 				});
 			}
-			setToast('Entry saved');
+			setToast(
+				cell.entries.length > 1
+					? `Entry saved · the most recent of ${String(cell.entries.length)} on that day`
+					: 'Entry saved'
+			);
 		} catch {
 			setToast('Could not save that cell.');
 			throw new Error('save failed');
@@ -137,7 +148,7 @@ export function TimesheetView({ session, date }: { session: Session; date: strin
 					>
 						<ChevronIcon />
 					</button>
-					<h1 className="px-1.5 text-title tracking-[-.02em]" tabIndex={-1}>
+					<h1 className="px-1.5 text-title font-bold tracking-[-.02em]" tabIndex={-1}>
 						{describeWeek(date, today)}
 					</h1>
 					{!weekDays(today).includes(date) && (
@@ -152,19 +163,17 @@ export function TimesheetView({ session, date }: { session: Session; date: strin
 
 					<span className="flex-1" />
 
+					{timer.running !== null && (
+						<span className="flex h-9 flex-none items-center gap-2 rounded-pill bg-selection px-3.5 text-label font-medium whitespace-nowrap text-accent-dark">
+							<TimerDot className="size-1.5" />
+							<span className="tabular-nums">{formatDuration(trackingMinutes)}</span>
+							{trackingRow !== undefined && <span className="opacity-72">{trackingRow.project}</span>}
+						</span>
+					)}
 					<span className="text-meta whitespace-nowrap text-muted">
 						<span className="font-medium text-ink tabular-nums">{formatDuration(sheet.total)}</span>
 						{expected === null ? ' logged' : ` of ${formatDuration(expected)} expected`}
 					</span>
-					<button
-						type="button"
-						onClick={() => {
-							setIsAdding(true);
-						}}
-						className="duration-ui h-11 flex-none rounded-pill bg-accent px-5 text-meta font-medium text-on-accent transition-colors ease-ui hover:bg-accent-dark"
-					>
-						Add row
-					</button>
 				</div>
 
 				<div className="hidden overflow-hidden rounded-entry border border-line bg-surface md:block">
@@ -238,15 +247,15 @@ export function TimesheetView({ session, date }: { session: Session; date: strin
 											</tr>
 										))
 									: sheet.rows.map((row) => (
-											<tr key={row.serviceId} className={cn(GRID, 'border-b border-line')}>
-												<th scope="row" className="min-w-0 px-5 py-3.5 text-left">
+											<tr key={row.serviceId} className={cn(GRID, 'items-stretch border-b border-line')}>
+												<th scope="row" className="flex min-w-0 flex-col justify-center px-5 py-3.5 text-left">
 													<span className="block truncate text-meta font-medium">{row.project}</span>
 													<span className="block truncate text-caption font-normal text-muted">{row.service}</span>
 												</th>
 												{row.cells.map((cell) => (
 													<td
 														key={cell.date}
-														className={cn('border-l border-line', isNonWorking(cell.date) && 'hatched')}
+														className={cn('border-l border-line p-0', isNonWorking(cell.date) && 'hatched')}
 													>
 														<TimesheetCellEditor
 															cell={cell}
@@ -261,47 +270,27 @@ export function TimesheetView({ session, date }: { session: Session; date: strin
 														/>
 													</td>
 												))}
-												<td className="border-l border-line px-5 text-right text-meta font-medium tabular-nums">
+												<td className="flex items-center justify-end border-l border-line px-5 text-meta font-medium tabular-nums">
 													{row.total === 0 ? '' : formatDuration(row.total)}
 												</td>
 											</tr>
 										))}
-
-								{!isPending && (
-									<tr className={cn(GRID, 'border-b border-line')}>
-										<th scope="row" className="px-5 py-3.5 text-left">
-											<button
-												type="button"
-												onClick={() => {
-													setIsAdding(true);
-												}}
-												className="text-meta font-medium text-accent hover:underline"
-											>
-												Add a project and service
-											</button>
-										</th>
-										{days.map((day) => (
-											<td key={day} className={cn('border-l border-line', isNonWorking(day) && 'hatched')} />
-										))}
-										<td className="border-l border-line" />
-									</tr>
-								)}
 							</tbody>
 
 							<tfoot>
 								<tr className={cn(GRID, 'bg-selection text-accent-dark')}>
-									<th scope="row" className="px-5 py-4 text-left text-meta font-bold">
+									<th scope="row" className="flex items-center px-5 py-4 text-left text-meta font-bold">
 										Daily total
 									</th>
 									{sheet.dailyTotals.map((minutes, index) => (
 										<td
 											key={days[index]}
-											className="border-l border-accent-dark/12 px-2 py-4 text-center text-meta font-bold tabular-nums"
+											className="flex items-center justify-center border-l border-accent-dark/12 px-2 py-4 text-meta font-bold tabular-nums"
 										>
 											{minutes === 0 ? '—' : formatDuration(minutes)}
 										</td>
 									))}
-									<td className="border-l border-accent-dark/12 px-5 py-4 text-right text-base font-bold whitespace-nowrap tabular-nums">
+									<td className="flex items-center justify-end border-l border-accent-dark/12 px-5 py-4 text-base font-bold whitespace-nowrap tabular-nums">
 										= {formatDuration(sheet.total)}
 									</td>
 								</tr>
@@ -311,19 +300,9 @@ export function TimesheetView({ session, date }: { session: Session; date: strin
 				</div>
 			</main>
 
-			<AddRowSheet
-				session={session}
-				open={isAdding}
-				onOpenChange={setIsAdding}
-				onAdd={(service: Service) => {
-					setAddedServiceIds((current) => [...new Set([...current, service.id])]);
-					setIsAdding(false);
-				}}
-			/>
-
 			{toast !== null && (
 				<Toast
-					variant={toast === 'Entry saved' ? 'success' : 'error'}
+					variant={toast.startsWith('Entry saved') ? 'success' : 'error'}
 					onDismiss={() => {
 						setToast(null);
 					}}

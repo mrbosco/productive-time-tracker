@@ -148,7 +148,12 @@ function ServiceContextDisclosure({
 	}
 
 	return (
-		<Tooltip open={isOpen} onOpenChange={setIsOpen}>
+		/*
+		 * The design's own 200ms rather than the week strip's second. Nothing sweeps across this one
+		 * on the way somewhere else: it is a dotted target in the middle of a row that has to be
+		 * aimed at, so a pointer resting on it already means it.
+		 */
+		<Tooltip open={isOpen} onOpenChange={setIsOpen} delayDuration={200}>
 			<TooltipTrigger asChild>{renderTrigger()}</TooltipTrigger>
 			{/*
 			 * Below the name, never above it: the note sits directly over this line, and a panel

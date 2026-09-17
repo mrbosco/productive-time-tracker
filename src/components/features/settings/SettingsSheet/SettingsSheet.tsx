@@ -28,8 +28,14 @@ interface SettingsSheetProps {
  * not read the list" is a problem to retry; "this organization tracks nothing" is a fact about the
  * account, and showing the second when the first happened sends someone to the wrong place.
  */
-export function SettingsSheet({ session, open, onOpenChange }: SettingsSheetProps) {
-	const { login } = useSession();
+export function SettingsSheet({ session: routeSession, open, onOpenChange }: SettingsSheetProps) {
+	const { session: liveSession, login } = useSession();
+	/*
+	 * The live session, not the one the route handed down. Choosing writes through `login`, and the
+	 * prop is a snapshot taken before that - so reading it left the row still unticked and the
+	 * footer still naming the old service after a successful pick.
+	 */
+	const session = liveSession ?? routeSession;
 	// Only while it is open. The list is already prefetched at login for the entry form (A-1), and
 	// a closed sheet mounted on every authenticated screen has no business issuing a request - or
 	// re-issuing one the moment logout clears the cache.

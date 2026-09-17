@@ -15,12 +15,11 @@ import { cn } from '@/lib/utils';
  */
 function Tooltip({
 	/*
-	 * Two seconds, not the design's 200ms. A pointer crosses these targets constantly - the project
-	 * name sits mid-card and the day cells are a row you sweep across to click one - and at 200ms
-	 * the panel fires on the way past. This is supplementary detail nobody is waiting on, so the
-	 * delay is set to the length of a deliberate rest rather than to a reflex.
+	 * A second by default, which is the week strip's case: seven cells you sweep across on the way
+	 * to clicking one, where the design's 200ms fires four panels in passing. A caller whose target
+	 * is not swept over - the project name, which you have to aim at - passes the shorter delay.
 	 */
-	delayDuration = 2000,
+	delayDuration = 1000,
 	...props
 }: React.ComponentProps<typeof TooltipPrimitive.Root>) {
 	return (
