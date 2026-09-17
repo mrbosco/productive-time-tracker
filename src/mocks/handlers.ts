@@ -242,7 +242,9 @@ export const handlers: RequestHandler[] = [
 			});
 		}
 
-		const entry = createdEntries.find((candidate) => candidate.id === runningTimer?.entryId);
+		const entry = [...timeEntriesDay.data, ...createdEntries].find(
+			(candidate) => candidate.id === runningTimer?.entryId
+		);
 
 		return HttpResponse.json({
 			...timersRunning,
@@ -268,13 +270,27 @@ export const handlers: RequestHandler[] = [
 	 * row a running timer is would never appear in the day list and X-4's second entry problem would
 	 * be invisible here.
 	 */
-	http.post('*/timers', () => {
-		nextTimerId += 1;
-		nextCreatedId += 1;
+	http.post('*/timers', async ({ request }) => {
+		const body = (await request.json()) as { data?: { relationships?: { time_entry?: { data?: { id?: string } } } } };
+		const continued = body.data?.relationships?.time_entry?.data?.id;
 
-		const entryId = `9100000${String(nextCreatedId)}`;
+		nextTimerId += 1;
 		const startedAt = new Date().toISOString();
-		createdEntries.push(toCreatedEntry({ data: { attributes: { date: todayIso(), time: 0, note: null } } }, entryId));
+
+		/*
+		 * Two behaviours, one endpoint, told apart by a relationship
+		 * (`docs/api/samples/timer-continue-entry-probe.txt`): a start carrying `time_entry`
+		 * attaches to that entry and creates nothing, while a bare one creates a `0h` entry on today.
+		 * The mock has to do both, or X-4's `Continue` would look like it worked here and put a
+		 * second row on the day against the real API.
+		 */
+		let entryId = continued;
+		if (entryId === undefined) {
+			nextCreatedId += 1;
+			entryId = `9100000${String(nextCreatedId)}`;
+			createdEntries.push(toCreatedEntry({ data: { attributes: { date: todayIso(), time: 0, note: null } } }, entryId));
+		}
+
 		runningTimer = { id: `1433564${String(nextTimerId)}`, startedAt, entryId };
 
 		return HttpResponse.json(
@@ -304,7 +320,17 @@ export const handlers: RequestHandler[] = [
 		}
 
 		const stoppedAt = new Date();
-		const totalTime = Math.floor((stoppedAt.getTime() - new Date(runningTimer.startedAt).getTime()) / 60_000);
+		const elapsed = Math.floor((stoppedAt.getTime() - new Date(runningTimer.startedAt).getTime()) / 60_000);
+		/*
+		 * Added, not replaced: the stop writes the entry's **cumulative** total, measured twice
+		 * against the live API (`timer-continue-entry-probe.txt`). A mock that overwrote would make
+		 * a continued entry appear to lose everything it had logged, and only on the real thing.
+		 */
+		const entry = [...timeEntriesDay.data, ...createdEntries].find(
+			(candidate) => candidate.id === runningTimer?.entryId
+		);
+		const logged = entry === undefined ? 0 : Number((withEdits(entry).attributes as { time?: number }).time ?? 0);
+		const totalTime = logged + elapsed;
 		editedAttributes.set(runningTimer.entryId, { ...editedAttributes.get(runningTimer.entryId), time: totalTime });
 		runningTimer = null;
 

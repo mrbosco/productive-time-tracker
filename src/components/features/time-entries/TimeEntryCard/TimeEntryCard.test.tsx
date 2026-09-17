@@ -163,10 +163,10 @@ describe('TimeEntryCard', () => {
 	});
 
 	/**
-	 * X-4. A new entry rather than an addition to this one, because `POST /timers` always creates
-	 * one - the note is what carries over, so the running `0h` row already says what it is for.
+	 * X-4. A real continuation: the timer attaches to this entry, so this row is the one that starts
+	 * counting and the stop adds to what it already holds (SPEC 11, finding 4).
 	 */
-	it('continues an entry as a new timer, carrying its description (X-4)', async () => {
+	it('asks for a timer to be continued on itself (X-4)', async () => {
 		const onContinueTimer = vi.fn();
 		const user = userEvent.setup();
 		await renderWithProviders(

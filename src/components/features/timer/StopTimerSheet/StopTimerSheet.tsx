@@ -42,10 +42,11 @@ function formatClock(iso: string): string {
  * update and delete mutations, so the day and the week are invalidated the way every other write
  * does it.
  *
- * It **edits** rather than creates. `POST /timers` already made the entry and the stop already wrote
- * the elapsed minutes onto it (SPEC 11), so `Save entry` is a PATCH of what is there and `Discard`
- * is a DELETE of it. A timer stopped inside a minute leaves `0h` behind, because whole minutes are
- * all the API keeps - which is the other reason the duration is editable here.
+ * It **edits** rather than creates. The entry already exists and the stop already wrote the minutes
+ * onto it (SPEC 11) - either one the timer created, or, for a continuation, one that was already
+ * there and has just been added to. So the duration shown is the entry's whole total, not the
+ * elapsed, and `Save entry` is a PATCH of it. A timer stopped inside a minute adds nothing, because
+ * whole minutes are all the API keeps - which is the other reason the duration is editable here.
  */
 export function StopTimerSheet({
 	session,
@@ -111,6 +112,7 @@ function StopTimerForm({
 		resetOptions: { keepDirtyValues: true },
 	});
 
+	const isDiscarding = deleteEntry.isPending || updateEntry.isPending;
 	const durationMinutes = parseDuration(useWatch({ control, name: 'duration' }));
 	const preview = durationMinutes !== null && durationMinutes > 0 ? `= ${formatDuration(durationMinutes)}` : '';
 
@@ -136,8 +138,14 @@ function StopTimerForm({
 	}
 
 	/**
-	 * Discarding deletes the entry the timer created, because that entry is the tracked time. There
-	 * is nothing else to throw away and leaving it would put an unexplained `0h` row on the day.
+	 * Discarding throws away the time this timer tracked, and what that means depends on where the
+	 * entry came from.
+	 *
+	 * A timer started from the app bar created its entry, and that entry *is* the tracked time: it
+	 * is deleted, because leaving it would put an unexplained row on the day. A timer continued from
+	 * a card attached to an entry that already existed and added to it, so discarding puts it back
+	 * to what it held - deleting it would throw away work the timer never touched, which is a far
+	 * worse thing to do than the one the button promises.
 	 */
 	async function discard() {
 		if (entry === undefined) {
@@ -149,7 +157,17 @@ function StopTimerForm({
 		setErrorMessage(null);
 
 		try {
-			await deleteEntry.mutateAsync({ id: entry.id, date: entry.date, minutes: entry.minutes });
+			if (stopped.loggedBefore === null) {
+				await deleteEntry.mutateAsync({ id: entry.id, date: entry.date, minutes: entry.minutes });
+			} else {
+				await updateEntry.mutateAsync({
+					id: entry.id,
+					previousDate: entry.date,
+					date: entry.date,
+					changes: { minutes: stopped.loggedBefore },
+				});
+			}
+
 			onClose();
 		} catch {
 			setErrorMessage('Could not discard the tracked time. Try again.');
@@ -263,17 +281,24 @@ function StopTimerForm({
 						<Button
 							type="button"
 							variant="outline"
-							disabled={isSubmitting || deleteEntry.isPending}
+							disabled={isSubmitting || isDiscarding}
 							onClick={() => {
 								void discard();
 							}}
 							className="flex-none md:h-11 md:px-5"
+							// Says what it will do, because the two are different acts on different
+							// entries and only one of them is reversible by starting again.
+							title={
+								stopped.loggedBefore === null
+									? 'Delete the entry this timer created'
+									: 'Put this entry back to what it held before'
+							}
 						>
 							Discard
 						</Button>
 						<Button
 							type="submit"
-							disabled={isPending || isSubmitting || deleteEntry.isPending}
+							disabled={isPending || isSubmitting || isDiscarding}
 							className="flex-1 md:h-11 md:flex-none md:px-6"
 						>
 							{isSubmitting ? 'Saving' : 'Save entry'}

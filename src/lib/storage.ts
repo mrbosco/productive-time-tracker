@@ -90,6 +90,12 @@ const timerStateSchema = z.object({
 	 * request that returns the link (api-client rule 10).
 	 */
 	entryId: z.string().min(1).optional(),
+	/**
+	 * What that entry already held when the timer attached to it (X-4's `Continue`). Absent for a
+	 * bare start, whose entry the timer created - which is what tells `Discard` whether throwing the
+	 * tracked time away means deleting the entry or putting its minutes back.
+	 */
+	loggedBefore: z.number().int().nonnegative().optional(),
 });
 
 export type TimerState = z.infer<typeof timerStateSchema>;

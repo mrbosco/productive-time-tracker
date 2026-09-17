@@ -1,20 +1,26 @@
 import { http, HttpResponse } from 'msw';
 import { describe, expect, it, vi } from 'vitest';
 import { renderWithProviders, screen, testSession, userEvent, waitFor } from '@/__tests__/test-utils';
+import type { StoppedTimer } from '@/components/features/timer/useTimer';
 import { server } from '@/mocks/node';
 import { StopTimerSheet } from './StopTimerSheet';
 
 /** One of the recorded day's entries, so the sheet has a real entry to edit. */
 const ENTRY_ID = '162903873';
 
-const stopped = {
+/** A timer started from the app bar: it created this entry, so the entry is the tracked time. */
+const stopped: StoppedTimer = {
 	entryId: ENTRY_ID,
 	startedAt: '2026-09-16T09:18:00.000+02:00',
 	stoppedAt: '2026-09-16T10:00:00.000+02:00',
+	loggedBefore: null,
 };
 
-function renderSheet(onClose = () => undefined) {
-	return renderWithProviders(<StopTimerSheet session={testSession} stopped={stopped} onClose={onClose} />, {
+/** A timer continued from a card: the entry already held 5h before this timer added to it. */
+const stoppedAfterContinuing: StoppedTimer = { ...stopped, loggedBefore: 300 };
+
+function renderSheet(onClose = () => undefined, which = stopped) {
+	return renderWithProviders(<StopTimerSheet session={testSession} stopped={which} onClose={onClose} />, {
 		session: testSession,
 	});
 }
@@ -138,6 +144,42 @@ describe('StopTimerSheet', () => {
 		await waitFor(() => {
 			expect(deleted).toEqual([ENTRY_ID]);
 		});
+		expect(onClose).toHaveBeenCalled();
+	});
+
+	/**
+	 * The entry was there before the timer and will be there after it: discarding puts the minutes
+	 * back rather than deleting work the timer never tracked. Getting this wrong would throw away
+	 * five hours on a button labelled `Discard`.
+	 */
+	it('puts a continued entry back rather than deleting it (X-4)', async () => {
+		const patched: { id: string; attributes: Record<string, unknown> }[] = [];
+		const deleted = vi.fn();
+		server.use(
+			http.patch('*/time_entries/:id', async ({ request, params }) => {
+				const body = (await request.json()) as { data?: { attributes?: Record<string, unknown> } };
+				patched.push({ id: String(params.id), attributes: body.data?.attributes ?? {} });
+
+				return HttpResponse.json({ data: { id: String(params.id), type: 'time_entries', attributes: {} } });
+			}),
+			http.delete('*/time_entries/:id', () => {
+				deleted();
+
+				return new HttpResponse(null, { status: 204 });
+			})
+		);
+		const onClose = vi.fn();
+		const user = userEvent.setup();
+		await renderSheet(onClose, stoppedAfterContinuing);
+		await durationField();
+
+		await user.click(screen.getByRole('button', { name: 'Discard' }));
+
+		await waitFor(() => {
+			expect(patched).toHaveLength(1);
+		});
+		expect(patched[0]).toMatchObject({ id: ENTRY_ID, attributes: { time: 300 } });
+		expect(deleted).not.toHaveBeenCalled();
 		expect(onClose).toHaveBeenCalled();
 	});
 

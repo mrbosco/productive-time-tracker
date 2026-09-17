@@ -27,6 +27,8 @@ async function signIn(page: Page) {
 /** The recorded day, for continuing an entry that already has time on it. */
 const SEEDED_DATE = '2026-09-15';
 const FIRST_ENTRY_NOTE = 'Probavam';
+/** What that entry already holds, which a continuation counts up from rather than replacing. */
+const FIRST_ENTRY_DURATION = '5h';
 
 /** Whatever day the suite runs on, which is where a timer's entry lands. */
 async function gotoToday(page: Page) {
@@ -130,21 +132,25 @@ test.describe('timer (X-4)', () => {
 	});
 
 	/**
-	 * A timer's entry is always dated today (SPEC 11), so continuing an entry from another day logs
-	 * the new time there. Staying put left the screen looking as though nothing had happened.
+	 * A continuation, not a copy: `POST /timers` with a `time_entry` relationship attaches to the
+	 * entry instead of creating one (SPEC 11, finding 4). So the row that was clicked is the row
+	 * that counts up, on its own day, and the day is no longer than it was.
 	 */
-	test('continues an entry onto today, carrying its description', async ({ page }) => {
+	test('continues the entry it was started from, on its own day', async ({ page }) => {
 		await page.goto(`/day/${SEEDED_DATE}`);
+		await expect(page.getByRole('article')).toHaveCount(3);
 
-		await page.getByRole('article').first().getByRole('button', { name: 'Entry actions' }).click();
+		const entry = page.getByRole('article').first();
+		await entry.getByRole('button', { name: 'Entry actions' }).click();
 		await page.getByRole('menuitem', { name: 'Continue timer' }).click();
 
-		await expect(page).toHaveURL(/\/day\/\d{4}-\d{2}-\d{2}$/);
-		await expect(page).not.toHaveURL(`/day/${SEEDED_DATE}`);
-
-		const tracking = page.getByRole('article').first();
-		await expect(tracking.getByText('Tracking')).toBeVisible();
-		await expect(tracking).toContainText(FIRST_ENTRY_NOTE);
+		// Still here, still three rows, and the first one is the one running.
+		await expect(page).toHaveURL(`/day/${SEEDED_DATE}`);
+		await expect(page.getByRole('article')).toHaveCount(3);
+		await expect(entry.getByText('Tracking')).toBeVisible();
+		await expect(entry).toContainText(FIRST_ENTRY_NOTE);
+		// Counting up from what it already holds, not from zero.
+		await expect(entry).toContainText(FIRST_ENTRY_DURATION);
 	});
 
 	/** One timer at a time: starting a second silently would be the worst of the three behaviours. */

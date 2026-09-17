@@ -12,8 +12,14 @@ interface TimerContextValue {
 	justStarted: boolean;
 	/** A start or a stop is in flight, so neither control should be pressed twice. */
 	isBusy: boolean;
-	/** Starts on the default service (A-1), optionally seeding the entry's note (X-3's Continue). */
-	start: (note?: string | null) => void;
+	/** Starts a fresh entry on today, against the default service (A-1). */
+	start: () => void;
+	/**
+	 * Continues an entry that already exists: the timer attaches to it and the stop adds to what it
+	 * holds, so the row that was clicked is the one that counts up (X-4). `loggedMinutes` is what it
+	 * holds now, which is the only way `Discard` can later put it back.
+	 */
+	continueEntry: (entryId: string, loggedMinutes: number) => void;
 	stop: () => void;
 	/** What the last stop left behind, for the sheet that edits it. */
 	stopped: StoppedTimer | null;
@@ -43,7 +49,7 @@ export function TimerProvider({ session, children }: { session: Session; childre
 	const [needsService, setNeedsService] = useState(false);
 	const [justStarted, setJustStarted] = useState(false);
 
-	async function start(note?: string | null) {
+	async function start() {
 		/*
 		 * A timer is logged against the default service, the same one a new entry is (A-1). With
 		 * none resolved there is nothing to start it on, and the only place that can be changed is
@@ -55,7 +61,13 @@ export function TimerProvider({ session, children }: { session: Session; childre
 			return;
 		}
 
-		await timer.start({ serviceId: service.id, note });
+		await timer.start({ serviceId: service.id });
+		setJustStarted(true);
+	}
+
+	/** No service needed: the entry already has the one it was logged against, and keeps it. */
+	async function continueEntry(entryId: string, loggedMinutes: number) {
+		await timer.start({ entryId, loggedBefore: loggedMinutes });
 		setJustStarted(true);
 	}
 
@@ -75,8 +87,11 @@ export function TimerProvider({ session, children }: { session: Session; childre
 		running: timer.running,
 		justStarted,
 		isBusy: timer.isStarting || timer.isStopping,
-		start: (note) => {
-			void start(note);
+		start: () => {
+			void start();
+		},
+		continueEntry: (entryId, loggedMinutes) => {
+			void continueEntry(entryId, loggedMinutes);
 		},
 		stop: () => {
 			void stop();

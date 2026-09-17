@@ -1,6 +1,7 @@
 import { http, HttpResponse } from 'msw';
 import { describe, expect, it, vi } from 'vitest';
 import timerAlreadyStopped from '../../../../docs/api/samples/error-409-timer-already-stopped.json';
+import timerCreate from '../../../../docs/api/samples/timer-create.json';
 import { act, renderHook, renderWithProviders, screen, testSession, userEvent, waitFor } from '@/__tests__/test-utils';
 import { useTimerContext } from '@/components/features/timer/TimerProvider';
 import { readTimerState, TIMER_STORAGE_KEY, writeTimerState } from '@/lib/storage';
@@ -11,6 +12,9 @@ import { useElapsedSeconds } from './useTimer';
  * The timer is exercised through its provider, because that is the only way anything uses it and
  * because the two are one behaviour: the query, the two mutations and what a refresh remembers.
  */
+/** An entry of the recorded day, for continuing one that already has time on it. */
+const CONTINUED_ENTRY = '162903873';
+
 function renderTimer() {
 	function Probe() {
 		const timer = useTimerContext();
@@ -31,7 +35,7 @@ function renderTimer() {
 				<button
 					type="button"
 					onClick={() => {
-						timer.start('<p>Standup</p>');
+						timer.continueEntry(CONTINUED_ENTRY, 300);
 					}}
 				>
 					continue
@@ -75,15 +79,19 @@ describe('useTimer, through its provider', () => {
 		});
 	});
 
-	/** X-3's Continue: one PATCH, so the running `0h` row already says what it is for. */
-	it('writes the continued note onto the entry the start created (X-4)', async () => {
-		const patched: { id: string; note: unknown }[] = [];
+	/**
+	 * The whole of X-4's `Continue`, and the thing the API tells apart by a relationship: a start
+	 * carrying `time_entry` attaches to that entry rather than creating one
+	 * (`docs/api/samples/timer-continue-entry-probe.txt`). No second row, and no note to copy.
+	 */
+	it('continues an existing entry rather than creating a second one (X-4)', async () => {
+		const posted: { relationships?: Record<string, unknown> }[] = [];
 		server.use(
-			http.patch('*/time_entries/:id', async ({ request, params }) => {
-				const body = (await request.json()) as { data?: { attributes?: { note?: unknown } } };
-				patched.push({ id: String(params.id), note: body.data?.attributes?.note });
+			http.post('*/timers', async ({ request }) => {
+				const body = (await request.json()) as { data: { relationships?: Record<string, unknown> } };
+				posted.push(body.data);
 
-				return HttpResponse.json({ data: { id: String(params.id), type: 'time_entries', attributes: {} } });
+				return HttpResponse.json(timerCreate, { status: 201 });
 			})
 		);
 		const user = userEvent.setup();
@@ -93,9 +101,35 @@ describe('useTimer, through its provider', () => {
 		await user.click(screen.getByRole('button', { name: 'continue' }));
 
 		await waitFor(() => {
-			expect(patched).toHaveLength(1);
+			expect(posted).toHaveLength(1);
 		});
-		expect(patched[0].note).toBe('<p>Standup</p>');
+		expect(posted[0].relationships).toEqual({
+			// Dasherized, which is what Productive's own client sends and what was observed to work.
+			time_entry: { data: { type: 'time-entries', id: CONTINUED_ENTRY } },
+		});
+	});
+
+	/** A bare start is the other behaviour of the same endpoint: service and person, no entry. */
+	it('starts a fresh entry with a service rather than an entry (X-4)', async () => {
+		const posted: { relationships?: Record<string, unknown> }[] = [];
+		server.use(
+			http.post('*/timers', async ({ request }) => {
+				const body = (await request.json()) as { data: { relationships?: Record<string, unknown> } };
+				posted.push(body.data);
+
+				return HttpResponse.json(timerCreate, { status: 201 });
+			})
+		);
+		const user = userEvent.setup();
+		await renderTimer();
+		await screen.findByText('idle');
+
+		await user.click(screen.getByRole('button', { name: 'start' }));
+
+		await waitFor(() => {
+			expect(posted).toHaveLength(1);
+		});
+		expect(Object.keys(posted[0].relationships ?? {})).toEqual(['service', 'person']);
 	});
 
 	it('stops a timer and hands the entry over to be described (X-4)', async () => {

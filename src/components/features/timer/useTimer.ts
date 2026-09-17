@@ -1,8 +1,7 @@
 import { queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { ApiError } from '@/api/client';
-import { updateTimeEntry } from '@/api/time-entries';
-import { getRunningTimer, startTimer, stopTimer } from '@/api/timers';
+import { continueTimer, getRunningTimer, startTimer, stopTimer } from '@/api/timers';
 import { toAuth } from '@/components/features/auth/useSession';
 import { startOfWeek, todayIso } from '@/lib/date';
 import { clearTimerState, readTimerState, type Session, writeTimerState } from '@/lib/storage';
@@ -24,6 +23,12 @@ export interface StoppedTimer {
 	entryId: string;
 	startedAt: string;
 	stoppedAt: string;
+	/**
+	 * What the entry held before this timer attached to it, or `null` when the timer created it.
+	 * `Discard` needs the difference: a continuation is put back to this, an entry the timer made
+	 * is deleted.
+	 */
+	loggedBefore: number | null;
 }
 
 export function timerQueryOptions(session: Session) {
@@ -91,12 +96,30 @@ export function useTimer(session: Session) {
 
 	const today = todayIso();
 
-	/** The day the timer's entry is on, and the week around it, both of which the start changed. */
-	function invalidateToday() {
+	/** A day and the week around it: X-1's strip reads the week, so one without the other disagrees. */
+	function invalidateDay(date: string) {
 		return Promise.all([
-			queryClient.invalidateQueries({ queryKey: ['time-entries', session.personId, today] }),
-			queryClient.invalidateQueries({ queryKey: ['week-totals', session.personId, startOfWeek(today)] }),
+			queryClient.invalidateQueries({ queryKey: ['time-entries', session.personId, date] }),
+			queryClient.invalidateQueries({ queryKey: ['week-totals', session.personId, startOfWeek(date)] }),
 		]);
+	}
+
+	/** Where a bare start puts its new entry, and where a stop writes the minutes. */
+	function invalidateToday() {
+		return invalidateDay(today);
+	}
+
+	/**
+	 * A continued entry can be on any day, so the day to refresh is the entry's own. Read from the
+	 * cache rather than fetched: the entry was on screen a moment ago, which is how it was clicked.
+	 */
+	function invalidateEntryDay(entryId: string) {
+		const entry = queryClient
+			.getQueriesData<{ id: string; date: string }[]>({ queryKey: ['time-entries', session.personId] })
+			.flatMap(([, entries]) => entries ?? [])
+			.find((candidate) => candidate.id === entryId);
+
+		return entry === undefined ? invalidateToday() : invalidateDay(entry.date);
 	}
 
 	useEffect(() => {
@@ -111,7 +134,10 @@ export function useTimer(session: Session) {
 			return;
 		}
 
+		// Merged with what is already stored, not replaced: the query knows the timer, and only the
+		// start knew what the entry held before it (`loggedBefore`).
 		writeTimerState({
+			...readTimerState(),
 			timerId: timer.id,
 			startedAt: timer.startedAt,
 			entryId: timer.timeEntryId ?? undefined,
@@ -119,8 +145,18 @@ export function useTimer(session: Session) {
 	}, [query.isPending, query.data]);
 
 	const start = useMutation({
-		mutationFn: async ({ serviceId, note }: { serviceId: string; note?: string | null }) => {
-			await startTimer(toAuth(session), session.personId, serviceId);
+		/**
+		 * Two ways to start one, and the API tells them apart by a relationship: a bare start creates
+		 * a fresh entry on today (`serviceId`), and a start carrying `time_entry` attaches to an entry
+		 * that already exists and adds to it on stop (`entryId`). Continuing is therefore a genuine
+		 * continuation rather than a copy - no second row, and the entry keeps its own service.
+		 */
+		mutationFn: async (input: { serviceId: string } | { entryId: string; loggedBefore: number }) => {
+			if ('entryId' in input) {
+				await continueTimer(toAuth(session), input.entryId);
+			} else {
+				await startTimer(toAuth(session), session.personId, input.serviceId);
+			}
 
 			/*
 			 * Refetched rather than read off the create response, because the create response does
@@ -135,19 +171,25 @@ export function useTimer(session: Session) {
 			 */
 			const running = await queryClient.fetchQuery({ ...timerQueryOptions(session), staleTime: 0 });
 
-			/*
-			 * X-3's `Continue timer`, in one PATCH: the entry the timer just created is written with
-			 * the note of the entry being continued, so the running `0h` row already says what it is
-			 * for and the stop sheet opens with it. It is a new entry rather than an addition to the
-			 * old one, because `POST /timers` always makes one - see the note in SPEC 10.
-			 */
-			if (running?.timeEntryId != null && note != null && note !== '') {
-				await updateTimeEntry(toAuth(session), running.timeEntryId, { note });
+			// Remembered here rather than derived later: only the caller knows what the entry held
+			// before, and after the stop the entry holds the sum.
+			if (running !== null) {
+				writeTimerState({
+					timerId: running.id,
+					startedAt: running.startedAt,
+					entryId: running.timeEntryId ?? undefined,
+					loggedBefore: 'entryId' in input ? input.loggedBefore : undefined,
+				});
 			}
 
 			return running;
 		},
-		onSuccess: invalidateToday,
+
+		/**
+		 * A bare start put a new entry on today. A continue changed an entry that may be on any day -
+		 * the one it was started from - so that day and its week are what moved.
+		 */
+		onSuccess: (_timer, input) => ('entryId' in input ? invalidateEntryDay(input.entryId) : invalidateToday()),
 	});
 
 	const stop = useMutation({
@@ -166,13 +208,21 @@ export function useTimer(session: Session) {
 				if (!(error instanceof ApiError) || error.code !== 'timer_already_stopped') throw error;
 			}
 
-			return timer.entryId === null ? null : { entryId: timer.entryId, startedAt: timer.startedAt, stoppedAt };
+			if (timer.entryId === null) return null;
+
+			return {
+				entryId: timer.entryId,
+				startedAt: timer.startedAt,
+				stoppedAt,
+				loggedBefore: readTimerState()?.loggedBefore ?? null,
+			};
 		},
-		onSuccess: async () => {
+		onSuccess: async (stopped) => {
 			clearTimerState();
 			queryClient.setQueryData(timerQueryOptions(session).queryKey, null);
-			// The entry's `time` was written by the stop, so the day it is on disagrees with the cache.
-			await invalidateToday();
+			// The entry's `time` was written by the stop, so the day it is on disagrees with the
+			// cache - and a continued entry's day is its own, not today.
+			await (stopped === null ? invalidateToday() : invalidateEntryDay(stopped.entryId));
 		},
 	});
 

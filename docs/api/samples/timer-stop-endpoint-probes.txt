@@ -27,3 +27,8 @@ Verified sequence (timer 14335645, 2026-09-16 11:54:45 -> 11:56:12):
   3. The linked entry's time becomes those minutes: 87s elapsed -> total_time 1 -> time 1.
      Whole minutes only; the remainder is dropped.
   4. Stopping again -> 409 timer_already_stopped.
+
+Addendum, 2026-09-17: Productive's own web client stops with PATCH on this same path, which the
+matrix above already showed reaching the route. Both verbs work. See
+`timer-continue-entry-probe.txt` for the other half of the timer story - starting one *on* an
+existing entry, which needs no new entry and no fold.

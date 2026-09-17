@@ -20,6 +20,9 @@ The row a timer is running against says so: an indigo edge, a `Tracking` label b
 dot, a duration that counts up live, and a stop control of its own — the app bar can be scrolled a
 long way from it on a full day, and both stop the same timer.
 
-An entry's menu gains `Continue timer`: it starts a fresh timer carrying that entry's description
-and takes you to today, which is where the new time is logged. Only one timer runs at a time, so
-the item is greyed out while one is going.
+An entry's menu gains `Continue timer`, and it is a real continuation: the timer attaches to that
+entry, so the row you clicked is the row that counts up — on its own day, from the time it already
+holds — and stopping adds to it rather than leaving a second entry beside it. Discarding a
+continuation puts the entry back to what it held; discarding a timer you started from the bar
+deletes the entry it created. Only one timer runs at a time, so the item is greyed out while one is
+going.

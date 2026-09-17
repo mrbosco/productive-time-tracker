@@ -259,20 +259,15 @@ export function DayView({ session, date }: { session: Session; date: string }) {
 							 * an item that silently started a second one would be worse than a
 							 * disabled one. `TimeEntryCard` greys it out when this is absent.
 							 */
+							/*
+							 * The timer attaches to the entry rather than making a new one (SPEC 11,
+							 * finding 4), so the row that was clicked is the row that starts counting
+							 * - on whatever day it is on. Nothing navigates, and nothing is copied.
+							 */
 							onContinueTimer={
 								timer.running === null
 									? (entry) => {
-											timer.start(entry.note);
-											/*
-											 * A timer's entry is always dated today (SPEC 11), so
-											 * continuing an entry from another day logs the new time
-											 * *there*, not here - and staying put would leave the
-											 * screen looking as though nothing had happened, which is
-											 * exactly what it looked like. Navigating is what makes
-											 * the tracking row visible, and matches X-3's Duplicate,
-											 * which lands on today for the same reason.
-											 */
-											if (date !== todayIso()) goToDay(todayIso());
+											timer.continueEntry(entry.id, entry.minutes);
 										}
 									: undefined
 							}
