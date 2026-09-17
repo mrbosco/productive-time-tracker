@@ -9,7 +9,6 @@ time-entries-empty-day.json                  200
 time-entry-show.json                         200
 time-entries-per-page.json                   200
 time-entries-page-size.json                  200
-services.json                                200
 services-unfiltered.json                     200
 services-person-filter-ignored.json          200
 services-fields-without-relationship.json    200
@@ -39,3 +38,4 @@ organization-memberships-avatars.json                200
 service-show.json                                    200
 deal-show.json                                       200
 time-entries-day-service-context.json                200
+services.json                                        200

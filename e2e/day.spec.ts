@@ -79,24 +79,27 @@ test.describe('the day view', () => {
 		const list = page.getByRole('list');
 
 		await expect(list.getByText('5h', { exact: true })).toBeVisible();
-		await expect(list.getByText('4h', { exact: true })).toBeVisible();
-		// A-8: a zero-minute entry is a real record and is rendered, not skipped.
-		await expect(list.getByText('0h', { exact: true })).toBeVisible();
+		// A-8: a zero-minute entry is a real record and is rendered, not skipped. The recorded day
+		// holds two of them, which is why this counts rather than asserting one is visible.
+		await expect(list.getByText('0h', { exact: true })).toHaveCount(2);
 	});
 
 	/**
 	 * A-7, amended: newest first. The API cannot sort on `created_at` at all, so this is entirely
 	 * the client-side sort - and the fixture's own order is neither ascending nor descending, which
 	 * is what makes the assertion mean something.
+	 *
+	 * Asserted on the service rather than the duration: the recorded day's two newest entries are
+	 * both zero-minute, so durations no longer tell the rows apart.
 	 */
 	test('puts the most recently logged entry at the top', async ({ page }) => {
 		await page.goto(`/day/${SEEDED_DATE}`);
 
-		const durations = page.getByRole('article');
+		const entries = page.getByRole('article');
 
-		await expect(durations.nth(0)).toContainText('4h');
-		await expect(durations.nth(1)).toContainText('0h');
-		await expect(durations.nth(2)).toContainText('5h');
+		await expect(entries.nth(0)).toContainText('Project management');
+		await expect(entries.nth(1)).toContainText('0h');
+		await expect(entries.nth(2)).toContainText('5h');
 	});
 
 	/** The reason A-7 was amended: a new entry belongs where it can be seen (R-9). */
@@ -131,7 +134,7 @@ test.describe('the day view', () => {
 	test('carries the day total into the week strip', async ({ page }) => {
 		await page.goto(`/day/${SEEDED_DATE}`);
 
-		await expect(page.getByRole('link', { name: 'Tue 15 Sep, 9h logged' })).toBeVisible();
+		await expect(page.getByRole('link', { name: 'Tue 15 Sep, 5h logged' })).toBeVisible();
 	});
 
 	test('moves to another day from the week strip (R-5)', async ({ page }) => {
@@ -162,7 +165,7 @@ test.describe('the day view', () => {
 		await page.goto(`/day/${SEEDED_DATE}`);
 
 		// `logged ·` rather than `logged`, which is also a word in the empty state's sentence.
-		await expect(page.getByText(/logged ·/)).toContainText('9h');
+		await expect(page.getByText(/logged ·/)).toContainText('5h');
 		await expect(page.getByText(/logged ·/)).toContainText('3 entries');
 	});
 

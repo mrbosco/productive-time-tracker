@@ -24,7 +24,7 @@ describe('SettingsSheet', () => {
 
 		const select = await screen.findByRole('combobox', { name: 'Default service' });
 
-		expect(select).toHaveDisplayValue('Example Agency · Administration · Acquiring new clients');
+		expect(select).toHaveDisplayValue('Example Companie · Internal project [SAMPLE] · Acquiring new clients');
 	});
 
 	it('says what the choice is for', async () => {

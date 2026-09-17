@@ -24,6 +24,13 @@
 	--color-on-accent: #ffffff; /* --on-accent */
 
 	/*
+	 * The one dark surface in the product (UI-2). A service's context has to read as a layer above
+	 * the card rather than as part of it, and on a screen where every other surface is white or a
+	 * pale tint, dark is the only thing that says "above" without a heavier shadow.
+	 */
+	--color-raised: #242131;
+
+	/*
 	 * The hairline that draws the edge of an uploaded avatar. The ground behind one is white, not a
 	 * tint: a logo is somebody else's artwork and usually carries its own white ground, so a tinted
 	 * plate frames a second white square inside itself. White makes the two the same surface and

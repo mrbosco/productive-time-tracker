@@ -16,7 +16,7 @@ import { expect, type Page, test } from '@playwright/test';
  */
 const SESSION_STORAGE_KEY = 'tracktive.session';
 
-/** The date `docs/api/samples/time-entries-day.json` was recorded for: three entries, 9h. */
+/** The date `docs/api/samples/time-entries-day-service-context.json` was recorded for: three entries, 5h. */
 const SEEDED_DATE = '2026-09-15';
 
 /**
@@ -111,14 +111,16 @@ test.describe('deleting a time entry', () => {
 		// Read before the dialog opens: Radix marks the day behind it `aria-hidden`, so neither the
 		// summary nor the strip is role-queryable while the question is up.
 		await openSeededDay(page);
-		await expect(page.getByText('9h logged · 3 entries')).toBeVisible();
-		await expect(page.getByRole('link', { name: 'Tue 15 Sep, 9h logged' })).toBeVisible();
+		await expect(page.getByText('5h logged · 3 entries')).toBeVisible();
+		await expect(page.getByRole('link', { name: 'Tue 15 Sep, 5h logged' })).toBeVisible();
 
 		await askToDelete(page);
 		await page.getByRole('button', { name: 'Delete' }).click();
 
-		await expect(page.getByText('4h logged · 2 entries')).toBeVisible();
-		await expect(page.getByRole('link', { name: 'Tue 15 Sep, 4h logged' })).toBeVisible();
+		// The two that remain are the recorded day's zero-minute entries, so the day empties out
+		// without emptying the list - which is the pair A-8 exists for.
+		await expect(page.getByText('0h logged · 2 entries')).toBeVisible();
+		await expect(page.getByRole('link', { name: 'Tue 15 Sep, nothing logged' })).toBeVisible();
 	});
 
 	/**

@@ -14,6 +14,7 @@ import { StopTimerButton, TimerDot } from '@/components/features/timer/TimerCont
 import { useElapsedSeconds } from '@/components/features/timer/useTimer';
 import { formatDuration } from '@/lib/duration';
 import { Note } from '@/components/features/time-entries/Note/Note';
+import { ServiceContext } from '@/components/features/time-entries/ServiceContext/ServiceContext';
 import { toPlainText } from '@/lib/note';
 import { cn } from '@/lib/utils';
 
@@ -145,7 +146,7 @@ export function TimeEntryCard({
 					<p className="text-list text-muted italic">No description</p>
 				)}
 
-				<p className="flex flex-wrap items-center gap-2 text-caption font-medium text-muted">
+				<div className="flex flex-wrap items-center gap-2">
 					{/*
 					 * On the meta line at both widths rather than above the note, which is where the
 					 * design puts it on desktop - it keeps the row the same height whether or not a
@@ -162,15 +163,16 @@ export function TimeEntryCard({
 							<span aria-hidden="true" className="hidden h-[11px] w-px bg-line md:block" />
 						</>
 					)}
-					<span>{entry.service?.name ?? 'Unknown service'}</span>
+					{/* `project · service`, and everything behind the project name (UI-2). */}
+					<ServiceContext service={entry.service} />
 					{/*
 					 * Productive's own draft flag, and read from nothing else (A-8). It is
 					 * independent of the duration: the recorded zero-minute entry is `draft:
 					 * false`, and a running timer is a zero-minute entry too, so deriving the
 					 * label from `minutes === 0` would mislabel both.
 					 */}
-					{entry.draft && <span>Draft</span>}
-				</p>
+					{entry.draft && <span className="text-caption font-medium text-muted">Draft</span>}
+				</div>
 			</div>
 
 			{/*

@@ -21,12 +21,19 @@ import type { Service } from './types';
  *
  * Sparse fieldsets cut this 13x. `fields` governs relationships as well as attributes, so `deal`
  * has to be named there or the linkage vanishes while the included deals remain orphaned.
+ *
+ * The project rides along because A-1's label calls its middle part the project and had been
+ * printing the deal there. They are different records - a deal is "Data platform migration - phase
+ * 2" where its project is "Data platform migration" - and the entry card names the project now
+ * (UI-2), so a picker naming the deal would have two names for one thing. No logo here: this list
+ * labels rows, it does not draw them.
  */
-const FIELDS = 'fields[services]=name,deal&fields[deals]=name,company&fields[companies]=name';
+const FIELDS =
+	'fields[services]=name,deal&fields[deals]=name,company,project&fields[projects]=name&fields[companies]=name';
 
 function buildPath(page: number): string {
 	return (
-		`/services?filter[time_tracking_enabled]=true&include=deal.company&${FIELDS}` +
+		`/services?filter[time_tracking_enabled]=true&include=deal.company,deal.project&${FIELDS}` +
 		`&page[size]=${String(MAX_PAGE_SIZE)}&page[number]=${String(page)}`
 	);
 }
@@ -76,7 +83,11 @@ export function toService(document: JsonApiDocument, resource: Resource): Servic
  * are suffixed; suffixing every row would be noise.
  */
 export function labelServices(services: Service[]): { service: Service; label: string }[] {
-	const base = (service: Service) => [service.companyName, service.dealName, service.name].filter(Boolean).join(' · ');
+	// "Company · Project · Service" (A-1), and the project is the project now. The deal stands in
+	// where a service was never filed under one, which is the only reason that read as correct
+	// before.
+	const base = (service: Service) =>
+		[service.companyName, service.projectName ?? service.dealName, service.name].filter(Boolean).join(' · ');
 
 	const counts = new Map<string, number>();
 	for (const service of services) counts.set(base(service), (counts.get(base(service)) ?? 0) + 1);
