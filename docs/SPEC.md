@@ -300,5 +300,5 @@ Four behaviours that shape X-4:
 ## 12. Delivery
 
 - Public repository, `main` protected, PR per user story (R-IDs in PR titles), CI green
-- Tags: `v0.1.0` scaffold, `v0.2.0` core stories, `v0.3.0` extras (X-1, X-2, P-2, X-3, X-4, X-5, P-1 in that order), `v1.0.0` submission
-- Docs: this SPEC, ADRs, README, `docs/AI_WORKFLOW.md`
+- Tags: `v0.1.0` scaffold, `v0.2.0` core stories, `v0.3.0` extras (X-1, X-2, P-2, X-3, X-4, X-5 shipped in that order; P-1 cut, as section 10 says it would be first), `v1.0.0` submission
+- Docs: this SPEC, ADRs, README, [`docs/AI_WORKFLOW.md`](AI_WORKFLOW.md)
