@@ -16,7 +16,7 @@ describe('WeekStrip', () => {
 		await renderStrip();
 
 		expect(screen.getAllByRole('link')).toHaveLength(7);
-		expect(screen.getByText('Week')).toBeInTheDocument();
+		expect(screen.getByText('Weekly total')).toBeInTheDocument();
 	});
 
 	/**
@@ -37,8 +37,8 @@ describe('WeekStrip', () => {
 	it('totals the week from the days it was given', async () => {
 		await renderStrip();
 
-		// 375 + 225 = 600 minutes.
-		expect(screen.getByText('10h')).toBeInTheDocument();
+		// 375 + 225 = 600 minutes. The equals sign is part of the panel, not decoration on it.
+		expect(screen.getByText('= 10h')).toBeInTheDocument();
 	});
 
 	it('shows what was logged on a day that has entries', async () => {
@@ -48,21 +48,48 @@ describe('WeekStrip', () => {
 		expect(screen.getByText('3h 45m')).toBeInTheDocument();
 	});
 
-	/** A past workday with nothing on it is worth noticing; today, a weekend or a future day is not. */
-	it('dashes a past workday with nothing logged, and zeroes today, a weekend or a future day', async () => {
+	/**
+	 * UI-5 reverses X-1 here. The dash used to mark a past workday and `0h` covered everything
+	 * else, which drew a Saturday and an unfilled Tuesday the same way.
+	 */
+	it('zeroes a day work was expected on, whether or not it has passed', async () => {
 		await renderStrip('2026-09-17');
 
-		// Mon 14 and Tue 15 have totals. Wed 16 is today and empty, and is not called out for it.
+		// Today, a future workday and a workday already gone all owe hours, so all three read `0h`.
 		expect(screen.getByRole('link', { name: /^Wed 16 Sep/ })).toHaveTextContent('0h');
-		// Thu 17 has not happened yet and Sat 19 is the weekend; neither is worth a dash.
 		expect(screen.getByRole('link', { name: /^Thu 17 Sep/ })).toHaveTextContent('0h');
-		expect(screen.getByRole('link', { name: /^Sat 19 Sep/ })).toHaveTextContent('0h');
+
+		cleanup();
+		await renderStrip('2026-09-15', { today: '2026-09-20' });
+		expect(screen.getByRole('link', { name: /^Wed 16 Sep/ })).toHaveTextContent('0h');
 	});
 
-	it('dashes a workday that is genuinely past', async () => {
-		await renderStrip('2026-09-15', { today: '2026-09-20' });
+	it('dashes a day nothing was expected on', async () => {
+		await renderStrip('2026-09-17');
 
-		expect(screen.getByRole('link', { name: /^Wed 16 Sep/ })).toHaveTextContent('—');
+		expect(screen.getByRole('link', { name: /^Sat 19 Sep/ })).toHaveTextContent('—');
+		expect(screen.getByRole('link', { name: /^Sun 20 Sep/ })).toHaveTextContent('—');
+	});
+
+	/** The hatch and the dashed border are the visual half of this; a name is the other half. */
+	it('says a non-working day is one, rather than drawing it and saying nothing', async () => {
+		await renderStrip('2026-09-17');
+
+		expect(screen.getByRole('link', { name: 'Sat 19 Sep, no work expected' })).toBeInTheDocument();
+		expect(screen.getByRole('link', { name: 'Thu 17 Sep, nothing logged' })).toBeInTheDocument();
+	});
+
+	/**
+	 * The complaint UI-5 opens with is that the total looks like a day. It is not one: there is no
+	 * `/day/week` to navigate to, so it must not be a link and must not take a tab stop either.
+	 */
+	it('makes the week total a panel rather than an eighth day', async () => {
+		await renderStrip();
+
+		const total = screen.getByText('= 10h');
+		expect(total.closest('a')).toBeNull();
+		expect(total.closest('button')).toBeNull();
+		expect(total.closest('[tabindex]')).toBeNull();
 	});
 
 	/**
@@ -85,7 +112,7 @@ describe('WeekStrip', () => {
 		await renderStrip();
 
 		expect(screen.getByRole('link', { name: 'Mon 14 Sep, 6h 15m logged' })).toBeInTheDocument();
-		expect(screen.getByRole('link', { name: 'Thu 17 Sep, nothing logged' })).toBeInTheDocument();
+		expect(screen.getByRole('link', { name: 'Wed 16 Sep, nothing logged' })).toBeInTheDocument();
 	});
 
 	/** The router marks its own active link, so the rule under the cell is not the only signal. */

@@ -119,7 +119,7 @@ test.describe('the day view', () => {
 		// Mon 14 to Sun 20, plus the week's own total cell.
 		await expect(page.getByRole('link', { name: /^Mon 14 Sep/ })).toBeVisible();
 		await expect(page.getByRole('link', { name: /^Sun 20 Sep/ })).toBeVisible();
-		await expect(page.getByText('Week', { exact: true })).toBeVisible();
+		await expect(page.getByText('Weekly total', { exact: true })).toBeVisible();
 	});
 
 	test('marks the selected day in the week strip', async ({ page }) => {

@@ -24,28 +24,33 @@ interface WeekStripProps {
 }
 
 /**
- * How a cell reads when nothing is logged on it (design brief 3.2, X-1): a past workday shows a
- * muted dash because the absence is worth noticing, while a weekend or a day that has not happened
- * yet shows `0h`, because there is nothing to notice.
+ * How a cell reads when nothing is logged on it (UI-5).
+ *
+ * `0h` is a gap - work was expected on this day and none of it is here - and an em dash means
+ * there was nothing to expect. Which way round that is matters: this **reverses X-1**, where the
+ * dash marked a past workday and `0h` covered weekends and the future. That made the two cells
+ * that mean opposite things look identical on a Saturday, and it is the complaint UI-5 opens with.
  */
-function formatCellTotal(iso: string, minutes: number, today: string): string {
+function formatCellTotal(minutes: number, isNonWorking: boolean): string {
 	if (minutes > 0) return formatDuration(minutes);
-	// `>=`, so today is not called out for being empty at nine in the morning. SPEC 10's dash is
-	// for a *past* workday, which today is not yet.
-	if (iso >= today || isWeekend(iso)) return '0h';
 
-	return '—';
+	return isNonWorking ? '—' : '0h';
 }
 
 /**
  * What a cell is called when it is read out rather than looked at. The visible text is split
  * between a mobile and a desktop label and reads as "M 14 6h 15m" either way, which is not a name;
  * this is, and it lets both visible labels be hidden from assistive technology.
+ *
+ * The hatch and the dashed border say "non-working" to someone looking at the strip, so the name
+ * has to say it too - a state drawn only in the fill is a state a screen reader cannot report
+ * (guidebook 18).
  */
-function describeCell(iso: string, minutes: number, isError: boolean): string {
+function describeCell(iso: string, minutes: number, isNonWorking: boolean, isError: boolean): string {
 	if (isError) return `${formatDayShort(iso)}, total unavailable`;
+	if (minutes > 0) return `${formatDayShort(iso)}, ${formatDuration(minutes)} logged`;
 
-	return `${formatDayShort(iso)}, ${minutes > 0 ? `${formatDuration(minutes)} logged` : 'nothing logged'}`;
+	return `${formatDayShort(iso)}, ${isNonWorking ? 'no work expected' : 'nothing logged'}`;
 }
 
 function CellSkeleton({ className }: { className?: string }) {
@@ -94,7 +99,7 @@ export function WeekStrip({ date, weekTotals, isPending, isError = false, today 
 				{days.map((day) => (
 					<CellSkeleton key={day} className="h-[68px] w-14 flex-none md:h-22 md:w-auto" />
 				))}
-				<CellSkeleton className="h-[68px] w-[78px] flex-none md:h-22 md:w-auto" />
+				<CellSkeleton className="h-[68px] w-[98px] flex-none md:h-22 md:w-auto" />
 			</div>
 		);
 	}
@@ -106,11 +111,14 @@ export function WeekStrip({ date, weekTotals, isPending, isError = false, today 
 		<nav
 			ref={stripRef}
 			aria-label="Week"
-			className="-mx-4 flex [scrollbar-width:none] gap-2 overflow-x-auto px-4 md:mx-0 md:grid md:grid-cols-8 md:gap-3 md:overflow-visible md:px-0"
+			className="-mx-4 flex [scrollbar-width:none] gap-2 overflow-x-auto px-4 md:mx-0 md:grid md:grid-cols-8 md:gap-2 md:overflow-visible md:px-0"
 		>
 			{days.map((day) => {
 				const isSelected = day === date;
 				const minutes = weekTotals?.[day] ?? 0;
+				// Weekend for now. UI-6 replaces this with the person's own `availabilities`, where a
+				// zero is a non-working day - which catches a four-day week that a weekend test cannot.
+				const isNonWorking = isWeekend(day);
 
 				return (
 					<Link
@@ -118,25 +126,44 @@ export function WeekStrip({ date, weekTotals, isPending, isError = false, today 
 						ref={isSelected ? selectedRef : undefined}
 						to="/day/$date"
 						params={{ date: day }}
-						aria-label={describeCell(day, minutes, isError)}
+						aria-label={describeCell(day, minutes, isNonWorking, isError)}
 						// `aria-current="page"` is set by the router itself on the active link, so
 						// the selected cell is marked without this component tracking it.
-						className="duration-ui relative flex h-[68px] w-14 flex-none flex-col items-center gap-[3px] overflow-hidden rounded-input border border-line bg-surface pt-2 transition-colors ease-ui hover:bg-subtle md:h-22 md:w-auto md:items-start md:gap-1.5 md:px-3.5 md:pt-3"
+						className={cn(
+							'duration-ui relative flex h-[68px] w-14 flex-none flex-col items-center gap-[3px] overflow-hidden rounded-input border bg-surface pt-2 leading-[1.2] whitespace-nowrap transition-colors ease-ui hover:bg-subtle md:h-22 md:w-auto md:items-start md:gap-1.5 md:px-2 md:pt-3',
+							isNonWorking ? 'border-dashed border-line hatched' : 'border-line',
+							// The token's own name for itself is "selected day" - the strip had been
+							// carrying the whole selection on a 3px underline, which is the one thing
+							// on a cell that a neighbouring cell's border can be mistaken for.
+							isSelected && 'border-selection bg-selection hover:bg-selection'
+						)}
 					>
-						<span aria-hidden="true" className="text-micro font-medium text-muted md:hidden">
+						<span
+							aria-hidden="true"
+							className={cn('text-micro font-medium md:hidden', isSelected ? 'text-accent-dark' : 'text-muted')}
+						>
 							{formatWeekdayInitial(day)}
 						</span>
-						<span aria-hidden="true" className="hidden text-caption font-medium text-muted md:block">
+						<span
+							aria-hidden="true"
+							className={cn('hidden text-caption font-medium md:block', isSelected ? 'text-accent-dark' : 'text-muted')}
+						>
 							{formatWeekdayAndDay(day)}
 						</span>
-						<span aria-hidden="true" className="text-list font-medium tabular-nums md:hidden">
+						<span
+							aria-hidden="true"
+							className={cn(
+								'text-list font-medium tabular-nums md:hidden',
+								isNonWorking && !isSelected && 'text-muted'
+							)}
+						>
 							{dayOfMonth(day)}
 						</span>
 						<span
 							aria-hidden="true"
 							className="text-micro font-medium text-muted tabular-nums md:text-list md:text-ink"
 						>
-							{isError ? '·' : formatCellTotal(day, minutes, today)}
+							{isError ? '·' : formatCellTotal(minutes, isNonWorking)}
 						</span>
 
 						{day === today && (
@@ -147,12 +174,16 @@ export function WeekStrip({ date, weekTotals, isPending, isError = false, today 
 				);
 			})}
 
-			{/* Tinted on mobile to set it apart in a scrolling row; on desktop the grid already does that. */}
-			<div className="flex h-[68px] w-[78px] flex-none flex-col items-start justify-center gap-1 rounded-input border border-line bg-subtle px-2 md:h-22 md:w-auto md:justify-start md:bg-surface md:px-3.5 md:pt-3">
-				<span className="text-micro font-medium whitespace-nowrap text-muted md:text-caption">Week</span>
-				<span className="text-list font-medium tabular-nums">
-					{isError ? <span aria-label="Week total unavailable">·</span> : formatDuration(weekTotal)}
+			{/*
+			 * A panel, not a card (UI-5): no border, no hover, no href and no tab stop, because it is
+			 * the only thing in this row that is not a day and cannot be navigated to. The equals sign
+			 * is what says "this is the sum of those" without a word for it.
+			 */}
+			<div className="flex h-[68px] w-[98px] flex-none flex-col items-center justify-center gap-0.5 rounded-input bg-selection px-2 md:h-22 md:w-auto">
+				<span className="text-duration font-bold text-accent-dark tabular-nums">
+					{isError ? <span aria-label="Week total unavailable">·</span> : `= ${formatDuration(weekTotal)}`}
 				</span>
+				<span className="text-micro font-medium whitespace-nowrap text-accent-dark opacity-70">Weekly total</span>
 			</div>
 		</nav>
 	);

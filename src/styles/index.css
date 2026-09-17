@@ -234,6 +234,20 @@
 	--ring: var(--color-accent);
 }
 
+/*
+ * A day nobody is expected to work, in the week strip (UI-5). A 135-degree hairline hatch at 13%
+ * of the muted ink, which reads as "ruled off" without filling the cell - a solid tint would make
+ * an empty Saturday louder than a Tuesday with six hours on it. Paired at the call site with a
+ * dashed border, so the state survives greyscale and is never carried by colour alone.
+ */
+@utility hatched {
+	background-image: repeating-linear-gradient(
+		135deg,
+		transparent 0 5px,
+		color-mix(in oklab, var(--color-muted) 13%, transparent) 5px 6px
+	);
+}
+
 @layer base {
 	* {
 		@apply border-border;
