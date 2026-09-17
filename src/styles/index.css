@@ -276,6 +276,20 @@
 	}
 
 	/*
+	 * ...but not for focus a script moved while the user was pointing. Chrome counts every
+	 * `element.focus()` as keyboard-like, so each Radix overlay returning focus to its trigger on
+	 * close - a menu, a dialog, a sheet, the date popover - left a ring on the control that opened
+	 * it after a click outside. `lib/focus-modality.ts` records which it was; the next key press
+	 * flips it back and the ring returns.
+	 *
+	 * Text fields are exempt. A caret alone does not say which field is live, and clicking into one
+	 * is when that matters most.
+	 */
+	[data-modality='pointer'] :focus-visible:not(input, textarea, select, [contenteditable]) {
+		@apply outline-none;
+	}
+
+	/*
 	 * Headings are focused programmatically after every navigation so the new page is
 	 * announced (guidebook 18). Nobody tabbed there, so drawing a ring around the title
 	 * on arrival reads as a rendering fault rather than as focus.
