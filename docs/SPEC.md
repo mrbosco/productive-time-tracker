@@ -250,6 +250,69 @@ Implemented only after all required stories are merged (`v0.2.0`), one PR each, 
 - Synthetic score (flag `activityMonitor.detectSyntheticInput`, default `false`): rolling window of the last 60 pointer events; fires when the coefficient of variation of intervals is below 0.15, median displacement is below 3 px and the window contains no keyboard, wheel or click events.
 - Thresholds live in one config object (`activityMonitor.idleMinutes`, `...cvThreshold`, `...displacementPx`); the hook `useActivityMonitor` is tested with recorded synthetic and human-like event streams.
 
+### 10.1 Second design pass (UI-1..UI-10)
+
+Ten changes to what was already designed, drawn as standalone proposals after `v0.3.0` shipped the
+required stories and the extras above. Nothing on that page is wired into the approved screens -
+`TimeTracker.dc.html`, the day, login and add-entry boards and the exported PNGs are untouched - so
+the approved set still builds as-is. Each item states what changes and what it costs; the cost
+column below is the design page's own.
+
+**Design source.** The Claude Design project **"Design system accent conflicts"**
+(`1292b384-b318-467c-a2b9-1d92d5629a33`), read through the `DesignSync` MCP:
+
+> Read `Improvements.dc.html` together with the `_ds/productive-time-design-system-.../tokens/*.css`
+> and `styles.css` it imports, and `TimeTracker.dc.html` for the approved screen each proposal sits
+> inside. The PNGs under `docs/design/screens/` are exports, never the source; where a PNG and the
+> design file disagree, the file wins. Every project and deal name on that page ends in `[SAMPLE]` -
+> placeholder copy, not data to reproduce.
+
+The page is exported as `docs/design/screens/08-improvements.png`.
+
+| #   | ID    | Change                                                                                                                                                                                                                                                                                                                                                                                                                                              | API                                          | Effort |
+| --- | ----- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------- | ------ |
+| 1   | UI-1  | **Company avatar, duration to the trailing edge.** A service belongs to a company, and the old Productive UI led with that company's logo. The card gains a 40px avatar at the leading edge and the duration moves to the trailing edge, which also makes room for UI-4's play control. Logo when the company has one; a building glyph on the subtle fill when it does not.                                                                            | `service.deal.company` on the day list       | S      |
+| 2   | UI-2  | **Client, deal and section behind the service.** The service line becomes `project · service`, and the project name is a hover target revealing client, deal and section on three labelled lines. Dark tooltip, 200 ms delay. Tap opens it as a small sheet on mobile - hover is not a mobile affordance.                                                                                                                                               | the same request as UI-1                     | S      |
+| 3   | UI-3  | **Quick add becomes describe-then-track.** The approved quick add only ever opens the prefilled form; the common case is typing what you are about to do and starting the timer. The row gets two actions - a primary `Start`, and a quiet `Log time` for time already spent. `Start` tracks against the default service right away and the entry appears immediately as a normal card with an indigo border and a live duration; `Log time` opens the form with the text as the description. | `POST /timers`, then the existing update     | M      |
+| 4   | UI-4  | **Play on the card, and time editable in place.** `Continue timer` leaves the kebab and becomes a play button on the card - one tap instead of two. The duration becomes a button opening a small inline editor with `−15m` / `+15m` / `+1h` nudge chips, the same parser as the form, Enter saving and Esc cancelling. Hover reveals both on a pointer; on touch both are always visible. The kebab becomes Edit / Duplicate / Timer logs / Delete.      | `PATCH /time_entries/{id}`                   | M      |
+| 5   | UI-5  | **Week strip: tell the cells apart.** Non-working days take a hatched fill, `—` replaces `0h` wherever nothing is expected, and the week total sits in the selection wash with an equals sign, no border, no click and no focus stop - it is not a day and not navigable.                                                                                                                                                                              | none                                         | S      |
+| 6   | UI-6  | **Expected, worked and remaining.** A day cell and the week total both answer a hover with `Expected work time`, `Worked time` and `Work hours left`, scoped to that day or to the week. Durations stay `1h 30m`, never `01:30`.                                                                                                                                                                                                                       | an expected-hours figure per person          | S      |
+| 7   | UI-7  | **Timesheet alongside Day. RESERVED - out of scope here.** One row per project and service, one column per day, editable cells, behind a two-item view switch; desktop only, the grid does not survive 390px. Section 9 puts the timesheet grid out of scope, and the design page proposes it "as a phase 2 on its own, not bundled with the rest".                                                                                                    | not decided                                  | L      |
+| 8   | UI-8  | **Organization on the avatar.** Someone who works across organizations should see which one they are logging into before they log anything. The avatar carries a small organization badge and the menu names the organization and its ID - the same ID typed at login. The avatar is 44px, the largest control in the bar, never smaller than the help button beside it.                                                                               | already in the login response                | S      |
+| 9   | UI-9  | **Timer logs.** Tracked time is timer runs plus manual corrections, and the card shows only the result. A read-only dialog from the kebab shows how the number was arrived at: one row per run (`Started`, `Stopped`, `Timer`, `Running`), a dash in `Stopped` while a run is going, and a footer reconciling `Tracked by timer`, `Manual correction` and `Logged`.                                                                                     | `GET /timers` narrowed to one time entry     | S      |
+| 10  | UI-10 | **Don't throw away a half-written entry. SHIPPED with US-4.** Dismissing the form with unsaved changes asks first; an untouched form still closes immediately, because a prompt nobody needs is one people click through without reading. `shared/ConfirmDialog` and `UnsavedChangesDialog`.                                                                                                                                                           | none                                         | S      |
+
+Order of work - dependency order, not ID order, cheapest and least blocked first:
+
+1. Record the three API answers UI-1, UI-6 and UI-9 turn on (below).
+2. UI-5, 3. UI-8, 4. UI-1, 5. UI-2, 6. UI-6, 7. UI-4, 8. UI-3, 9. UI-9.
+
+UI-1 changes the entry card's anatomy, and UI-2, UI-4 and UI-3 each redraw the card that change
+produces. They are therefore **one branch and one pull request**, which is the exception to SPEC 12's
+one-story-per-PR rule and the only one: four PRs would rewrite the same component four times and
+show a reviewer three intermediate shapes that never ship.
+
+> **UI-7 is reserved.** It has an ID so nothing else claims the number and so the design page's item
+> 7 has somewhere to point, not because it is being built.
+
+> **UI-10 already shipped**, with US-4 - `shared/ConfirmDialog` was extracted there and
+> `UnsavedChangesDialog` became a thin wrapper over it. It is listed for completeness, and because
+> the design page calls it the cheapest item and the only one that prevents data loss rather than
+> adding information.
+
+**Three items rest on API facts this repository has not recorded**, and the recording decides them:
+
+- **No expected-hours figure anywhere** - drop UI-6, and UI-5's hatch means "weekend" only.
+- **No way to fetch one time entry's timer runs** - drop UI-9. That is the design page's own
+  instruction: "Only possible if runs are stored individually rather than summed into one duration.
+  Ask the API first; if it only stores totals, drop this one."
+- **`/time_entries` will not nest `service.deal.company`** - the choice between a second cached
+  request per day and dropping UI-1 and UI-2 belongs to the author of this section, not to whoever
+  is implementing it.
+
+Never invent a filter, a figure or a fallback number to keep an item alive. A dropped item is
+amended into this table with what the recording proved.
+
 ## 11. Research inputs
 
 #### X-4 timer endpoints (verified 2026-09-16)
