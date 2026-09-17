@@ -14,9 +14,13 @@ import { cn } from '@/lib/utils';
  * something else there (guidebook 18).
  */
 function Tooltip({
-	// "Opens after 200ms, closes immediately" - long enough that dragging the pointer across a
-	// list does not flash four of them, short enough not to feel broken.
-	delayDuration = 200,
+	/*
+	 * Two seconds, not the design's 200ms. A pointer crosses these targets constantly - the project
+	 * name sits mid-card and the day cells are a row you sweep across to click one - and at 200ms
+	 * the panel fires on the way past. This is supplementary detail nobody is waiting on, so the
+	 * delay is set to the length of a deliberate rest rather than to a reflex.
+	 */
+	delayDuration = 2000,
 	...props
 }: React.ComponentProps<typeof TooltipPrimitive.Root>) {
 	return (
