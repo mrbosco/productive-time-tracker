@@ -44,13 +44,17 @@ describe('ActivityBanner', () => {
 		expect(onKeepRunning).toHaveBeenCalledTimes(2);
 	});
 
-	/** The flagged-off heuristic still has to say something honest when it is turned on. */
+	/**
+	 * The flagged-off heuristic still has to say something honest when it is turned on - and the
+	 * minutes are the span the suspicious window covers, not time since the last input, because a
+	 * jiggler keeps the latter at zero by definition.
+	 */
 	it('describes automated-looking input as exactly that (X-5)', async () => {
 		await renderWithProviders(
 			<ActivityBanner concern={{ reason: 'synthetic', minutes: 20 }} onDiscard={noop} onKeepRunning={noop} />
 		);
 
-		expect(screen.getByRole('status')).toHaveTextContent('the only activity has looked automated');
+		expect(screen.getByRole('status')).toHaveTextContent('for the last 20m the only activity has looked automated');
 	});
 
 	/**

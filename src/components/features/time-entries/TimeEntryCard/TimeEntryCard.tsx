@@ -41,7 +41,7 @@ interface TimeEntryCardProps {
 	isTabStop?: boolean;
 	/** The card took focus on its own - a click or a Tab - so the list can follow it. */
 	onTakeFocus?: () => void;
-	/** Starts a timer seeded with this entry's description (X-4). Absent leaves the item inert. */
+	/** Starts a timer on this entry (X-4). Absent greys the item out - one timer at a time. */
 	onContinueTimer?: () => void;
 	/**
 	 * A timer is running against this entry (X-4). The card says so and carries a stop control of
@@ -196,10 +196,11 @@ export function TimeEntryCard({
 				 * here to open it would drag the whole ProseMirror tree onto the screen SPEC 4.2
 				 * requires to render on one request.
 				 *
-				 * `Continue timer` starts a timer and writes this entry's description onto the entry
-				 * that start creates (X-4). It is a new entry, not an addition to this one, because
-				 * `POST /timers` always creates one - SPEC 10's X-4 row is amended to say so. It is
-				 * also what Toggl's continue actually does. Greyed out while a timer already runs,
+				 * `Continue timer` starts a timer **on this entry** (X-4): `POST /timers` with a
+				 * `time_entry` relationship attaches to one that already exists rather than creating
+				 * another, and the stop adds the elapsed minutes to what it holds
+				 * (`docs/api/samples/timer-continue-entry-probe.txt`). So this row is the one that
+				 * starts counting, and no second row appears. Greyed out while a timer already runs,
 				 * here or anywhere: there is one timer, and starting a second silently would be the
 				 * worst of the three possible behaviours.
 				 *

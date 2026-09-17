@@ -157,24 +157,29 @@ export function useTimer(session: Session) {
 		 * continuation rather than a copy - no second row, and the entry keeps its own service.
 		 */
 		mutationFn: async (input: { serviceId: string } | { entryId: string; loggedBefore: number }) => {
-			if ('entryId' in input) {
-				await continueTimer(toAuth(session), input.entryId);
-			} else {
-				await startTimer(toAuth(session), session.personId, input.serviceId);
-			}
+			const started =
+				'entryId' in input
+					? await continueTimer(toAuth(session), input.entryId)
+					: await startTimer(toAuth(session), session.personId, input.serviceId);
 
 			/*
-			 * Refetched rather than read off the create response, because the create response does
-			 * not contain it: `time_entry` comes back un-included, and this is the only call that
-			 * asks for it. Nothing can be stopped usefully until the entry it belongs to is known.
+			 * A continue asks for `include=time_entry` and gets the link back, so it is already
+			 * known and the cache is simply told. A bare start does not: `timer-create.json` was
+			 * recorded without an include and carries `{"meta":{"included":false}}`, and nothing
+			 * here is going to assume an include works on a call no sample covers (api-client rules
+			 * 10 and 25). That one pays for a read.
 			 *
-			 * `staleTime: 0` is load-bearing, and its absence was a real bug: the app's client sets
-			 * `staleTime: 30_000`, so `fetchQuery` answered from the cache - which still held the
-			 * `null` read on mount - and the pill stayed on `Start timer` until the page was
-			 * reloaded. A fetch asking "what is true now" has to say so rather than inherit a
-			 * default meant for a day list that changes rarely.
+			 * `staleTime: 0` on it is load-bearing, and its absence was a real bug: the app's client
+			 * sets `staleTime: 30_000`, so `fetchQuery` answered from the cache - which still held
+			 * the `null` read on mount - and the pill stayed on `Start timer` until the page was
+			 * reloaded. A fetch asking "what is true now" has to say so.
 			 */
-			const running = await queryClient.fetchQuery({ ...timerQueryOptions(session), staleTime: 0 });
+			let running: typeof started | null = started;
+			if (started.timeEntryId === null) {
+				running = await queryClient.fetchQuery({ ...timerQueryOptions(session), staleTime: 0 });
+			} else {
+				queryClient.setQueryData(timerQueryOptions(session).queryKey, started);
+			}
 
 			// Remembered here rather than derived later: only the caller knows what the entry held
 			// before, and after the stop the entry holds the sum.

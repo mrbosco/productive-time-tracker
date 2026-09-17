@@ -154,13 +154,17 @@ describe('DayView', () => {
 		});
 	});
 
-	/** The roving tabindex, from the day's side: the keys choose a card and focus follows it. */
+	/**
+	 * The roving tabindex, from the day's side: Tab enters the list and the arrows move within it.
+	 * Entering by clicking here, which is the same thing from the component's point of view - the
+	 * card reports the focus it received and the day follows it.
+	 */
 	it('moves between entries with the arrow keys (X-2)', async () => {
 		const user = userEvent.setup();
 		await renderDay();
 		const cards = await screen.findAllByRole('article');
 
-		await user.keyboard('{ArrowDown}');
+		await user.click(cards[0]);
 		expect(cards[0]).toHaveFocus();
 
 		await user.keyboard('{ArrowDown}');
@@ -176,18 +180,33 @@ describe('DayView', () => {
 		await renderDay();
 		const cards = await screen.findAllByRole('article');
 
-		await user.keyboard('{ArrowDown}');
+		await user.click(cards[0]);
 		await user.keyboard('{ArrowUp}');
 
 		expect(cards[0]).toHaveFocus();
 	});
 
+	/**
+	 * The arrows belong to the list, not to the page. Bound unconditionally they took
+	 * `preventDefault` with them and killed arrow-key scrolling for anyone who had not entered it.
+	 */
+	it('leaves the arrow keys alone until the list has focus (X-2)', async () => {
+		const user = userEvent.setup();
+		await renderDay();
+		const cards = await screen.findAllByRole('article');
+
+		await user.keyboard('{ArrowDown}');
+
+		expect(cards[0]).not.toHaveFocus();
+		expect(cards[1]).not.toHaveFocus();
+	});
+
 	it('edits the focused entry with e (X-2, R-11)', async () => {
 		const user = userEvent.setup();
 		const { router } = await renderDay();
-		await screen.findAllByRole('article');
+		const cards = await screen.findAllByRole('article');
 
-		await user.keyboard('{ArrowDown}');
+		await user.click(cards[0]);
 		await user.keyboard('e');
 
 		await waitFor(() => {
@@ -202,9 +221,9 @@ describe('DayView', () => {
 	it('asks before deleting the focused entry with Delete (X-2, R-12)', async () => {
 		const user = userEvent.setup();
 		await renderDay();
-		await screen.findAllByRole('article');
+		const cards = await screen.findAllByRole('article');
 
-		await user.keyboard('{ArrowDown}');
+		await user.click(cards[0]);
 		await user.keyboard('{Delete}');
 
 		expect(await screen.findByRole('dialog', { name: 'Delete this entry?' })).toBeInTheDocument();
@@ -214,9 +233,9 @@ describe('DayView', () => {
 	it('takes Backspace for the same question (X-2)', async () => {
 		const user = userEvent.setup();
 		await renderDay();
-		await screen.findAllByRole('article');
+		const cards = await screen.findAllByRole('article');
 
-		await user.keyboard('{ArrowDown}');
+		await user.click(cards[0]);
 		await user.keyboard('{Backspace}');
 
 		expect(await screen.findByRole('dialog', { name: 'Delete this entry?' })).toBeInTheDocument();

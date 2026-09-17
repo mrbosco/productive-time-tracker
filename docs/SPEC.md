@@ -160,7 +160,7 @@ src/
 │   ├── time-entries.ts     # typed resource functions
 │   ├── organization-memberships.ts
 │   ├── services.ts
-│   └── timers.ts           # read-only; see X-4
+│   └── timers.ts           # start, continue, poll, stop; see X-4
 ├── components/
 │   ├── core/               # Button, Card, Input, Textarea, Dialog, Toast (shadcn-based)
 │   ├── shared/             # DatePicker, PageHeader, ConfirmDialog, layouts/AppLayout
@@ -264,6 +264,7 @@ matrix, including the fifteen paths that 404, is in `timer-stop-endpoint-probes.
 | Stop         | `PUT /timers/{id}/stop` with body `{}`            | `timer-stop.json`                        |
 | Entry after  | `GET /time_entries/{linked id}`                   | `time-entry-from-timer.json`             |
 | Stop twice   | 409 `timer_already_stopped`                       | `error-409-timer-already-stopped.json`   |
+| Continue     | `POST /timers` with a `time_entry` relationship   | `timer-continue-entry-probe.txt`         |
 
 Start body — `service` and `person` as relationships, no attributes:
 
@@ -292,7 +293,7 @@ Four behaviours that shape X-4:
    cumulative total. This is how Productive's own play-on-a-row control works, and it is what makes
    X-4's `Continue` a continuation rather than a copy.
 
-`src/api/timers.ts` implements all three calls.
+`src/api/timers.ts` implements all four calls.
 
 - `docs/research/productive-app-analysis.md`: reverse-engineering of Productive's own Time screen (UI, mobile layout, network calls) and the adopt/adapt table that fed A-9, A-10, X-1, X-3 and X-4.
 - `docs/research/competitive-analysis.md`: Harvest and Toggl compared with Productive; source of the X-1..X-5 refinements, P-1, P-2, A-2, A-3 and the R-7 wording.

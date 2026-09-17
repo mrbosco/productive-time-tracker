@@ -58,6 +58,13 @@ export function DayView({ session, date }: { session: Session; date: string }) {
 	 */
 	const [toast, setToast] = useState<{ message: string; variant: 'success' | 'error' } | null>(null);
 
+	/*
+	 * A start, a continue or a stop that failed. The pill has nowhere of its own to say so - it is
+	 * one control in a bar - so it is said here, on the screen the pill sits above, the same way a
+	 * failed delete is (SPEC 4.2).
+	 */
+	const timerError = timer.error;
+
 	const hasEntries = entries !== undefined && entries.length > 0;
 
 	/** The card the arrow keys are standing on, and what `e` and `Delete` act on (X-2). */
@@ -72,18 +79,14 @@ export function DayView({ session, date }: { session: Session; date: string }) {
 	 * Moves the chosen card by one, and clamps rather than wrapping: a list that jumps from the last
 	 * entry back to the first reads as a bug the first time it happens, and there are never enough
 	 * entries in a day for wrapping to save anyone a keystroke.
-	 *
-	 * With nothing chosen yet, `↓` starts at the top and `↑` at the bottom, which is what every
-	 * roving list does.
 	 */
 	function moveFocus(step: number) {
 		if (entries === undefined || entries.length === 0) return;
 
 		const current = entries.findIndex((entry) => entry.id === focusedEntryId);
-		const next =
-			current === -1 ? (step > 0 ? 0 : entries.length - 1) : Math.min(Math.max(current + step, 0), entries.length - 1);
+		if (current === -1) return;
 
-		setFocusedEntryId(entries[next].id);
+		setFocusedEntryId(entries[Math.min(Math.max(current + step, 0), entries.length - 1)].id);
 	}
 
 	/*
@@ -107,22 +110,33 @@ export function DayView({ session, date }: { session: Session; date: string }) {
 		t: () => {
 			goToDay(todayIso());
 		},
-		ArrowUp: () => {
-			moveFocus(-1);
-		},
-		ArrowDown: () => {
-			moveFocus(1);
-		},
-		e: () => {
-			if (focusedEntry === null) return;
-			void navigate({ to: '/entries/$id/edit', params: { id: focusedEntry.id } });
-		},
-		Delete: () => {
-			if (focusedEntry !== null) setEntryPendingDelete(focusedEntry);
-		},
-		Backspace: () => {
-			if (focusedEntry !== null) setEntryPendingDelete(focusedEntry);
-		},
+		/*
+		 * Bound only once a card has focus, and that is the whole of what a roving tabindex means:
+		 * Tab is how you enter the list, the arrows are how you move *within* it.
+		 *
+		 * Binding them unconditionally took `preventDefault` with them, which killed arrow-key
+		 * scrolling on the whole day for anyone who had not entered the list - a keyboard user lost
+		 * the ordinary way down a long page in exchange for a shortcut they had not asked for.
+		 */
+		...(focusedEntry === null
+			? {}
+			: {
+					ArrowUp: () => {
+						moveFocus(-1);
+					},
+					ArrowDown: () => {
+						moveFocus(1);
+					},
+					e: () => {
+						void navigate({ to: '/entries/$id/edit', params: { id: focusedEntry.id } });
+					},
+					Delete: () => {
+						setEntryPendingDelete(focusedEntry);
+					},
+					Backspace: () => {
+						setEntryPendingDelete(focusedEntry);
+					},
+				}),
 	});
 
 	/**
@@ -318,6 +332,12 @@ export function DayView({ session, date }: { session: Session; date: string }) {
 					void confirmDelete(entry);
 				}}
 			/>
+
+			{timerError !== null && (
+				<Toast variant="error" onDismiss={timer.dismissError}>
+					{timerError}
+				</Toast>
+			)}
 
 			{toast !== null && (
 				<Toast

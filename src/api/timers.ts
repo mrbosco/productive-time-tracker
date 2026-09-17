@@ -100,7 +100,14 @@ export async function continueTimer(auth: Auth, timeEntryId: string): Promise<Ti
 		},
 	};
 
-	const document = requireDocument(await request(auth, '/timers', { method: 'POST', body: JSON.stringify(body) }));
+	/*
+	 * `include=time_entry` because `toTimer` reads that relationship, and an un-included one carries
+	 * no `data` and no id at all (api-client rule 10) - the link would come back `null` from a call
+	 * that was handed the entry in the first place. It is also the request the probe recorded:
+	 * Productive's own client asks for `include=time_entry.person`.
+	 */
+	const path = `/timers?include=time_entry&${FIELDS}`;
+	const document = requireDocument(await request(auth, path, { method: 'POST', body: JSON.stringify(body) }));
 
 	return toTimer(readResource(document));
 }

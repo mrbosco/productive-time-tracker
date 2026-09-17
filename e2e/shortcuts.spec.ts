@@ -78,7 +78,9 @@ test.describe('keyboard shortcuts (X-2)', () => {
 		await page.goto(`/day/${SEEDED_DATE}`);
 		await expect(page.getByRole('article').first()).toBeVisible();
 
-		await page.keyboard.press('ArrowDown');
+		// Tab is how you enter the list; the arrows move within it. Clicking a card is the same
+		// entry point and is one action rather than six tab stops.
+		await page.getByRole('article').first().click();
 		await expect(page.getByRole('article').first()).toBeFocused();
 
 		await page.keyboard.press('ArrowDown');
@@ -94,7 +96,7 @@ test.describe('keyboard shortcuts (X-2)', () => {
 		await page.goto(`/day/${SEEDED_DATE}`);
 		await expect(page.getByRole('article').first()).toBeVisible();
 
-		await page.keyboard.press('ArrowDown');
+		await page.getByRole('article').first().click();
 		await page.keyboard.press('Delete');
 
 		await expect(page.getByRole('dialog', { name: 'Delete this entry?' })).toBeVisible();

@@ -42,6 +42,13 @@ interface TimerContextValue {
 	/** There is no default service to start a timer on, and only the Settings sheet can fix that. */
 	needsService: boolean;
 	dismissNeedsService: () => void;
+	/**
+	 * The last start or stop that failed, for the screen to report (SPEC 4.2). The pill has nowhere
+	 * of its own to say so, and a timer that silently refuses to start is worse than one that says
+	 * it could not.
+	 */
+	error: string | null;
+	dismissError: () => void;
 }
 
 const TimerContext = createContext<TimerContextValue | null>(null);
@@ -72,12 +79,37 @@ export function TimerProvider({
 	const [stopped, setStopped] = useState<StoppedTimer | null>(null);
 	const [needsService, setNeedsService] = useState(false);
 	const [justStarted, setJustStarted] = useState(false);
+	const [error, setError] = useState<string | null>(null);
 	/*
-	 * Mounted here rather than on the day view so the watch survives navigation: a timer left
-	 * running while someone reads the edit form is exactly the case X-5 is for. The hook attaches
-	 * nothing while `running` is null, so there is no monitoring when there is nothing being timed.
+	 * Mounted here rather than on the day view so the watch survives navigation and the idle clock
+	 * is not restarted by every route change. The hook attaches nothing while `running` is null, so
+	 * there is no monitoring when there is nothing being timed.
+	 *
+	 * ponytail: the banner it feeds is drawn by `DayView`, where the design puts it. So a concern
+	 * raised while the entry form is open is behind a focus trap until that closes - the watch keeps
+	 * running and nothing is lost, but the offer is not answerable for as long as the modal is up.
+	 * Rendering it from `AppChrome` above the outlet is the fix if that ever bites.
 	 */
 	const activity = useActivityMonitor(timer.running !== null, activityConfig ?? ACTIVITY_MONITOR);
+
+	/**
+	 * Every write the timer makes, with somewhere for a failure to land.
+	 *
+	 * `mutateAsync` rejects, and the context hands these to callers as `void start()` - so without
+	 * this a 422, a 401 or a dead socket went nowhere at all: no toast, no banner, the pill simply
+	 * unchanged, and `no-floating-promises` satisfied by the `void` so lint never saw it either.
+	 * SPEC 4.2 asks for a failure to be reported where the user is standing, and every other
+	 * mutation in the app already obeys it.
+	 */
+	async function run<T>(action: () => Promise<T>, message: string, onDone: (result: T) => void) {
+		setError(null);
+
+		try {
+			onDone(await action());
+		} catch {
+			setError(message);
+		}
+	}
 
 	async function start() {
 		/*
@@ -91,26 +123,43 @@ export function TimerProvider({
 			return;
 		}
 
-		await timer.start({ serviceId: service.id });
-		setJustStarted(true);
+		await run(
+			() => timer.start({ serviceId: service.id }),
+			'Could not start the timer. Try again.',
+			() => {
+				setJustStarted(true);
+			}
+		);
 	}
 
 	/** No service needed: the entry already has the one it was logged against, and keeps it. */
 	async function continueEntry(entryId: string, loggedMinutes: number) {
-		await timer.start({ entryId, loggedBefore: loggedMinutes });
-		setJustStarted(true);
+		await run(
+			() => timer.start({ entryId, loggedBefore: loggedMinutes }),
+			'Could not continue this entry. Try again.',
+			() => {
+				setJustStarted(true);
+			}
+		);
 	}
 
 	async function stop(discardMinutes = 0) {
 		if (timer.running === null) return;
 
-		/*
-		 * `null` when the linked entry was never learned - the one window where the app has a timer
-		 * but not yet its entry. The timer is stopped either way, and the entry is left on the day
-		 * to be edited there, which is better than refusing to stop it.
-		 */
+		const running = timer.running;
 		setJustStarted(false);
-		setStopped(await timer.stop({ timer: timer.running, discardMinutes }));
+		await run(
+			() => timer.stop({ timer: running, discardMinutes }),
+			'Could not stop the timer. Try again.',
+			(stopped) => {
+				/*
+				 * `null` when the linked entry was never learned - the one window where the app has a
+				 * timer but not yet its entry. The timer is stopped either way, and the entry is left on
+				 * the day to be edited there, which is better than refusing to stop it.
+				 */
+				setStopped(stopped);
+			}
+		);
 	}
 
 	const value: TimerContextValue = {
@@ -145,6 +194,10 @@ export function TimerProvider({
 		needsService,
 		dismissNeedsService: () => {
 			setNeedsService(false);
+		},
+		error,
+		dismissError: () => {
+			setError(null);
 		},
 	};
 

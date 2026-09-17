@@ -24,7 +24,7 @@ interface TimeEntryListProps {
 	/** X-3: fills an empty day from the one before it. The day view owns the copy and its toast. */
 	onCopyFromYesterday?: () => void;
 	isCopying?: boolean;
-	/** X-4: starts a timer seeded with that entry's description. */
+	/** X-4: starts a timer on that entry, which the stop then adds to. */
 	onContinueTimer?: (entry: TimeEntry) => void;
 	/** The entry a timer is running against, and when it started (X-4). */
 	trackingEntryId?: string | null;

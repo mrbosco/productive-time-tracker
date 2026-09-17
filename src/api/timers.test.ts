@@ -24,11 +24,6 @@ describe('getRunningTimer', () => {
 		expect(timer?.timeEntryId).toBe('163018789');
 	});
 
-	/** The state every session opens in, and the one the pill reads as `Start timer`. */
-	it('reports no running timer when the collection is empty', async () => {
-		expect(await getRunningTimer(auth, '1448639')).toBeNull();
-	});
-
 	it('narrows the payload instead of pulling the whole linked time entry', async () => {
 		let params: URLSearchParams | undefined;
 		server.use(

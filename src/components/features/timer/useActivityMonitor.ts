@@ -33,7 +33,13 @@ export const ACTIVITY_MONITOR: ActivityMonitorConfig = {
 /** What the banner needs to know, and nothing that would let it report anything anywhere. */
 export interface ActivityConcern {
 	reason: 'idle' | 'synthetic';
-	/** Whole minutes since the last sign of a person, which is what would be discarded. */
+	/**
+	 * Whole minutes the concern covers, and what `Pause and discard idle time` would take off.
+	 *
+	 * For `idle` that is the time since the last sign of a person. For `synthetic` it cannot be -
+	 * a jiggler keeps that at zero by definition, which is the whole reason the heuristic exists -
+	 * so it is the span the suspicious window itself covers.
+	 */
 	minutes: number;
 }
 
@@ -131,7 +137,9 @@ export function useActivityMonitor(
 				detectSyntheticInput &&
 				looksSynthetic(samples.current, { cvThreshold, displacementPx, windowSize, minimumSamples })
 			) {
-				setConcern({ reason: 'synthetic', minutes });
+				const window = samples.current;
+				const span = Math.floor((window[window.length - 1].at - window[0].at) / 60_000);
+				setConcern({ reason: 'synthetic', minutes: span });
 			}
 		}, checkIntervalMs);
 

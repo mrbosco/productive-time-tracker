@@ -154,11 +154,12 @@ export function TimerControl({
 		<div className="flex h-11 flex-none items-center gap-[11px] rounded-pill bg-selection pr-1.5 pl-4">
 			<TimerDot withHalo={justStarted} />
 			{/*
-			 * Not in the stop button's name: this changes every second, and a name that changes is
-			 * announced again every time it does. The running state is announced once, below.
+			 * Readable, but deliberately not part of the stop button's name: a name that changes is
+			 * announced again every time it does, and this changes every second. As plain content it
+			 * is never announced on its own and is there to be read when navigated to - which is the
+			 * only way a screen-reader user can find out how long the timer has been going.
 			 */}
 			<span
-				aria-hidden="true"
 				className={cn('text-list font-medium text-accent-dark tabular-nums', justStarted && 'animate-timer-digits-in')}
 			>
 				{elapsed}

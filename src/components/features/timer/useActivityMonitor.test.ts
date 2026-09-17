@@ -185,4 +185,23 @@ describe('useActivityMonitor', () => {
 
 		expect(result.current.concern?.reason).toBe('synthetic');
 	});
+
+	/**
+	 * A jiggler keeps the idle clock at zero - it is producing input - so reporting "time since the
+	 * last activity" would have the banner offering to discard nothing, every time. The minutes are
+	 * the span the suspicious window covers instead.
+	 */
+	it('reports the span it is suspicious of, not the time since the last input (X-5)', () => {
+		const { result } = renderHook(() => useActivityMonitor(true, { ...CONFIG, detectSyntheticInput: true }));
+
+		for (let index = 0; index < 40; index += 1) {
+			move(500 + (index % 2), 400);
+			act(() => {
+				vi.advanceTimersByTime(10_000);
+			});
+		}
+
+		// Forty samples ten seconds apart is six and a half minutes of metronome.
+		expect(result.current.concern?.minutes).toBeGreaterThan(0);
+	});
 });
