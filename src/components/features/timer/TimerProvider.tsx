@@ -119,7 +119,23 @@ export function TimerProvider({
 		}
 	}
 
+	/**
+	 * Starting while one already runs retires it rather than refusing (UI-3). Nothing is lost by
+	 * that: stopping writes the elapsed whole minutes onto the entry it was attached to, that entry
+	 * is a row on its own day, and UI-4 makes its duration correctable in place. Quietly, without
+	 * the stop sheet - somebody starting new work is not asking to review the last lot.
+	 */
 	async function start(note?: string) {
+		if (timer.running !== null) {
+			const previous = timer.running;
+			setJustStarted(false);
+			await run(
+				() => timer.stop({ timer: previous, discardMinutes: 0 }),
+				'Could not stop the running timer. Try again.',
+				() => undefined
+			);
+		}
+
 		/*
 		 * A timer is logged against the default service, the same one a new entry is (A-1). With
 		 * none resolved there is nothing to start it on, and the only place that can be changed is
@@ -191,8 +207,8 @@ export function TimerProvider({
 		running: timer.running,
 		justStarted,
 		isBusy: timer.isStarting || timer.isStopping,
-		start: () => {
-			void start();
+		start: (note) => {
+			void start(note);
 		},
 		continueEntry: (entryId, loggedMinutes) => {
 			void continueEntry(entryId, loggedMinutes);

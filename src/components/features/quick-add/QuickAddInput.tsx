@@ -2,6 +2,7 @@ import { useNavigate } from '@tanstack/react-router';
 import { useId, useState } from 'react';
 import { Input } from '@/components/core/Input';
 import { useTimerContext } from '@/components/features/timer/TimerProvider';
+import { todayIso } from '@/lib/date';
 import { cn } from '@/lib/utils';
 
 function PlayIcon() {
@@ -33,8 +34,18 @@ export function QuickAddInput({ date }: { date: string }) {
 	const [value, setValue] = useState('');
 
 	const described = value.trim();
-	// One timer at a time, the rule X-4 set for `Continue` and the design asks for here.
 	const isTracking = timer.running !== null;
+
+	/**
+	 * Starting puts a row on **today**, because that is where `POST /timers` files the entry it
+	 * creates - so starting while looking at another day would file the work correctly and then
+	 * show nothing at all. Go to the day it landed on, where it is visible and counting.
+	 */
+	function startTracking() {
+		timer.start(described);
+		setValue('');
+		if (date !== todayIso()) void navigate({ to: '/day/$date', params: { date: todayIso() } });
+	}
 
 	function logTime() {
 		void navigate({
@@ -51,13 +62,12 @@ export function QuickAddInput({ date }: { date: string }) {
 				event.preventDefault();
 				// Enter starts the clock, because that is the action the row is primarily for. `Log
 				// time` is a click away for the other one.
-				if (isTracking || described === '') {
+				if (described === '') {
 					logTime();
 
 					return;
 				}
-				timer.start(described);
-				setValue('');
+				startTracking();
 			}}
 		>
 			<div className="flex items-center gap-2">
@@ -76,7 +86,9 @@ export function QuickAddInput({ date }: { date: string }) {
 
 				<button
 					type="submit"
-					disabled={isTracking || described === ''}
+					// Not disabled while one runs: starting a second retires the first rather than
+					// refusing, which is what somebody moving on to the next thing means by it.
+					disabled={described === ''}
 					className={cn(
 						'duration-ui flex h-10 flex-none items-center gap-2 rounded-pill bg-accent px-4 text-meta font-medium text-on-accent transition-colors ease-ui',
 						'hover:bg-accent-dark disabled:cursor-not-allowed disabled:opacity-40'
@@ -96,7 +108,7 @@ export function QuickAddInput({ date }: { date: string }) {
 
 			<span className="pl-0.5 text-caption text-muted">
 				{isTracking
-					? 'A timer is already running. Stop it to start another.'
+					? 'Starting this stops the timer that is running and keeps its time'
 					: 'Start tracks against your default service · Log time opens the form'}
 			</span>
 		</form>

@@ -40,8 +40,11 @@ describe('QuickAddInput', () => {
 		expect(router.state.location.state.quickAddNote).toBe('45m standup');
 	});
 
-	/** One timer at a time, the rule X-4 set for `Continue`. */
-	it('will not start a second timer while one is running', async () => {
+	/**
+	 * Starting a second retires the first rather than refusing: nothing is lost, because stopping
+	 * writes the elapsed minutes onto the entry the timer was attached to.
+	 */
+	it('keeps offering to start while one is already running', async () => {
 		const user = userEvent.setup();
 		await renderWithProviders(<QuickAddInput date="2026-09-15" />, { session });
 
@@ -49,8 +52,10 @@ describe('QuickAddInput', () => {
 		await user.click(screen.getByRole('button', { name: 'Start' }));
 
 		await waitFor(() => {
-			expect(screen.getByRole('button', { name: 'Start' })).toBeDisabled();
+			expect(screen.getByText(/Starting this stops the timer/)).toBeInTheDocument();
 		});
+		await user.type(screen.getByRole('textbox', { name: 'Quick add an entry' }), 'Second');
+		expect(screen.getByRole('button', { name: 'Start' })).toBeEnabled();
 	});
 
 	it('does not submit anything on its own', async () => {
