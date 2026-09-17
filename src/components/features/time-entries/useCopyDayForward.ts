@@ -43,7 +43,13 @@ export function useCopyDayForward(session: Session) {
 			let copied = 0;
 			let failed = 0;
 
-			for (const entry of source) {
+			/*
+			 * Oldest first, against the order the list is read in (A-7 is newest first now). Each
+			 * copy is stamped with the moment it was posted, so posting oldest-first is what makes
+			 * the new day read in the same order as the one it came from - posting in display order
+			 * would land them reversed.
+			 */
+			for (const entry of [...source].reverse()) {
 				/*
 				 * A-1 chooses the service for a new entry, but a copy already has one: the entry it
 				 * came from. An entry whose service was never included has nothing to copy onto and

@@ -16,9 +16,17 @@ const SEEDED_DATE = '2026-09-15';
 /** The day after it: empty, and its yesterday is the recorded one. */
 const EMPTY_DATE = '2026-09-16';
 
-/** The first card of the recorded day, in `created_at` order (A-7). */
-const FIRST_ENTRY_DURATION = '5h';
-const FIRST_ENTRY_NOTE = 'Probavam';
+/**
+ * The recorded day's only entry with a description: five hours, and a note written in Productive as
+ * a bullet list. Addressed by that note rather than by position - which row it is depends on A-7's
+ * ordering, and none of these tests are about that.
+ */
+const NOTED_ENTRY_DURATION = '5h';
+const NOTED_ENTRY_NOTE = 'Probavam';
+
+function notedEntry(page: Page) {
+	return page.getByRole('article').filter({ hasText: NOTED_ENTRY_NOTE });
+}
 
 async function signIn(page: Page) {
 	await page.addInitScript({
@@ -41,22 +49,22 @@ test.describe('duplicate and copy forward (X-3)', () => {
 	test('opens a new entry prefilled from the one it was duplicated from', async ({ page }) => {
 		await page.goto(`/day/${SEEDED_DATE}`);
 
-		const first = page.getByRole('article').first();
-		await expect(first).toContainText(FIRST_ENTRY_DURATION);
+		const first = notedEntry(page);
+		await expect(first).toContainText(NOTED_ENTRY_DURATION);
 		await first.getByRole('button', { name: 'Entry actions' }).click();
 		await page.getByRole('menuitem', { name: 'Duplicate' }).click();
 
 		const form = page.getByRole('dialog', { name: 'New entry' });
 		await expect(form).toBeVisible();
 		await expect(page.getByRole('textbox', { name: 'Duration' })).toHaveValue('5h');
-		await expect(form.getByText(FIRST_ENTRY_NOTE)).toBeVisible();
+		await expect(form.getByText(NOTED_ENTRY_NOTE)).toBeVisible();
 	});
 
 	/** Toggl's continue pattern: the copy is about today, and the source day stays in the picker. */
 	test('duplicates onto today rather than onto the day it came from', async ({ page }) => {
 		await page.goto(`/day/${SEEDED_DATE}`);
 
-		await page.getByRole('article').first().getByRole('button', { name: 'Entry actions' }).click();
+		await notedEntry(page).getByRole('button', { name: 'Entry actions' }).click();
 		await page.getByRole('menuitem', { name: 'Duplicate' }).click();
 
 		await expect(page).toHaveURL(/\/entries\/new\?date=\d{4}-\d{2}-\d{2}&duplicate=/);

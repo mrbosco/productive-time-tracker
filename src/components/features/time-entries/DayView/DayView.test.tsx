@@ -38,10 +38,18 @@ async function copyYesterday(user: ReturnType<typeof userEvent.setup>) {
 	await user.click(await screen.findByRole('button', { name: 'Copy from yesterday' }));
 }
 
-/** Opens the first card's menu and answers `Delete` in it. */
+/**
+ * Opens the menu of the card with the recorded note and answers `Delete` in it.
+ *
+ * By content rather than by position: the dialog names the entry, so the test needs the one that
+ * has something to name, and which row that is depends on A-7's ordering rather than on anything
+ * this is testing.
+ */
 async function askToDelete(user: ReturnType<typeof userEvent.setup>) {
+	const cards = await screen.findAllByRole('article');
+	const noted = cards.findIndex((card) => card.textContent?.includes('Probavam') === true);
 	const menus = await screen.findAllByRole('button', { name: 'Entry actions' });
-	await user.click(menus[0]);
+	await user.click(menus[noted]);
 	await user.click(await screen.findByRole('menuitem', { name: 'Delete' }));
 
 	return screen.findByRole('dialog', { name: 'Delete this entry?' });

@@ -26,9 +26,14 @@ async function signIn(page: Page) {
 
 /** The recorded day, for continuing an entry that already has time on it. */
 const SEEDED_DATE = '2026-09-15';
-const FIRST_ENTRY_NOTE = 'Probavam';
+const NOTED_ENTRY_NOTE = 'Probavam';
 /** What that entry already holds, which a continuation counts up from rather than replacing. */
-const FIRST_ENTRY_DURATION = '5h';
+const NOTED_ENTRY_DURATION = '5h';
+
+/** Addressed by its note, not by position: which row it is depends on A-7, not on this test. */
+function notedEntry(page: Page) {
+	return page.getByRole('article').filter({ hasText: NOTED_ENTRY_NOTE });
+}
 
 /** Whatever day the suite runs on, which is where a timer's entry lands. */
 async function gotoToday(page: Page) {
@@ -140,7 +145,7 @@ test.describe('timer (X-4)', () => {
 		await page.goto(`/day/${SEEDED_DATE}`);
 		await expect(page.getByRole('article')).toHaveCount(3);
 
-		const entry = page.getByRole('article').first();
+		const entry = notedEntry(page);
 		await entry.getByRole('button', { name: 'Entry actions' }).click();
 		await page.getByRole('menuitem', { name: 'Continue timer' }).click();
 
@@ -148,9 +153,9 @@ test.describe('timer (X-4)', () => {
 		await expect(page).toHaveURL(`/day/${SEEDED_DATE}`);
 		await expect(page.getByRole('article')).toHaveCount(3);
 		await expect(entry.getByText('Tracking')).toBeVisible();
-		await expect(entry).toContainText(FIRST_ENTRY_NOTE);
+		await expect(entry).toContainText(NOTED_ENTRY_NOTE);
 		// Counting up from what it already holds, not from zero.
-		await expect(entry).toContainText(FIRST_ENTRY_DURATION);
+		await expect(entry).toContainText(NOTED_ENTRY_DURATION);
 	});
 
 	/** One timer at a time: starting a second silently would be the worst of the three behaviours. */
@@ -160,7 +165,7 @@ test.describe('timer (X-4)', () => {
 		await expect(page.getByRole('article').first().getByText('Tracking')).toBeVisible();
 
 		await page.goto(`/day/${SEEDED_DATE}`);
-		await page.getByRole('article').first().getByRole('button', { name: 'Entry actions' }).click();
+		await notedEntry(page).getByRole('button', { name: 'Entry actions' }).click();
 
 		await expect(page.getByRole('menuitem', { name: 'Continue timer' })).toHaveAttribute('aria-disabled', 'true');
 	});

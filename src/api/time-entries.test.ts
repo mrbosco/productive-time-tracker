@@ -56,10 +56,14 @@ describe('listTimeEntries', () => {
 		expect(seen.params?.has('sort')).toBe(false);
 	});
 
-	it('orders a day by created_at ascending client-side (A-7)', async () => {
+	/**
+	 * Newest first (A-7, amended): the top of the list is where a day is read and written, so the
+	 * entry just logged belongs there rather than below everything already on the screen.
+	 */
+	it('orders a day by created_at descending client-side (A-7)', async () => {
 		const entries = await listTimeEntries(auth, '1448639', '2026-09-15');
 
-		expect(entries.map((entry) => entry.id)).toEqual(['162903873', '162921848', '162921872']);
+		expect(entries.map((entry) => entry.id)).toEqual(['162921872', '162921848', '162903873']);
 	});
 
 	it('issues exactly one request for a day with no entries', async () => {

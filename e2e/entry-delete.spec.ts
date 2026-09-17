@@ -19,9 +19,17 @@ const SESSION_STORAGE_KEY = 'tracktive.session';
 /** The date `docs/api/samples/time-entries-day.json` was recorded for: three entries, 9h. */
 const SEEDED_DATE = '2026-09-15';
 
-/** The first card, ordered by `created_at` (A-7), and the note it carries. */
-const FIRST_ENTRY_DURATION = '5h';
-const FIRST_ENTRY_NOTE = 'Probavam';
+/**
+ * The recorded day's only entry with a description: five hours, and a note written in Productive as
+ * a bullet list. Addressed by that note rather than by position - which row it is depends on A-7's
+ * ordering, and none of these tests are about that.
+ */
+const NOTED_ENTRY_DURATION = '5h';
+const NOTED_ENTRY_NOTE = 'Probavam';
+
+function notedEntry(page: Page) {
+	return page.getByRole('article').filter({ hasText: NOTED_ENTRY_NOTE });
+}
 
 async function signIn(page: Page) {
 	await page.addInitScript({
@@ -41,9 +49,9 @@ async function openSeededDay(page: Page) {
 	await expect(page.getByRole('article')).toHaveCount(3);
 }
 
-/** The way the design offers: the first card's kebab menu. Assumes the day is already open. */
+/** The way the design offers: the card's kebab menu. Assumes the day is already open. */
 async function askToDelete(page: Page) {
-	await page.getByRole('button', { name: 'Entry actions' }).first().click();
+	await notedEntry(page).getByRole('button', { name: 'Entry actions' }).click();
 	await page.getByRole('menuitem', { name: 'Delete' }).click();
 
 	await expect(page.getByRole('dialog', { name: 'Delete this entry?' })).toBeVisible();
@@ -65,8 +73,8 @@ test.describe('deleting a time entry', () => {
 
 		const dialog = page.getByRole('dialog', { name: 'Delete this entry?' });
 
-		await expect(dialog).toContainText(FIRST_ENTRY_DURATION);
-		await expect(dialog).toContainText(FIRST_ENTRY_NOTE);
+		await expect(dialog).toContainText(NOTED_ENTRY_DURATION);
+		await expect(dialog).toContainText(NOTED_ENTRY_NOTE);
 	});
 
 	test('deletes nothing when the question is declined', async ({ page }) => {
@@ -76,7 +84,7 @@ test.describe('deleting a time entry', () => {
 
 		await expect(page.getByRole('dialog', { name: 'Delete this entry?' })).toHaveCount(0);
 		await expect(page.getByRole('article')).toHaveCount(3);
-		await expect(page.getByRole('article').first()).toContainText(FIRST_ENTRY_DURATION);
+		await expect(notedEntry(page)).toContainText(NOTED_ENTRY_DURATION);
 	});
 
 	/**
@@ -91,7 +99,7 @@ test.describe('deleting a time entry', () => {
 		await expect(page).toHaveURL(new RegExp(`/day/${SEEDED_DATE}$`));
 		await expect(page.getByRole('status')).toHaveText('Entry deleted');
 		await expect(page.getByRole('article')).toHaveCount(2);
-		await expect(page.getByText(FIRST_ENTRY_NOTE)).toHaveCount(0);
+		await expect(page.getByText(NOTED_ENTRY_NOTE)).toHaveCount(0);
 	});
 
 	/**

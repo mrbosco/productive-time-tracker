@@ -18,10 +18,16 @@ const SEEDED_DATE = '2026-09-15';
 const NEXT_DATE = '2026-09-16';
 
 /**
- * The first card on the seeded day, ordered by `created_at` (A-7): five hours, and a note written
- * in Productive as a bullet list - which is what makes it the one worth round-tripping.
+ * The recorded day's only entry with a description: five hours, and a note written in Productive as
+ * a bullet list. Addressed by that note rather than by position - which row it is depends on A-7's
+ * ordering, and none of these tests are about that.
  */
-const FIRST_ENTRY_DURATION = '5h';
+const NOTED_ENTRY_DURATION = '5h';
+const NOTED_ENTRY_NOTE = 'Probavam';
+
+function notedEntry(page: Page) {
+	return page.getByRole('article').filter({ hasText: NOTED_ENTRY_NOTE });
+}
 
 async function signIn(page: Page) {
 	await page.addInitScript({
@@ -39,7 +45,7 @@ async function signIn(page: Page) {
 /** From the day view, the way the design offers: the card's kebab menu. */
 async function openEditForm(page: Page) {
 	await page.goto(`/day/${SEEDED_DATE}`);
-	await page.getByRole('button', { name: 'Entry actions' }).first().click();
+	await notedEntry(page).getByRole('button', { name: 'Entry actions' }).click();
 	await page.getByRole('menuitem', { name: 'Edit' }).click();
 
 	await expect(page).toHaveURL(/\/entries\/\d+\/edit$/);
@@ -75,8 +81,10 @@ test.describe('editing a time entry', () => {
 
 		await expect(page).toHaveURL(new RegExp(`/day/${SEEDED_DATE}$`));
 		await expect(page.getByRole('status')).toHaveText('Entry saved');
-		await expect(page.getByRole('article').first()).toContainText('2h 15m');
-		await expect(page.getByRole('article').first()).not.toContainText(FIRST_ENTRY_DURATION);
+		// The edited row, found by its note: an edit does not change `created_at`, so it stays where
+		// A-7 put it rather than moving to the top the way a new entry does.
+		await expect(notedEntry(page)).toContainText('2h 15m');
+		await expect(notedEntry(page)).not.toContainText(NOTED_ENTRY_DURATION);
 	});
 
 	/**
@@ -92,7 +100,7 @@ test.describe('editing a time entry', () => {
 		await expect(page).toHaveURL(new RegExp(`/day/${SEEDED_DATE}$`));
 
 		// Through the menu again rather than back: a reload would clear what the worker remembers.
-		await page.getByRole('button', { name: 'Entry actions' }).first().click();
+		await notedEntry(page).getByRole('button', { name: 'Entry actions' }).click();
 		await page.getByRole('menuitem', { name: 'Edit' }).click();
 
 		await expect(page.getByRole('textbox', { name: 'Duration' })).toHaveValue('2h 15m');
@@ -141,7 +149,7 @@ test.describe('editing a time entry', () => {
 		await page.getByRole('button', { name: 'Save changes' }).click();
 
 		await expect(page).toHaveURL(new RegExp(`/day/${SEEDED_DATE}$`));
-		await expect(page.getByRole('article').first().locator('ul li')).toHaveCount(2);
+		await expect(notedEntry(page).locator('ul li')).toHaveCount(2);
 	});
 
 	test('says so when the entry no longer exists, and offers the way back', async ({ page }) => {
