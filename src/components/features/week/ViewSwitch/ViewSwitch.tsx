@@ -1,9 +1,9 @@
 import { CalendarDays, LayoutList } from 'lucide-react';
 import { Link, useRouterState } from '@tanstack/react-router';
-import { startOfWeek } from '@/lib/date';
 import { cn } from '@/lib/utils';
 
-/** Day or Timesheet, in the app bar. A route change rather than a filter, carrying the date across.
+/** Day or Timesheet, in the app bar. A route change rather than a filter, and the selected day rides
+ * across both ways - switching to the week and back lands on the day you left, not on its Monday.
  * Hidden below `md`; the timesheet route explains itself to anyone who deep-links there. */
 export function ViewSwitch({ date }: { date: string }) {
 	const isWeek = useRouterState({ select: (state) => state.location.pathname.startsWith('/week/') });
@@ -22,7 +22,7 @@ export function ViewSwitch({ date }: { date: string }) {
 			</Link>
 			<Link
 				to="/week/$date"
-				params={{ date: startOfWeek(date) }}
+				params={{ date }}
 				className={cn(item, isWeek ? 'bg-surface text-accent-dark shadow-control' : 'text-muted hover:text-ink')}
 			>
 				<CalendarDays size={16} aria-hidden="true" />

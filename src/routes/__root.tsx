@@ -46,7 +46,9 @@ function useFocusHeadingOnNavigation() {
 			if (heading === null) return;
 			if (heading.closest('[aria-hidden="true"]') !== null) return;
 
-			heading.focus();
+			// `preventScroll`, because opening the entry form is a route change over a day that stays
+			// put behind it - jumping to the top would lose the row someone just pressed edit on.
+			heading.focus({ preventScroll: true });
 		});
 	}, [router]);
 }

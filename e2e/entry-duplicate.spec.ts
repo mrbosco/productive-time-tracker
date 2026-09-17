@@ -64,9 +64,9 @@ test.describe('duplicate and copy forward', () => {
 		await page.goto(`/day/${EMPTY_DATE}`);
 
 		await expect(page.getByText('Nothing logged for this day yet.')).toBeVisible();
-		await page.getByRole('button', { name: 'Copy from yesterday' }).click();
+		await page.getByRole('button', { name: 'Copy from Tue 15 Sep' }).click();
 
-		await expect(page.getByRole('status')).toContainText('3 entries copied from yesterday');
+		await expect(page.getByRole('status')).toContainText('3 entries copied from Tue 15 Sep');
 		await expect(page.getByRole('article')).toHaveCount(3);
 	});
 });

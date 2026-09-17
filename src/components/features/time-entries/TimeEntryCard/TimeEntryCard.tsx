@@ -183,7 +183,7 @@ export function TimeEntryCard({
 						title="Continue timer"
 						onClick={onContinueTimer}
 						className={cn(
-							'duration-ui ml-auto grid size-9 flex-none place-items-center rounded-control border border-line text-accent transition-colors ease-ui hover:border-transparent hover:bg-selection md:ml-0',
+							'duration-ui hidden size-9 flex-none place-items-center rounded-control border border-line text-accent transition-colors ease-ui hover:border-transparent hover:bg-selection md:grid',
 							REVEALED
 						)}
 					>
@@ -235,7 +235,7 @@ export function TimeEntryCard({
 				     ID rather than its values, so nobody's description ends up in a URL. */}
 				<DropdownMenuContent align="end" className="w-[210px]">
 					<DropdownMenuItem asChild>
-						<Link to="/entries/$id/edit" params={{ id: entry.id }}>
+						<Link to="/entries/$id/edit" params={{ id: entry.id }} resetScroll={false}>
 							Edit
 						</Link>
 					</DropdownMenuItem>
@@ -245,7 +245,7 @@ export function TimeEntryCard({
 						</DropdownMenuItem>
 					)}
 					<DropdownMenuItem asChild>
-						<Link to="/entries/new" search={{ date: todayIso(), duplicate: entry.id }}>
+						<Link to="/entries/new" search={{ date: todayIso(), duplicate: entry.id }} resetScroll={false}>
 							Duplicate
 						</Link>
 					</DropdownMenuItem>

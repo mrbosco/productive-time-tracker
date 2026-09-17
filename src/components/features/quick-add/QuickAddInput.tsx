@@ -37,6 +37,7 @@ export function QuickAddInput({ date }: { date: string }) {
 	function logTime() {
 		void navigate({
 			to: '/entries/new',
+			resetScroll: false,
 			search: { date },
 			state: described === '' ? undefined : { quickAddNote: described },
 		});
@@ -93,11 +94,14 @@ export function QuickAddInput({ date }: { date: string }) {
 				<button
 					type={canTrack ? 'button' : 'submit'}
 					onClick={logTime}
+					// Nothing typed means this would do exactly what `Add entry` above already does, so it
+					// waits for something to carry rather than offering a second way to open a blank form.
+					disabled={described === ''}
 					className={cn(
-						'duration-ui h-11 flex-none rounded-control px-4 text-meta font-medium transition-colors ease-ui',
+						'duration-ui h-11 flex-none rounded-control px-4 text-meta font-medium transition-colors ease-ui disabled:cursor-not-allowed disabled:opacity-45',
 						canTrack
-							? 'hidden border border-line hover:bg-subtle sm:block'
-							: 'bg-accent text-on-accent hover:bg-accent-dark'
+							? 'hidden border border-line hover:bg-subtle disabled:hover:bg-transparent sm:block'
+							: 'bg-accent text-on-accent hover:bg-accent-dark disabled:hover:bg-accent'
 					)}
 				>
 					Log time

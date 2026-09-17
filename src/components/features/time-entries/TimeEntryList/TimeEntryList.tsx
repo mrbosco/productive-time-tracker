@@ -1,3 +1,6 @@
+import { useDayEntrance } from '@/components/features/time-entries/useDayEntrance';
+import { addDays, formatDayShort } from '@/lib/date';
+import { cn } from '@/lib/utils';
 import { Clock3, Copy, Plus } from 'lucide-react';
 import { Link } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
@@ -85,9 +88,11 @@ export function TimeEntryList({
 	trackingSince = null,
 	onStopTimer,
 }: TimeEntryListProps) {
+	const entrance = useDayEntrance(date);
+
 	if (isPending) {
 		return (
-			<div key={date} className="flex animate-day-in flex-col gap-2.5">
+			<div key={date} className={cn('flex flex-col gap-2.5', entrance)}>
 				<span role="status" className="sr-only">
 					Loading entries
 				</span>
@@ -135,7 +140,7 @@ export function TimeEntryList({
 				<p className="max-w-80 text-meta leading-relaxed text-muted">Add an entry or copy yesterday's work.</p>
 				<div className="mt-6 flex flex-wrap justify-center gap-2.5">
 					<Button asChild size="sm">
-						<Link to="/entries/new" search={{ date }}>
+						<Link to="/entries/new" search={{ date }} resetScroll={false}>
 							<Plus size={16} aria-hidden="true" />
 							Add entry
 						</Link>
@@ -148,7 +153,7 @@ export function TimeEntryList({
 						onClick={onCopyFromYesterday}
 					>
 						<Copy size={15} aria-hidden="true" />
-						{isCopying ? 'Copying...' : 'Copy from yesterday'}
+						{isCopying ? 'Copying...' : `Copy from ${formatDayShort(addDays(date, -1))}`}
 					</Button>
 				</div>
 				<p className="mt-5 hidden items-center gap-1.5 text-caption text-muted md:flex">

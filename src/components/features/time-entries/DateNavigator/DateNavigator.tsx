@@ -1,3 +1,4 @@
+import { useDayEntrance } from '@/components/features/time-entries/useDayEntrance';
 import { DatePicker } from '@/components/shared/DatePicker/DatePicker';
 import { addDays, formatDayLabel, todayIso } from '@/lib/date';
 
@@ -34,6 +35,7 @@ function CaretIcon() {
 /** Previous / next day around a label in words that opens a calendar, plus a `Today`. The label is the
  * page's `h1` and `__root.tsx` focuses it after every navigation, so stepping a day announces it. */
 export function DateNavigator({ date, onSelect, today = todayIso() }: DateNavigatorProps) {
+	const entrance = useDayEntrance(date);
 	const isToday = date === today;
 	const arrowClassName =
 		'flex size-11 flex-none place-items-center justify-center rounded-control text-muted transition-colors duration-ui ease-ui hover:bg-subtle hover:text-ink md:border md:border-line md:bg-surface';
@@ -57,7 +59,7 @@ export function DateNavigator({ date, onSelect, today = todayIso() }: DateNaviga
 						type="button"
 						className="duration-ui flex h-11 items-center gap-2 rounded-input px-1 text-base font-medium tracking-[-.01em] whitespace-nowrap transition-colors ease-ui hover:bg-subtle md:px-0 md:text-[30px] md:font-semibold md:tracking-[-.035em]"
 					>
-						<span key={date} className="animate-day-in">
+						<span key={date} className={entrance}>
 							{formatDayLabel(date, today)}
 						</span>
 						<CaretIcon />

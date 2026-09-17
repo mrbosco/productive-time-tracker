@@ -1,3 +1,5 @@
+import { useDayEntrance } from '@/components/features/time-entries/useDayEntrance';
+import { cn } from '@/lib/utils';
 import { Clock3 } from 'lucide-react';
 import { expectedMinutesOn } from '@/lib/availability';
 import { Link, useNavigate } from '@tanstack/react-router';
@@ -21,7 +23,7 @@ import { useWeekTotals } from '@/components/features/week/useWeekTotals';
 import { useExpectedHours } from '@/components/features/week/useExpectedHours';
 import { WeekStrip } from '@/components/features/week/WeekStrip/WeekStrip';
 import { useHotkeys } from '@/components/shared/useHotkeys';
-import { addDays, todayIso } from '@/lib/date';
+import { addDays, formatDayShort, todayIso } from '@/lib/date';
 import { formatDuration } from '@/lib/duration';
 import type { Session } from '@/lib/storage';
 
@@ -37,6 +39,7 @@ function PlusIcon() {
  * `/day/$date` so `/entries/new` can render it behind its dialog; the route still owns the date
  * guard and the prefetch. */
 export function DayView({ session, date }: { session: Session; date: string }) {
+	const entrance = useDayEntrance(date);
 	const navigate = useNavigate();
 	const { data: entries, isPending, isFetching, refetch } = useTimeEntries(session, date);
 	const { data: weekTotals, isPending: isWeekPending, isError: isWeekError } = useWeekTotals(session, date);
@@ -85,7 +88,7 @@ export function DayView({ session, date }: { session: Session; date: string }) {
 	 * keeps them quiet behind a modal. `Backspace` alongside `Delete` for Mac keyboards. */
 	useHotkeys({
 		n: () => {
-			void navigate({ to: '/entries/new', search: { date } });
+			void navigate({ to: '/entries/new', search: { date }, resetScroll: false });
 		},
 		ArrowLeft: () => {
 			goToDay(addDays(date, -1));
@@ -108,7 +111,7 @@ export function DayView({ session, date }: { session: Session; date: string }) {
 						moveFocus(1);
 					},
 					e: () => {
-						void navigate({ to: '/entries/$id/edit', params: { id: focusedEntry.id } });
+						void navigate({ to: '/entries/$id/edit', params: { id: focusedEntry.id }, resetScroll: false });
 					},
 					p: () => {
 						if (canContinue) continueTimerOn(focusedEntry);
@@ -132,22 +135,25 @@ export function DayView({ session, date }: { session: Session; date: string }) {
 	/** One toast over four outcomes. Only an unreadable source day is an error: a partial copy put
 	 * real entries on the day, and colouring it red would suggest they need undoing. */
 	async function copyFromYesterday() {
+		const from = addDays(date, -1);
+		const named = formatDayShort(from);
+
 		try {
-			const { copied, failed } = await copyDay.mutateAsync({ from: addDays(date, -1), to: date });
+			const { copied, failed } = await copyDay.mutateAsync({ from, to: date });
 
 			if (copied === 0 && failed === 0) {
-				setToast({ message: 'Nothing was logged yesterday.', variant: 'success' });
+				setToast({ message: `Nothing was logged on ${named}.`, variant: 'success' });
 
 				return;
 			}
 
 			const entries = copied === 1 ? '1 entry' : `${String(copied)} entries`;
 			setToast({
-				message: failed === 0 ? `${entries} copied from yesterday` : `${entries} copied, ${String(failed)} failed`,
+				message: failed === 0 ? `${entries} copied from ${named}` : `${entries} copied, ${String(failed)} failed`,
 				variant: failed === 0 ? 'success' : 'error',
 			});
 		} catch {
-			setToast({ message: "Could not read yesterday's entries.", variant: 'error' });
+			setToast({ message: `Could not read the entries for ${named}.`, variant: 'error' });
 		}
 	}
 
@@ -237,6 +243,7 @@ export function DayView({ session, date }: { session: Session; date: string }) {
 					<Link
 						ref={addEntryRef}
 						to="/entries/new"
+						resetScroll={false}
 						search={{ date }}
 						className="duration-ui fixed right-4 bottom-7 z-10 inline-flex size-14 items-center justify-center gap-2 rounded-pill bg-accent text-on-accent shadow-fab transition-colors ease-ui hover:bg-accent-dark md:static md:ml-auto md:h-12 md:w-auto md:rounded-control md:px-5 md:shadow-fab"
 					>
@@ -259,7 +266,7 @@ export function DayView({ session, date }: { session: Session; date: string }) {
 							<span aria-hidden="true" className="h-5 w-40 animate-pulse rounded-[5px] bg-subtle" />
 						) : (
 							hasEntries && (
-								<div key={date} className="animate-day-in">
+								<div key={date} className={entrance}>
 									<DaySummary entries={entries} />
 								</div>
 							)
@@ -304,7 +311,7 @@ export function DayView({ session, date }: { session: Session; date: string }) {
 					</div>
 
 					{entries !== undefined && (
-						<div key={date} className="hidden animate-day-in lg:block">
+						<div key={date} className={cn('hidden lg:block', entrance)}>
 							<ServiceTotals
 								entries={entries}
 								weekTotals={weekTotals}

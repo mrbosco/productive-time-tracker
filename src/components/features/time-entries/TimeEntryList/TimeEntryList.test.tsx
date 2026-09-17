@@ -41,13 +41,13 @@ describe('TimeEntryList', () => {
 		expect(screen.getByRole('link', { name: 'Add entry' })).toHaveAttribute('href', '/entries/new?date=2026-09-10');
 	});
 
-	/** The design puts the offer to copy yesterday's entries in this state. */
-	it('offers to copy yesterday into an empty day', async () => {
+	/** The offer names the day it would copy, not "yesterday". */
+	it('offers to copy the day before into an empty day, naming it', async () => {
 		const onCopyFromYesterday = vi.fn();
 		const user = userEvent.setup();
 		await renderWithProviders(<TimeEntryList {...baseProps} entries={[]} onCopyFromYesterday={onCopyFromYesterday} />);
 
-		await user.click(screen.getByRole('button', { name: 'Copy from yesterday' }));
+		await user.click(screen.getByRole('button', { name: 'Copy from Mon 14 Sep' }));
 
 		expect(onCopyFromYesterday).toHaveBeenCalledTimes(1);
 	});

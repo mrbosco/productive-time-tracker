@@ -2,7 +2,7 @@ import { http, HttpResponse } from 'msw';
 import { describe, expect, it } from 'vitest';
 import { renderWithProviders, screen, testSession, userEvent, waitFor } from '@/__tests__/test-utils';
 import { AppLayout } from '@/components/shared/layouts/AppLayout';
-import { addDays, todayIso } from '@/lib/date';
+import { addDays, formatDayShort, todayIso } from '@/lib/date';
 import { SEEDED_DATE } from '@/mocks/handlers';
 import { server } from '@/mocks/node';
 import { DayView } from './DayView';
@@ -25,6 +25,10 @@ function renderDay() {
  */
 const EMPTY_DATE = addDays(SEEDED_DATE, 1);
 
+/** The button and the toasts name the day they copy from rather than saying "yesterday", which on a
+ * Monday would have meant the Sunday nobody worked. */
+const SOURCE_DAY = formatDayShort(SEEDED_DATE);
+
 function renderEmptyDay() {
 	return renderWithProviders(<DayView session={testSession} date={EMPTY_DATE} />, {
 		session: testSession,
@@ -34,7 +38,7 @@ function renderEmptyDay() {
 
 /** Waits for the empty state, then answers its `Copy from yesterday`. */
 async function copyYesterday(user: ReturnType<typeof userEvent.setup>) {
-	await user.click(await screen.findByRole('button', { name: 'Copy from yesterday' }));
+	await user.click(await screen.findByRole('button', { name: /^Copy from / }));
 }
 
 /**
@@ -107,7 +111,7 @@ describe('DayView', () => {
 
 		await copyYesterday(user);
 
-		expect(await screen.findByRole('status')).toHaveTextContent('3 entries copied from yesterday');
+		expect(await screen.findByRole('status')).toHaveTextContent(`3 entries copied from ${SOURCE_DAY}`);
 		await waitFor(() => {
 			expect(screen.getAllByRole('article')).toHaveLength(3);
 		});
@@ -145,19 +149,21 @@ describe('DayView', () => {
 
 		await copyYesterday(user);
 
-		expect(await screen.findByRole('status')).toHaveTextContent('Nothing was logged yesterday.');
+		expect(await screen.findByRole('status')).toHaveTextContent(
+			`Nothing was logged on ${formatDayShort(addDays('2026-09-19', -1))}.`
+		);
 	});
 
 	/** Nothing was attempted, so this is the one outcome that is genuinely an error. */
 	it('reports a source day it could not read', async () => {
 		const user = userEvent.setup();
 		await renderEmptyDay();
-		await screen.findByRole('button', { name: 'Copy from yesterday' });
+		await screen.findByRole('button', { name: /^Copy from / });
 
 		server.use(http.get('*/time_entries', () => new HttpResponse(null, { status: 500 })));
 		await copyYesterday(user);
 
-		expect(await screen.findByRole('alert')).toHaveTextContent("Could not read yesterday's entries.");
+		expect(await screen.findByRole('alert')).toHaveTextContent(`Could not read the entries for ${SOURCE_DAY}.`);
 	});
 
 	/**

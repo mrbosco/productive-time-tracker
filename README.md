@@ -119,6 +119,11 @@ Worth saying plainly rather than leaving to be found:
 
 ## Notes
 
+**On the name.** The app is called **Productive Time Tracker**, because that is what the brief asks
+for — it is the tab title, the login heading and the name everywhere a user sees. The package is
+`tracktive`, which was my own working name and stayed because I liked it: it rhymes with productive,
+and slipping an `a` in makes it attractive. Not a serious proposal, just a name I was sorry to drop.
+
 The interface deliberately reuses Productive's wordmark and accent purple: this is a tool for
 Productive's own product, and matching the parent app is the point rather than a liberty taken.
 Swap the tokens in `src/styles/index.css` to rebrand it.
