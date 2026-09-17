@@ -8,11 +8,23 @@ import { StopTimerSheet } from './StopTimerSheet';
 /** One of the recorded day's entries, so the sheet has a real entry to edit. */
 const ENTRY_ID = '162903873';
 
-/** A timer started from the app bar: it created this entry, so the entry is the tracked time. */
+/**
+ * A timer started from the app bar: it created this entry, so the entry is the tracked time.
+ *
+ * The two instants are built from **local** parts rather than written with a fixed offset. A timer
+ * runs at a moment, not on a calendar day, so the caption formats it in whoever is reading's own
+ * zone (unlike an entry's `date`, which A-6 keeps out of UTC entirely) - and a fixture pinned to
+ * `+02:00` therefore asserted 09:18 here and 07:18 on a CI runner in UTC. This reads as 09:18
+ * anywhere, which is what the assertion is actually about.
+ */
+function localInstant(hour: number, minute: number): string {
+	return new Date(2026, 8, 16, hour, minute, 0, 0).toISOString();
+}
+
 const stopped: StoppedTimer = {
 	entryId: ENTRY_ID,
-	startedAt: '2026-09-16T09:18:00.000+02:00',
-	stoppedAt: '2026-09-16T10:00:00.000+02:00',
+	startedAt: localInstant(9, 18),
+	stoppedAt: localInstant(10, 0),
 	loggedBefore: null,
 	discardMinutes: 0,
 };
