@@ -145,9 +145,9 @@ test.describe('timer (X-4)', () => {
 		await page.goto(`/day/${SEEDED_DATE}`);
 		await expect(page.getByRole('article')).toHaveCount(3);
 
+		// UI-4 moved this out of the kebab and onto the row itself.
 		const entry = notedEntry(page);
-		await entry.getByRole('button', { name: 'Entry actions' }).click();
-		await page.getByRole('menuitem', { name: 'Continue timer' }).click();
+		await entry.getByRole('button', { name: 'Continue timer on this entry' }).click();
 
 		// Still here, still three rows, and the first one is the one running.
 		await expect(page).toHaveURL(`/day/${SEEDED_DATE}`);
@@ -167,14 +167,12 @@ test.describe('timer (X-4)', () => {
 	 */
 	test('will not continue a second entry while one is running', async ({ page }) => {
 		await page.goto(`/day/${SEEDED_DATE}`);
-		await notedEntry(page).getByRole('button', { name: 'Entry actions' }).click();
-		await page.getByRole('menuitem', { name: 'Continue timer' }).click();
+		await notedEntry(page).getByRole('button', { name: 'Continue timer on this entry' }).click();
 		await expect(notedEntry(page).getByText('Tracking')).toBeVisible();
 
-		// A different row on the same day, which now has nothing to offer.
-		await page.getByRole('article').first().getByRole('button', { name: 'Entry actions' }).click();
-
-		await expect(page.getByRole('menuitem', { name: 'Continue timer' })).toHaveAttribute('aria-disabled', 'true');
+		// Nowhere on the day offers to start a second one - not on the running row, which is
+		// tracking, and not on any other, which UI-4 leaves without a play button at all.
+		await expect(page.getByRole('button', { name: 'Continue timer on this entry' })).toHaveCount(0);
 	});
 
 	/** X-2 lists `s`; this is the timer it stops, and it works from any route. */

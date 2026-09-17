@@ -10,6 +10,7 @@ import { ServiceTotals } from '@/components/features/time-entries/ServiceTotals/
 import { TimeEntryList } from '@/components/features/time-entries/TimeEntryList/TimeEntryList';
 import { useCopyDayForward } from '@/components/features/time-entries/useCopyDayForward';
 import { useDeleteTimeEntry } from '@/components/features/time-entries/useDeleteTimeEntry';
+import { useUpdateTimeEntry } from '@/components/features/time-entries/useUpdateTimeEntry';
 import { useTimeEntries } from '@/components/features/time-entries/useTimeEntries';
 import { ActivityBanner } from '@/components/features/timer/ActivityBanner/ActivityBanner';
 import { useTimerContext } from '@/components/features/timer/TimerProvider';
@@ -46,6 +47,7 @@ export function DayView({ session, date }: { session: Session; date: string }) {
 	const { data: weekTotals, isPending: isWeekPending, isError: isWeekError } = useWeekTotals(session, date);
 	const availability = useExpectedHours(session);
 	const deleteEntry = useDeleteTimeEntry(session);
+	const updateEntry = useUpdateTimeEntry(session);
 	const copyDay = useCopyDayForward(session);
 	const timer = useTimerContext();
 
@@ -183,6 +185,29 @@ export function DayView({ session, date }: { session: Session; date: string }) {
 		}
 	}
 
+	/**
+	 * UI-4's inline correction. Here rather than on the card for the same reason delete is: the
+	 * toast belongs to the screen, and the card should not hold a mutation of its own.
+	 *
+	 * The date never changes, so `useUpdateTimeEntry` gets the same date twice and invalidates one
+	 * day and one week rather than two of each. It is awaited so the editor stays open and keeps
+	 * what was typed if the write fails.
+	 */
+	async function saveDuration(entry: TimeEntry, minutes: number) {
+		try {
+			await updateEntry.mutateAsync({
+				id: entry.id,
+				previousDate: entry.date,
+				date: entry.date,
+				changes: { minutes },
+			});
+			setToast({ message: 'Entry saved', variant: 'success' });
+		} catch {
+			setToast({ message: 'Could not save the duration.', variant: 'error' });
+			throw new Error('save failed');
+		}
+	}
+
 	async function confirmDelete(entry: TimeEntry) {
 		// Closed first: the row is already gone from the cache by the time the request is sent
 		// (SPEC 4.2), so leaving the dialog up to spin would be asking the user to wait for
@@ -300,6 +325,7 @@ export function DayView({ session, date }: { session: Session; date: string }) {
 							 * finding 4), so the row that was clicked is the row that starts counting
 							 * - on whatever day it is on. Nothing navigates, and nothing is copied.
 							 */
+							onSaveDuration={saveDuration}
 							onContinueTimer={
 								timer.running === null
 									? (entry) => {

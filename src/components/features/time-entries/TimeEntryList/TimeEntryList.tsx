@@ -26,6 +26,8 @@ interface TimeEntryListProps {
 	isCopying?: boolean;
 	/** X-4: starts a timer on that entry, which the stop then adds to. */
 	onContinueTimer?: (entry: TimeEntry) => void;
+	/** Writes a corrected duration from the card (UI-4). The day view owns the write and the toast. */
+	onSaveDuration?: (entry: TimeEntry, minutes: number) => Promise<void>;
 	/** The entry a timer is running against, and when it started (X-4). */
 	trackingEntryId?: string | null;
 	trackingSince?: string | null;
@@ -82,6 +84,7 @@ export function TimeEntryList({
 	onCopyFromYesterday,
 	isCopying = false,
 	onContinueTimer,
+	onSaveDuration,
 	trackingEntryId = null,
 	trackingSince = null,
 	onStopTimer,
@@ -187,6 +190,7 @@ export function TimeEntryList({
 										onContinueTimer(entry);
 									}
 						}
+						onSaveDuration={onSaveDuration === undefined ? undefined : (minutes) => onSaveDuration(entry, minutes)}
 						trackingSince={entry.id === trackingEntryId ? trackingSince : null}
 						onStopTimer={onStopTimer}
 					/>

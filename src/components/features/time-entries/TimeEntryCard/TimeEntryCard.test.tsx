@@ -207,6 +207,7 @@ describe('TimeEntryCard', () => {
 	 * X-4. A real continuation: the timer attaches to this entry, so this row is the one that starts
 	 * counting and the stop adds to what it already holds (SPEC 11, finding 4).
 	 */
+	/** UI-4 moved this out of the kebab and onto the row: one tap rather than two. */
 	it('asks for a timer to be continued on itself (X-4)', async () => {
 		const onContinueTimer = vi.fn();
 		const user = userEvent.setup();
@@ -214,8 +215,7 @@ describe('TimeEntryCard', () => {
 			<TimeEntryCard onRequestDelete={noop} entry={buildEntry()} onContinueTimer={onContinueTimer} />
 		);
 
-		await user.click(screen.getByRole('button', { name: 'Entry actions' }));
-		await user.click(await screen.findByRole('menuitem', { name: 'Continue timer' }));
+		await user.click(screen.getByRole('button', { name: 'Continue timer on this entry' }));
 
 		expect(onContinueTimer).toHaveBeenCalledTimes(1);
 	});
@@ -334,7 +334,6 @@ describe('TimeEntryCard', () => {
 
 	/** One timer at a time, so the entry already carrying it cannot be asked to start another. */
 	it('cannot be continued while it is already being tracked (X-4)', async () => {
-		const user = userEvent.setup();
 		await renderWithProviders(
 			<TimeEntryCard
 				onRequestDelete={noop}
@@ -345,14 +344,44 @@ describe('TimeEntryCard', () => {
 			/>
 		);
 
-		await user.click(screen.getByRole('button', { name: 'Entry actions' }));
-
-		expect(await screen.findByRole('menuitem', { name: 'Continue timer' })).toHaveAttribute('aria-disabled', 'true');
+		expect(screen.queryByRole('button', { name: 'Continue timer on this entry' })).not.toBeInTheDocument();
 	});
 
 	it('offers no More on a note that fits', async () => {
 		await renderWithProviders(<TimeEntryCard onRequestDelete={noop} entry={buildEntry({ note: 'Short.' })} />);
 
 		expect(screen.queryByRole('button', { name: 'More' })).not.toBeInTheDocument();
+	});
+
+	/** UI-4: the most common edit there is, without a trip to the edit screen and back. */
+	it('saves a corrected duration from the card', async () => {
+		const onSaveDuration = vi.fn().mockResolvedValue(undefined);
+		const user = userEvent.setup();
+		await renderWithProviders(
+			<TimeEntryCard onRequestDelete={noop} entry={buildEntry()} onSaveDuration={onSaveDuration} />
+		);
+
+		await user.click(screen.getByRole('button', { name: 'Edit duration, 1h 30m' }));
+		const field = await screen.findByRole('textbox', { name: 'Duration' });
+		await user.clear(field);
+		await user.type(field, '1h 45m{Enter}');
+
+		expect(onSaveDuration).toHaveBeenCalledWith(105);
+	});
+
+	it('rejects what the entry form rejects, in the same words', async () => {
+		const onSaveDuration = vi.fn().mockResolvedValue(undefined);
+		const user = userEvent.setup();
+		await renderWithProviders(
+			<TimeEntryCard onRequestDelete={noop} entry={buildEntry()} onSaveDuration={onSaveDuration} />
+		);
+
+		await user.click(screen.getByRole('button', { name: 'Edit duration, 1h 30m' }));
+		const field = await screen.findByRole('textbox', { name: 'Duration' });
+		await user.clear(field);
+		await user.type(field, '99h{Enter}');
+
+		expect(await screen.findByText('Duration cannot be more than 24h.')).toBeInTheDocument();
+		expect(onSaveDuration).not.toHaveBeenCalled();
 	});
 });

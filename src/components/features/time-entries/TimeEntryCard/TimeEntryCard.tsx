@@ -2,6 +2,7 @@ import { Link } from '@tanstack/react-router';
 import { useEffect, useId, useRef, useState } from 'react';
 import type { TimeEntry } from '@/api/types';
 import { Avatar } from '@/components/core/Avatar';
+import { DurationEditor } from '@/components/features/time-entries/DurationEditor/DurationEditor';
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -17,6 +18,22 @@ import { Note } from '@/components/features/time-entries/Note/Note';
 import { ServiceContext } from '@/components/features/time-entries/ServiceContext/ServiceContext';
 import { toPlainText } from '@/lib/note';
 import { cn } from '@/lib/utils';
+
+/**
+ * Revealed by hovering the card on a pointer, and always there on a touch screen, where hover is
+ * not something that exists and a control nobody can reveal is a control nobody has (UI-4).
+ * `focus-within` so the keyboard reaches them without a pointer.
+ */
+const REVEALED =
+	'opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100 [@media(hover:none)]:opacity-100';
+
+function PlayIcon() {
+	return (
+		<svg width="14" height="14" viewBox="0 0 20 20" aria-hidden="true">
+			<path d="M6 3.6 16 10 6 16.4V3.6Z" fill="currentColor" />
+		</svg>
+	);
+}
 
 function KebabIcon() {
 	return (
@@ -43,8 +60,10 @@ interface TimeEntryCardProps {
 	isTabStop?: boolean;
 	/** The card took focus on its own - a click or a Tab - so the list can follow it. */
 	onTakeFocus?: () => void;
-	/** Starts a timer on this entry (X-4). Absent greys the item out - one timer at a time. */
+	/** Starts a timer on this entry (X-4, UI-4). Absent hides the play button - one at a time. */
 	onContinueTimer?: () => void;
+	/** Writes a corrected duration (UI-4). Absent leaves the duration as plain text. */
+	onSaveDuration?: (minutes: number) => Promise<void>;
 	/**
 	 * A timer is running against this entry (X-4). The card says so and carries a stop control of
 	 * its own, because the app bar can be scrolled a long way from the row it belongs to.
@@ -70,6 +89,7 @@ export function TimeEntryCard({
 	isTabStop = true,
 	onTakeFocus,
 	onContinueTimer,
+	onSaveDuration,
 	trackingSince = null,
 	onStopTimer,
 }: TimeEntryCardProps) {
@@ -110,7 +130,7 @@ export function TimeEntryCard({
 			// No focus classes: `styles/index.css` draws one accent ring on `:focus-visible`
 			// everywhere, which is the ring the design brief asks cards to have.
 			className={cn(
-				'relative flex items-start gap-3.5 overflow-hidden rounded-entry border bg-surface p-4 md:px-5 md:py-[18px]',
+				'group relative flex items-start gap-3.5 overflow-hidden rounded-entry border bg-surface p-4 md:px-5 md:py-[18px]',
 				isTracking ? 'border-accent' : 'border-line'
 			)}
 		>
@@ -183,14 +203,42 @@ export function TimeEntryCard({
 			 * No reserved width any more. A right-aligned column lines up on its own edge, which is
 			 * what the 70px was buying when the column was on the left.
 			 */}
-			<p
-				className={cn(
-					'flex-none pt-0.5 text-duration leading-[120%] font-medium tracking-[-.01em] tabular-nums',
-					isTracking && 'text-accent-dark'
-				)}
-			>
-				{formatDuration(minutes)}
-			</p>
+			{/*
+			 * Editable in place (UI-4), except while a timer runs on it: the number is moving, and a
+			 * field seeded from a moving number saves whatever it happened to read when it opened.
+			 * Stop the timer and it is editable again.
+			 */}
+			{onSaveDuration === undefined || isTracking ? (
+				<p
+					className={cn(
+						'flex-none pt-0.5 text-duration leading-[120%] font-medium tracking-[-.01em] tabular-nums',
+						isTracking && 'text-accent-dark'
+					)}
+				>
+					{formatDuration(minutes)}
+				</p>
+			) : (
+				<DurationEditor minutes={minutes} onSave={onSaveDuration} isRevealed={REVEALED} />
+			)}
+
+			{/*
+			 * One tap rather than two: `Continue timer` left the kebab for this. Absent while a timer
+			 * runs anywhere, which is X-4's rule - there is one timer, and starting a second silently
+			 * would be the worst of the three behaviours.
+			 */}
+			{!isTracking && onContinueTimer !== undefined && (
+				<button
+					type="button"
+					aria-label="Continue timer on this entry"
+					onClick={onContinueTimer}
+					className={cn(
+						'duration-ui grid size-9 flex-none place-items-center rounded-pill text-accent transition-colors ease-ui hover:bg-subtle',
+						REVEALED
+					)}
+				>
+					<PlayIcon />
+				</button>
+			)}
 
 			{/*
 			 * The same control as the app bar's, so it is learned once - a square on mobile where
@@ -223,13 +271,11 @@ export function TimeEntryCard({
 				 * here to open it would drag the whole ProseMirror tree onto the screen SPEC 4.2
 				 * requires to render on one request.
 				 *
-				 * `Continue timer` starts a timer **on this entry** (X-4): `POST /timers` with a
-				 * `time_entry` relationship attaches to one that already exists rather than creating
-				 * another, and the stop adds the elapsed minutes to what it holds
-				 * (`docs/api/samples/timer-continue-entry-probe.txt`). So this row is the one that
-				 * starts counting, and no second row appears. Greyed out while a timer already runs,
-				 * here or anywhere: there is one timer, and starting a second silently would be the
-				 * worst of the three possible behaviours.
+				 * `Continue timer` has left this menu for a play button on the row itself (UI-4),
+				 * one tap instead of two. It still starts a timer **on this entry** (X-4): `POST
+				 * /timers` with a `time_entry` relationship attaches to one that already exists
+				 * rather than creating another, and the stop adds the elapsed minutes to what it
+				 * holds (`docs/api/samples/timer-continue-entry-probe.txt`).
 				 *
 				 * `Duplicate` lands on **today**, not on the day the source entry is from (X-3, Toggl's
 				 * continue pattern): copying yesterday's standup is almost always about logging today's,
@@ -248,9 +294,6 @@ export function TimeEntryCard({
 						<Link to="/entries/$id/edit" params={{ id: entry.id }}>
 							Edit
 						</Link>
-					</DropdownMenuItem>
-					<DropdownMenuItem disabled={isTracking || onContinueTimer === undefined} onSelect={onContinueTimer}>
-						Continue timer
 					</DropdownMenuItem>
 					<DropdownMenuItem asChild>
 						<Link to="/entries/new" search={{ date: todayIso(), duplicate: entry.id }}>
