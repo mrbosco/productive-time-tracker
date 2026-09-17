@@ -1,4 +1,4 @@
-import { EditorContent, useEditor } from '@tiptap/react';
+import { EditorContent, useEditor, useEditorState } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import { useEffect, useRef } from 'react';
 import { cn } from '@/lib/utils';
@@ -127,6 +127,20 @@ export function RichTextEditor({
 	 */
 	const applied = useRef(value);
 
+	/**
+	 * Whether the document is empty, **subscribed to** rather than read off the editor during render.
+	 *
+	 * TipTap 3's `useEditor` no longer re-renders on every transaction the way v2 did, so
+	 * `editor.isEmpty` read in the render body is a mutable getter on a stable object: it answers
+	 * correctly on mount and then never changes again. The placeholder stayed behind the first word
+	 * typed into a form that had no other reason to re-render - the entry form only escaped it
+	 * because its first keystroke flips `isDirty`, which is a subscription by accident.
+	 */
+	const isEmpty = useEditorState({
+		editor,
+		selector: ({ editor: current }) => current?.isEmpty ?? true,
+	});
+
 	useEffect(() => {
 		if (editor === null || editor.isDestroyed) return;
 		if (value === applied.current) return;
@@ -158,7 +172,7 @@ export function RichTextEditor({
 			 * absolutely positioned line that shows while the document is empty, and `aria-hidden`
 			 * because the field already has a label.
 			 */}
-			{placeholder !== undefined && editor?.isEmpty === true && (
+			{placeholder !== undefined && isEmpty && (
 				<span aria-hidden="true" className="pointer-events-none absolute text-muted">
 					{placeholder}
 				</span>
