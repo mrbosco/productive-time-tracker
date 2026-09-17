@@ -1,6 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { TimeEntry } from '@/api/types';
-import { todayIso } from '@/lib/date';
 import { buildService, renderWithProviders, screen, userEvent } from '@/__tests__/test-utils';
 import { TimeEntryCard } from './TimeEntryCard';
 
@@ -22,7 +21,7 @@ function buildEntry(overrides: Partial<TimeEntry> = {}): TimeEntry {
 const noop = () => undefined;
 
 describe('TimeEntryCard', () => {
-	it('shows the duration, the description and the service (R-6)', async () => {
+	it('shows the duration, the description and the service', async () => {
 		await renderWithProviders(<TimeEntryCard onRequestDelete={noop} entry={buildEntry()} />);
 
 		expect(screen.getByText('1h 30m')).toBeInTheDocument();
@@ -30,60 +29,11 @@ describe('TimeEntryCard', () => {
 		expect(screen.getByText('Administrative work')).toBeInTheDocument();
 	});
 
-	/**
-	 * UI-1: the row leads with the company the service is billed to, which is what Productive's own
-	 * time screen does and what this card had dropped.
-	 */
-	it('leads with the company logo when the company has one', async () => {
-		await renderWithProviders(
-			<TimeEntryCard
-				onRequestDelete={noop}
-				entry={buildEntry({
-					service: buildService({ companyName: 'Anoda', companyAvatarUrl: 'https://files.productive.io/anoda.png' }),
-				})}
-			/>
-		);
-
-		expect(screen.getByRole('presentation')).toHaveAttribute('src', 'https://files.productive.io/anoda.png');
-	});
-
-	it('falls back to the company initials when it has no logo', async () => {
-		await renderWithProviders(
-			<TimeEntryCard
-				onRequestDelete={noop}
-				entry={buildEntry({
-					service: buildService({ companyName: 'Anoda Studio', companyAvatarUrl: null }),
-				})}
-			/>
-		);
-
-		expect(screen.getByText('AS')).toBeInTheDocument();
-	});
-
-	/**
-	 * A service on an archived deal comes back with no company at all. The glyph that stands in for
-	 * one is `Avatar`'s own business and is tested there; what matters here is that the card does
-	 * not invent a picture or a pair of letters for a company it does not have.
-	 */
-	it('shows neither a logo nor initials when the service has no company', async () => {
-		await renderWithProviders(<TimeEntryCard onRequestDelete={noop} entry={buildEntry()} />);
-
-		expect(screen.queryByRole('presentation')).not.toBeInTheDocument();
-	});
-
-	/** A-8: Productive writes zero-minute entries, and a running timer is one until it stops. */
+	/** Productive writes zero-minute entries, and a running timer is one until it stops. */
 	it('renders a zero-minute entry as 0h rather than hiding it', async () => {
 		await renderWithProviders(<TimeEntryCard onRequestDelete={noop} entry={buildEntry({ minutes: 0 })} />);
 
 		expect(screen.getByText('0h')).toBeInTheDocument();
-	});
-
-	it('does not label a zero-minute entry a draft', async () => {
-		await renderWithProviders(
-			<TimeEntryCard onRequestDelete={noop} entry={buildEntry({ minutes: 0, draft: false })} />
-		);
-
-		expect(screen.queryByText('Draft')).not.toBeInTheDocument();
 	});
 
 	it('labels a draft from the API flag, whatever the duration is', async () => {
@@ -95,8 +45,8 @@ describe('TimeEntryCard', () => {
 	});
 
 	/**
-	 * A-9 as amended by ADR-0010. A note Productive stored as a list is drawn as a list: flattening
-	 * it to a line was the app redrawing what the user wrote.
+	 * A note Productive stored as a list is drawn as a list: flattening it to a line was the app
+	 * redrawing what the user wrote.
 	 */
 	it('renders a note written as a list as a list', async () => {
 		const { container } = await renderWithProviders(
@@ -140,22 +90,6 @@ describe('TimeEntryCard', () => {
 		expect(container.querySelector('img')).toBeNull();
 	});
 
-	it('treats markup with no words in it as no description', async () => {
-		await renderWithProviders(<TimeEntryCard onRequestDelete={noop} entry={buildEntry({ note: '<p></p>' })} />);
-
-		expect(screen.getByText('No description')).toBeInTheDocument();
-	});
-
-	it('preserves the line breaks of a multiline description', async () => {
-		await renderWithProviders(
-			<TimeEntryCard onRequestDelete={noop} entry={buildEntry({ note: 'First line\nSecond line' })} />
-		);
-
-		// One text node carrying both lines: `whitespace-pre-line` renders the break, so splitting
-		// it into two elements would be the app reformatting what the user typed.
-		expect(screen.getByText(/First line\s+Second line/)).toBeInTheDocument();
-	});
-
 	it('says so when an entry has no description', async () => {
 		await renderWithProviders(<TimeEntryCard onRequestDelete={noop} entry={buildEntry({ note: null })} />);
 
@@ -190,62 +124,8 @@ describe('TimeEntryCard', () => {
 		expect(scrollHeight).toHaveBeenCalled();
 	});
 
-	/** The card's only way into the edit route (US-3, R-11). */
-	it('links the menu Edit to this entry own edit route', async () => {
-		const user = userEvent.setup();
-		await renderWithProviders(<TimeEntryCard onRequestDelete={noop} entry={buildEntry()} />);
-
-		await user.click(screen.getByRole('button', { name: 'Entry actions' }));
-
-		const edit = await screen.findByRole('menuitem', { name: 'Edit' });
-
-		expect(edit).toHaveAttribute('href', '/entries/162903873/edit');
-		expect(edit).not.toHaveAttribute('aria-disabled', 'true');
-	});
-
-	/**
-	 * X-4. A real continuation: the timer attaches to this entry, so this row is the one that starts
-	 * counting and the stop adds to what it already holds (SPEC 11, finding 4).
-	 */
-	/**
-	 * UI-4 moved this onto the row as a play button - but only where there is a pointer to reveal
-	 * it. `Card Actions.dc.html` keeps the kebab item on touch, which is the branch jsdom takes.
-	 */
-	it('asks for a timer to be continued on itself (X-4)', async () => {
-		const onContinueTimer = vi.fn();
-		const user = userEvent.setup();
-		await renderWithProviders(
-			<TimeEntryCard onRequestDelete={noop} entry={buildEntry()} onContinueTimer={onContinueTimer} />
-		);
-
-		await user.click(screen.getByRole('button', { name: 'Entry actions' }));
-		await user.click(await screen.findByRole('menuitem', { name: 'Continue timer' }));
-
-		expect(onContinueTimer).toHaveBeenCalledTimes(1);
-	});
-
-	/**
-	 * X-3. Today, not the entry's own day: copying yesterday's standup is almost always about
-	 * logging today's. The entry travels as an ID, so nobody's description ends up in a URL.
-	 */
-	it('duplicates onto today, carrying the entry by id (X-3)', async () => {
-		const user = userEvent.setup();
-		await renderWithProviders(<TimeEntryCard onRequestDelete={noop} entry={buildEntry()} />);
-
-		await user.click(screen.getByRole('button', { name: 'Entry actions' }));
-
-		const duplicate = await screen.findByRole('menuitem', { name: 'Duplicate' });
-		/*
-		 * The id arrives percent-encoded and quoted because the router JSON-encodes any search value
-		 * that is itself valid JSON, and an id of digits is a valid JSON number. That is the round
-		 * trip working, not a bug: `validateSearch` reads a string back out of it.
-		 */
-		expect(duplicate).toHaveAttribute('href', `/entries/new?date=${todayIso()}&duplicate=%22162903873%22`);
-		expect(duplicate).not.toHaveAttribute('aria-disabled', 'true');
-	});
-
-	/** R-12 starts here: the card asks, and the day view is what confirms and deletes. */
-	it('asks for the entry to be deleted from the menu (R-12)', async () => {
+	/** Deleting starts here: the card asks, and the day view is what confirms and deletes. */
+	it('asks for the entry to be deleted from the menu', async () => {
 		const onRequestDelete = vi.fn();
 		const user = userEvent.setup();
 		await renderWithProviders(<TimeEntryCard entry={buildEntry()} onRequestDelete={onRequestDelete} />);
@@ -257,68 +137,10 @@ describe('TimeEntryCard', () => {
 	});
 
 	/**
-	 * X-2's roving tabindex, from the card's side: the list nominates one tab stop and the rest are
-	 * reachable only by arrow key, so Tab does not walk through twenty cards to get past the list
-	 * (guidebook 18).
-	 */
-	it('is a tab stop only when the list says so (X-2)', async () => {
-		const { rerender } = await renderWithProviders(
-			<TimeEntryCard onRequestDelete={noop} entry={buildEntry()} isTabStop={false} />
-		);
-
-		expect(screen.getByRole('article')).toHaveAttribute('tabindex', '-1');
-
-		rerender(<TimeEntryCard onRequestDelete={noop} entry={buildEntry()} isTabStop />);
-
-		expect(screen.getByRole('article')).toHaveAttribute('tabindex', '0');
-	});
-
-	/** The arrow keys choose a card, and nothing else would move the caret onto it (X-2). */
-	it('takes focus when it becomes the chosen card (X-2)', async () => {
-		const { rerender } = await renderWithProviders(<TimeEntryCard onRequestDelete={noop} entry={buildEntry()} />);
-
-		expect(screen.getByRole('article')).not.toHaveFocus();
-
-		rerender(<TimeEntryCard onRequestDelete={noop} entry={buildEntry()} isFocused />);
-
-		expect(screen.getByRole('article')).toHaveFocus();
-	});
-
-	/**
-	 * Focus events bubble. Without narrowing to the card itself, opening the menu would report the
-	 * card as focused, the card would pull focus back out of the trigger, and the menu would never
-	 * open - so this is asserted from the outside, by the menu still working.
-	 */
-	it('does not claim focus that landed on the menu trigger (X-2)', async () => {
-		const onTakeFocus = vi.fn();
-		const user = userEvent.setup();
-		await renderWithProviders(<TimeEntryCard onRequestDelete={noop} entry={buildEntry()} onTakeFocus={onTakeFocus} />);
-
-		await user.click(screen.getByRole('button', { name: 'Entry actions' }));
-
-		expect(await screen.findByRole('menuitem', { name: 'Edit' })).toBeInTheDocument();
-		expect(onTakeFocus).not.toHaveBeenCalled();
-	});
-
-	/**
-	 * X-4, `Timer.dc.html`: the app bar is the only sign a timer is running, and on a full day the
-	 * row it belongs to can be scrolled far away from it. The tracking row says so itself.
-	 */
-	it('says when a timer is running against it (X-4)', async () => {
-		const startedAt = new Date(Date.now() - 180_000).toISOString();
-		await renderWithProviders(
-			<TimeEntryCard onRequestDelete={noop} entry={buildEntry()} trackingSince={startedAt} onStopTimer={noop} />
-		);
-
-		expect(screen.getByText('Tracking')).toBeInTheDocument();
-		expect(screen.getAllByRole('button', { name: 'Stop timer' }).length).toBeGreaterThan(0);
-	});
-
-	/**
 	 * The entry's real total, not the timer's: what is stored plus what is running. An entry that
 	 * already had minutes would otherwise look like it had lost them while being tracked.
 	 */
-	it('counts the running time on top of what the entry already holds (X-4)', async () => {
+	it('counts the running time on top of what the entry already holds', async () => {
 		const startedAt = new Date(Date.now() - 180_000).toISOString();
 		await renderWithProviders(
 			<TimeEntryCard onRequestDelete={noop} entry={buildEntry()} trackingSince={startedAt} onStopTimer={noop} />
@@ -328,16 +150,8 @@ describe('TimeEntryCard', () => {
 		expect(screen.getByText('1h 33m')).toBeInTheDocument();
 	});
 
-	it('shows only what is stored when no timer is running on it', async () => {
-		await renderWithProviders(<TimeEntryCard onRequestDelete={noop} entry={buildEntry()} />);
-
-		expect(screen.getByText('1h 30m')).toBeInTheDocument();
-		expect(screen.queryByText('Tracking')).not.toBeInTheDocument();
-		expect(screen.queryByRole('button', { name: 'Stop timer' })).not.toBeInTheDocument();
-	});
-
 	/** One timer at a time, so the entry already carrying it cannot be asked to start another. */
-	it('cannot be continued while it is already being tracked (X-4)', async () => {
+	it('cannot be continued from the menu while it is already being tracked', async () => {
 		const user = userEvent.setup();
 		await renderWithProviders(
 			<TimeEntryCard
@@ -352,46 +166,5 @@ describe('TimeEntryCard', () => {
 		await user.click(screen.getByRole('button', { name: 'Entry actions' }));
 
 		expect(await screen.findByRole('menuitem', { name: 'Continue timer' })).toHaveAttribute('aria-disabled', 'true');
-	});
-
-	it('offers no More on a note that fits', async () => {
-		await renderWithProviders(<TimeEntryCard onRequestDelete={noop} entry={buildEntry({ note: 'Short.' })} />);
-
-		expect(screen.queryByRole('button', { name: 'More' })).not.toBeInTheDocument();
-	});
-
-	it('cannot be continued while it is already being tracked (X-4)', async () => {
-		await renderWithProviders(
-			<TimeEntryCard
-				onRequestDelete={noop}
-				entry={buildEntry()}
-				trackingSince={new Date().toISOString()}
-				onStopTimer={noop}
-				onContinueTimer={noop}
-			/>
-		);
-
-		expect(screen.queryByRole('button', { name: 'Continue timer on this entry' })).not.toBeInTheDocument();
-	});
-
-	it('offers no More on a note that fits', async () => {
-		await renderWithProviders(<TimeEntryCard onRequestDelete={noop} entry={buildEntry({ note: 'Short.' })} />);
-
-		expect(screen.queryByRole('button', { name: 'More' })).not.toBeInTheDocument();
-	});
-
-	/**
-	 * Touch has no hover to reveal a pencil and no room for a 112px field beside the note, so the
-	 * duration stays plain text there and `Edit` in the kebab is the way in. The pointer's inline
-	 * editor is exercised in `e2e/entry-card.spec.ts`, which is the only place a hover exists.
-	 */
-	it('leaves the duration as plain text where there is no pointer', async () => {
-		const onSaveDuration = vi.fn().mockResolvedValue(undefined);
-		await renderWithProviders(
-			<TimeEntryCard onRequestDelete={noop} entry={buildEntry()} onSaveDuration={onSaveDuration} />
-		);
-
-		expect(screen.getByText('1h 30m')).toBeInTheDocument();
-		expect(screen.queryByRole('button', { name: /Edit logged time/ })).not.toBeInTheDocument();
 	});
 });

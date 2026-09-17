@@ -17,8 +17,8 @@ live API disagreed, the live API won.
 
 - `X-Auth-Token: <token>`
 - `X-Organization-Id: <id>` — required on every endpoint
-- `Content-Type: application/vnd.api+json` on POST/PATCH. SPEC 4 sends it on every request; that is
-  harmless but unnecessary, and the client only sets it when there is a body.
+- `Content-Type: application/vnd.api+json` on POST/PATCH only — the client sets it when a request
+  carries a body (`src/api/client.ts`).
 - Base URL: `https://api.productive.io/api/v2`
 
 **`X-Organization-Id` does not scope `GET /organization_memberships`.** Recorded 2026-09-16: the
@@ -52,8 +52,6 @@ token, a billing email and analytics identifiers, none of which this app has any
 | Services       | `GET /services`                                | `services.json`                                        |
 | Running timer  | `GET /timers`                                  | `timers-running.json`                                  |
 
-`POST /timers` and `POST /timers/{id}/stop` are **not verified** — see Q6.
-
 ## The relationship trap
 
 This is the single most important thing to know about this API.
@@ -83,7 +81,7 @@ Attributes used: `date` (`YYYY-MM-DD`), `time` (integer minutes), `note` (string
 read-only for this app — see `time-entry-show.json`. Relationships used: `person`, `service`.
 
 Create takes `date` and `time` as attributes plus `person` and `service` as **relationships** — not
-the four flat attributes SPEC 3 lists (`time-entry-create.json`). Only the omission of `service` was
+the four flat attributes the spec lists (`time-entry-create.json`). Only the omission of `service` was
 exercised, so "required" is proven for `service` alone (`error-422-missing-service.json`).
 
 - `note` is nullable, not just empty-string (`time-entries-day.json`).
@@ -131,7 +129,7 @@ Pagination meta is the same on every collection:
 { "current_page": 1, "total_pages": 1, "total_count": 3, "page_size": 200, "max_page_size": 200 }
 ```
 
-- `max_page_size` is **200**, so SPEC 4.1's `page[size]=200` sits exactly at the ceiling.
+- `max_page_size` is **200**, so the client's `page[size]=200` sits exactly at the ceiling.
 - An empty result gives `total_pages: 0` (`time-entries-empty-day.json`), not `1`. A paging loop
   must therefore run while `current_page < total_pages`, never `if total_pages > 1`.
 - `page[size]` and `per_page` are **both** honoured, returning the same page of the same collection
@@ -147,6 +145,10 @@ Every collection this app reads is narrowed, measured raw as sent:
 | `/services`                                | 64,209 B | 4,824 B | 13.3x |
 | `/organization_memberships` (incl. person) | 10,353 B | 833 B   | 12.4x |
 | `/time_entries` (one day)                  | 8,592 B  | 1,602 B | 5.4x  |
+
+Byte counts are of the raw responses as they came off the wire. The samples committed under
+`samples/` are the same bodies formatted for reading, so their file sizes are larger and do not
+reproduce these ratios directly.
 
 Measured raw as sent, not as stored — the shipped samples are pretty-printed and so read larger.
 The unfielded day and membership are shipped (`time-entries-day-all-fields.json`,
@@ -292,22 +294,22 @@ entry's `time` was typed by hand.
 
 ## Verified findings
 
-| #   | Question (from the Phase 1 extract)                                | Answer                                                                                                                                                                                                      | Sample                                                                     | SPEC impact                                                                                                                 |
+| #   | Question (from the Phase 1 extract)                                | Answer                                                                                                                                                                                                      | Sample                                                                     | Impact                                                                                                                      |
 | --- | ------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| 1   | `GET /organization_memberships` shape; is `include=person` needed?  | **Yes, and for more than the name.** Without it `relationships.person` is `{"meta":{"included":false}}` with no ID, and there is no `organization_id` attribute either. The same holds for `organization`.    | `organization-memberships.json`, `organization-memberships-include-organization.json` | **Confirms SPEC 4.1** — "pick the membership whose `organization.id` matches" is exactly right, once `organization` is in the `include` |
-| 2   | Are `after`/`before` inclusive for a single day?                    | **Inclusive.** `after=before=2026-09-15` returns all 3 entries for that date.                                                                                                                                 | `time-entries-day.json`                                                     | Confirms SPEC 4.1                                                                                                           |
+| 1   | `GET /organization_memberships` shape; is `include=person` needed?  | **Yes, and for more than the name.** Without it `relationships.person` is `{"meta":{"included":false}}` with no ID, and there is no `organization_id` attribute either. The same holds for `organization`.    | `organization-memberships.json`, `organization-memberships-include-organization.json` | **Confirmed** — "pick the membership whose `organization.id` matches" is exactly right, once `organization` is in the `include` |
+| 2   | Are `after`/`before` inclusive for a single day?                    | **Inclusive.** `after=before=2026-09-15` returns all 3 entries for that date.                                                                                                                                 | `time-entries-day.json`                                                     | Confirmed                                                                                                           |
 | 3   | How to list trackable services; 422 body when `service_id` missing  | `filter[time_tracking_enabled]=true` (29 → 26), disagreeing with the attribute. `filter[person_id]` is ignored — the list is org-wide. 422 is `invalid_attribute_value` / "person cannot track on this service". | `services-unfiltered.json`, `services.json`, `error-422-missing-service.json` | **Breaks A-1** — "first service the person can track on" is not resolvable from this endpoint, so A-1 needs a new rule, not just a deal name in the selector |
 | 4   | 401 vs 403 bodies                                                   | 401 `invalid_auth_token` (bad token); 403 `no_person` (valid token, wrong organization).                                                                                                                      | `error-401.json`, `error-403.json`                                          | Login error copy can distinguish the two                                                                                    |
-| 5   | `after`/`before` ≡ `date[gt_eq]`/`[lt_eq]`? `page[size]` or `per_page`? | Filter forms are equivalent (identical ID sets). **Both** pagination params work identically; use `page[size]`.                                                                                             | `time-entries-day-date-operators.json`, `time-entries-page-size.json`, `time-entries-per-page.json` | **Changes SPEC 4.2** — the key names are as SPEC assumed, but the guard is not: an empty day is `total_pages: 0`, so `total_pages > 1` is the wrong test |
-| 6   | `POST /timers` body, `/timers/{id}/stop`, does stopping write `time`? | **Resolved.** Start posts `service` and `person` as relationships and auto-creates a `time: 0` entry. Stop is `PUT /timers/{id}/stop` with `{}`, and it writes the elapsed whole minutes onto that entry. | `timer-create.json`, `timer-stop.json`, `time-entry-from-timer.json`        | **Fixes SPEC 10 X-4** — the endpoints are now recorded rather than assumed                                                  |
+| 5   | `after`/`before` ≡ `date[gt_eq]`/`[lt_eq]`? `page[size]` or `per_page`? | Filter forms are equivalent (identical ID sets). **Both** pagination params work identically; use `page[size]`.                                                                                             | `time-entries-day-date-operators.json`, `time-entries-page-size.json`, `time-entries-per-page.json` | **Changed the client** — the key names are as assumed, but the guard is not: an empty day is `total_pages: 0`, so `total_pages > 1` is the wrong test |
+| 6   | `POST /timers` body, `/timers/{id}/stop`, does stopping write `time`? | **Resolved.** Start posts `service` and `person` as relationships and auto-creates a `time: 0` entry. Stop is `PUT /timers/{id}/stop` with `{}`, and it writes the elapsed whole minutes onto that entry. | `timer-create.json`, `timer-stop.json`, `time-entry-from-timer.json`        | **Settled the timer endpoints** — the endpoints are now recorded rather than assumed                                                  |
 | 7   | Does `note` from the UI contain HTML?                               | **Yes.** A UI-created entry's note is `"<ul><li><p>Probavam</p></li></ul>"`. `note` is also nullable. Plain text with `\n` round-trips unchanged.                                                              | `time-entries-day.json`, `time-entry-create.json`                           | **Confirms A-9** with evidence — strip tags on render, write plain text                                                     |
 
 ### Found while verifying (not among the original seven)
 
-| Finding                                                                                     | Sample                                       | SPEC impact                                                          |
+| Finding                                                                                     | Sample                                       | Impact                                                               |
 | ------------------------------------------------------------------------------------------- | -------------------------------------------- | -------------------------------------------------------------------- |
-| `X-Organization-Id` does not scope the membership collection: an unknown organization returns 200 and the token's own memberships. | `organization-memberships-unknown-organization.json` | **Restores SPEC 4.1** — the app finds the matching membership, and a login that skipped that step accepted any organization |
-| Sparse fieldsets supported on collections — 13x, 27x and 5.4x on the three in use.           | `services.json` and the other sparse samples | **Extends SPEC 4.2** — a concrete "no over-fetching" lever            |
+| `X-Organization-Id` does not scope the membership collection: an unknown organization returns 200 and the token's own memberships. | `organization-memberships-unknown-organization.json` | **Restored the membership match** — the app finds the matching membership, and a login that skipped that step accepted any organization |
+| Sparse fieldsets supported on collections — 13.3x, 12.4x and 5.4x on the three in use.           | `services.json` and the other sparse samples | **Extended** — a concrete "no over-fetching" lever            |
 | `fields` is ignored on `GET /time_entries/{id}`; the full 44-attribute record comes back.    | `time-entry-show.json`                       | The efficiency lever does not apply to the edit route's fetch         |
 | `sort=created_at` is rejected; only `date`/`-date` are accepted.                             | `sort-support.txt`                           | **Changes A-7** — sort by `created_at` must be client-side            |
 | `errors[].status` can be a slug (`unprocessable_content`) over a different HTTP status.      | `error-400-sort-unsupported.json` + `http-status-lines.txt` | Error mapping must use the transport status            |
@@ -315,22 +317,22 @@ entry's `time` was typed by hand.
 | `time: 0` entries exist in real data, with `draft: false`.                                   | `time-entries-day.json`                      | **Qualifies A-8** — and its "zero means draft" rationale is wrong     |
 | POST/PATCH responses omit `person` and `service` relationship data.                          | `time-entry-create.json`                     | Mutation responses can't render a service name                        |
 | `DELETE` → 204, no body, no `Content-Type`.                                                  | `time-entry-delete.txt`                      | Client must not JSON-parse 204                                        |
-| `note` is nullable; SPEC 3 and the domain diagram type it as a plain `string`.               | `time-entries-day.json`                      | **Changes SPEC 3** and `docs/diagrams/02-domain-model.mmd`            |
-| Create takes `person`/`service` as relationships, not as flat `person_id`/`service_id` attributes. | `time-entry-create.json`                | **Changes SPEC 3**                                                    |
+| `note` is nullable; the domain model originally typed it as a plain `string`.               | `time-entries-day.json`                      | **Changed the domain model** and `docs/diagrams/02-domain-model.mmd`            |
+| Create takes `person`/`service` as relationships, not as flat `person_id`/`service_id` attributes. | `time-entry-create.json`                | **Changed the domain model**                                                    |
 | `/time_entries` nests `include=service.deal.company,service.section` in one request; the deal, its company and the section all come back in `included`. | `time-entries-day-service-deal.json`         | **Unblocks UI-1 and UI-2** — no second request for the company or the project |
 | `services.section` is a real relationship and answers `"data": null` for every service in this account — requested and empty, not un-included. | `time-entries-day-service-deal.json`         | **Qualifies UI-2** — the tooltip's third line renders only when a section exists |
 | `companies.avatar_url` exists and is a URL string; the scrubber rewrites it to a placeholder, which is itself the proof it was populated. | `company-show.json`                          | **Confirms UI-1** — the card's company logo is real, initials are the fallback |
 | `people.availabilities` holds expected hours: a JSON **string** parsing to `[[start, end, hours[14], id]]`, where `hours` is Mon..Sun twice and `end` is `null` while the period is open. | `person-show.json`                           | **Unblocks UI-5 and UI-6** — non-working days and expected hours both come from it |
-| `fields[people]=…,availabilities` is honoured on `GET /organization_memberships`, so that figure rides the login request. | `organization-memberships-include-availabilities.json` | **Extends SPEC 4.2** — UI-6 costs no request of its own |
+| `fields[people]=…,availabilities` is honoured on `GET /organization_memberships`, so that figure rides the login request. | `organization-memberships-include-availabilities.json` | **Extended** — UI-6 costs no request of its own |
 | `/timers` accepts `filter[time_entry_id]`, and it genuinely filters: 3 rows against 16 unfiltered. | `timers-for-entry.json` + `timers-all.json`  | **Unblocks UI-9** — one entry's runs are listable                     |
-| A timer's `total_time` is the linked entry's **cumulative** minutes after that run, not the run's own length. Three runs on one entry read 2, 26, 26. | `timers-for-entry.json`                      | **Confirms SPEC 11 finding 4** — UI-9's per-run figure is a delta      |
+| A timer's `total_time` is the linked entry's **cumulative** minutes after that run, not the run's own length. Three runs on one entry read 2, 26, 26. | `timers-for-entry.json`                      | **Confirmed** — UI-9's per-run figure is a delta      |
 | The recorded day drifted between 2026-09-16 and 2026-09-17: entry `162921872` (240 min) is gone and `163073474` (0 min) is new, so the day totals `5h` rather than `9h`. | `time-entries-day-service-deal.json`         | The day fixture and every test asserting `9h` move with it            |
 | A service's whole hierarchy resolves in one day request: `include=service.deal.company,service.deal.project.company,service.section`. `deals` carry both `company` and `project`, `projects` carry a `company` of their own, and `sections` hang off the service. | `time-entries-day-service-context.json`       | **Unblocks UI-2** — five levels, no fan-out                   |
 | The project names in the recording are the design's own sample copy - `Internal project [SAMPLE]`, `Fixed price [SAMPLE]` - which is what confirms the card's meta line is `project · service` rather than `deal · service`. | `time-entries-day-service-context.json`      | **Confirms UI-2** — the dotted name is `deal.project.name`     |
 | A single-resource endpoint answers every relationship with `{"meta":{"included":false}}` unless `include` asks; `/services/{id}` and `/deals/{id}` list the relationship names and nothing else. | `service-show.json`, `deal-show.json`        | Confirms api-client rule 10 — the shapes came from the collection |
 | An organization has no picture of its own: the logo Productive's top bar renders belongs to `organization.company`, and that company's `avatar_url` is the field. Watched on `app.productive.io`, whose own request is `organization_memberships/{id}?include=…organization.company…`. | `organization-memberships-avatars.json`       | **Confirms UI-8** — the org badge is a real logo, not initials |
 | `people.avatar_url` exists and is nullable (null for the recorded person, who never uploaded one). | `person-show.json`, `organization-memberships-avatars.json` | **Confirms UI-8** — initials are the fallback, not the design |
-| `fields[people]=…,avatar_url` and `include=person,organization.company` are both honoured on the login request, alongside `availabilities`. | `organization-memberships-avatars.json`      | **Extends SPEC 4.2** — avatars and expected hours cost no request |
+| `fields[people]=…,avatar_url` and `include=person,organization.company` are both honoured on the login request, alongside `availabilities`. | `organization-memberships-avatars.json`      | **Extended** — avatars and expected hours cost no request |
 
 ## Reproducing
 

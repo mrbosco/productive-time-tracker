@@ -1,24 +1,23 @@
 import { queryOptions, useQuery } from '@tanstack/react-query';
-import { listTimeEntries } from '@/api/time-entries';
-import { toAuth } from '@/components/features/auth/useSession';
+import type { TimeEntry } from '@/api/types';
+import { weekEntriesQueryOptions } from '@/components/features/week/useWeekEntries';
 import type { Session } from '@/lib/storage';
 
 /**
- * One day's entries for the logged-in person (R-3, R-4).
+ * One day's entries, selected out of the week they fall in.
  *
- * The key is `['time-entries', personId, date]` (SPEC 6.3): per-person because logging out and
- * back in as someone else must not reuse the cache, and per-date because that is the unit the API
- * is asked for and the unit a create or delete invalidates (SPEC 4.2). The token is never part of
- * a key (api-client rule 7, ADR-0004).
+ * The day and the week were two queries against the same endpoint with the same `fields` and
+ * `include`, differing only in the range - so the day was always a subset of a request already
+ * being made. Selecting from the one cached week means stepping between days inside a week costs
+ * no request at all, and a write invalidates one key instead of two.
  *
- * `personId` comes from the session rather than from user input - the assignment's "for the sake
- * of simplicity, set it dynamically" (R-10) - and is what makes R-4 true on the wire rather than
- * by filtering after the fact.
+ * The API returns a range sorted newest-first, and filtering preserves that order, so the day reads
+ * exactly as it did when it was fetched on its own.
  */
 export function timeEntriesQueryOptions(session: Session, date: string) {
 	return queryOptions({
-		queryKey: ['time-entries', session.personId, date],
-		queryFn: () => listTimeEntries(toAuth(session), session.personId, date),
+		...weekEntriesQueryOptions(session, date),
+		select: (entries: TimeEntry[]) => entries.filter((entry) => entry.date === date),
 	});
 }
 

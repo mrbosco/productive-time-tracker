@@ -15,7 +15,7 @@ TanStack Router, file-based routes via the Vite plugin.
 - Type-safe params and search params: `date` is validated with a zod schema at the route boundary, so an invalid or missing date redirects to today in one place instead of being checked in components. React Router treats `useParams`/`useSearchParams` as untyped strings.
 - `beforeLoad` route guard with typed router context carries the session; unauthenticated access to any protected route redirects to `/login` declaratively, and `/login` redirects to today when a session exists.
 - Loaders integrate with TanStack Query (`queryClient.ensureQueryData`) so the day view and the edit view start fetching on navigation, not after mount; this is the "efficiency" criterion made visible.
-- Typed `<Link to="/day/$date">` catches broken links at compile time; useful when Claude Code generates routes.
+- Typed `<Link to="/day/$date">` catches broken links at compile time.
 - Cost: a newer API than React Router. Mitigated by the small route count (5) and by keeping routing thin: routes only validate, guard, prefetch and render a feature component.
 
 ## Rejected: React Router 7

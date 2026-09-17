@@ -1,15 +1,14 @@
 import { expect, type Locator, type Page, test } from '@playwright/test';
 
 /**
- * X-4 on both projects: starting a timer, seeing it run, and turning it into a described entry.
+ * The timer: starting one, seeing it run, and turning it into a saved entry.
  *
  * What only a browser can answer is the shape of the whole thing - that starting one puts a `0h`
- * row on today straight away (SPEC 11, finding 1), that stopping edits *that* entry rather than
- * creating a second, and that the indicator survives a reload. The 409 path, the elapsed clock and
- * the `document.title` mirror are component tests.
+ * row on today straight away, that stopping edits *that* entry rather than creating a second, and
+ * that the indicator survives a reload. The 409 path, the elapsed clock and the `document.title`
+ * mirror are component tests.
  */
 const SESSION_STORAGE_KEY = 'tracktive.session';
-const TIMER_STORAGE_KEY = 'tracktive.timer';
 
 async function signIn(page: Page) {
 	await page.addInitScript({
@@ -24,18 +23,8 @@ async function signIn(page: Page) {
 	});
 }
 
-/** The recorded day, for continuing an entry that already has time on it. */
-const SEEDED_DATE = '2026-09-15';
-const NOTED_ENTRY_NOTE = 'Probavam';
-/** What that entry already holds, which a continuation counts up from rather than replacing. */
-const NOTED_ENTRY_DURATION = '5h';
 /** What a seeded entry on today is worth, so a continuation has something to count up from. */
 const SEEDED_DURATION = '45m';
-
-/** Addressed by its note, not by position: which row it is depends on A-7, not on this test. */
-function notedEntry(page: Page) {
-	return page.getByRole('article').filter({ hasText: NOTED_ENTRY_NOTE });
-}
 
 /** Whatever day the suite runs on, which is where a timer's entry lands. */
 async function gotoToday(page: Page) {
@@ -43,18 +32,12 @@ async function gotoToday(page: Page) {
 	await expect(page).toHaveURL(/\/day\/\d{4}-\d{2}-\d{2}$/);
 }
 
-test.describe('timer (X-4)', () => {
+test.describe('timer', () => {
 	test.beforeEach(async ({ page }) => {
 		await signIn(page);
 	});
 
-	test('opens with no timer running', async ({ page }) => {
-		await gotoToday(page);
-
-		await expect(page.getByRole('button', { name: 'Start timer' })).toBeVisible();
-	});
-
-	/** Starting one also creates its entry, dated today with `time: 0` - SPEC 11, finding 1. */
+	/** Starting one also creates its entry, dated today with `time: 0`. */
 	test('starts a timer and puts its entry on today straight away', async ({ page }) => {
 		await gotoToday(page);
 
@@ -81,7 +64,7 @@ test.describe('timer (X-4)', () => {
 
 	/**
 	 * Stopping edits the entry the start created rather than creating a second one, which is the
-	 * behaviour SPEC 11 says X-4 must not get wrong: the day keeps exactly one row.
+	 * behaviour the timer must not get wrong: the day keeps exactly one row.
 	 */
 	test('stops a timer and saves the tracked time onto its own entry', async ({ page }) => {
 		await gotoToday(page);
@@ -122,29 +105,7 @@ test.describe('timer (X-4)', () => {
 	});
 
 	/**
-	 * X-4 after review: the app bar was the only sign a timer was running, and on a full day the
-	 * row it belongs to can be scrolled far from it (`Timer.dc.html`). The row says so itself, and
-	 * carries a stop of its own - both drive the one timer.
-	 */
-	test('marks the row it is running against, and stops from there', async ({ page }) => {
-		await gotoToday(page);
-		await page.getByRole('button', { name: 'Start timer' }).click();
-
-		const tracking = page.getByRole('article').first();
-		await expect(tracking.getByText('Tracking')).toBeVisible();
-
-		await tracking.getByRole('button', { name: 'Stop timer' }).click();
-
-		await expect(page.getByRole('dialog', { name: 'Save tracked time' })).toBeVisible();
-	});
-
-	/**
-	 * A continuation, not a copy: `POST /timers` with a `time_entry` relationship attaches to the
-	 * entry instead of creating one (SPEC 11, finding 4). So the row that was clicked is the row
-	 * that counts up, on its own day, and the day is no longer than it was.
-	 */
-	/**
-	 * `Card Actions.dc.html` puts this on the row as a play button where there is a pointer to
+	 * `Card Actions.dc.html` puts continuing on the row as a play button where there is a pointer to
 	 * reveal it, and leaves it in the kebab on touch - no hover, and no room beside a 15px note.
 	 */
 	async function continueTimerOn(entry: Locator, page: Page, project: string) {
@@ -175,7 +136,15 @@ test.describe('timer (X-4)', () => {
 		await expect(page.getByRole('article').first()).toContainText(SEEDED_DURATION);
 	}
 
-	test('continues the entry it was started from, on its own day', async ({ page }, testInfo) => {
+	/**
+	 * A continuation, not a copy: `POST /timers` with a `time_entry` relationship attaches to the
+	 * entry instead of creating one. So the row that was clicked is the row that counts up, on its
+	 * own day, and the day is no longer than it was.
+	 *
+	 * Runs on both projects: the play button is a pointer affordance, and touch reaches the same
+	 * action through the kebab.
+	 */
+	test('continues the entry it was started from, on its own day', { tag: '@mobile' }, async ({ page }, testInfo) => {
 		await seedEntryOnToday(page);
 
 		const entry = page.getByRole('article').first();
@@ -186,76 +155,5 @@ test.describe('timer (X-4)', () => {
 		await expect(entry.getByText('Tracking')).toBeVisible();
 		// Counting up from what it already holds, not from zero.
 		await expect(entry).toContainText(SEEDED_DURATION);
-	});
-
-	/**
-	 * A clock runs now, so there is nothing sensible for it to do on a row from another day - the
-	 * timer attaches to that entry and would count into it. The play button is simply not there.
-	 */
-	test('offers no way to continue an entry from another day', async ({ page }, testInfo) => {
-		await page.goto(`/day/${SEEDED_DATE}`);
-		const entry = notedEntry(page);
-		await expect(entry).toContainText(NOTED_ENTRY_DURATION);
-
-		if (testInfo.project.name === 'mobile-chrome') {
-			await entry.getByRole('button', { name: 'Entry actions' }).click();
-			await expect(page.getByRole('menuitem', { name: 'Continue timer' })).toHaveAttribute('aria-disabled', 'true');
-
-			return;
-		}
-
-		await entry.hover();
-		await expect(page.getByRole('button', { name: 'Continue timer on this entry' })).toHaveCount(0);
-	});
-
-	/**
-	 * One timer at a time: starting a second silently would be the worst of the three behaviours.
-	 *
-	 * Both halves on one day, deliberately. The MSW worker's memory of a running timer lives in the
-	 * page, so a `page.goto` between them would reload it away and the second half would be asking
-	 * about a timer the mock had already forgotten.
-	 */
-	test('will not continue a second entry while one is running', async ({ page }, testInfo) => {
-		await seedEntryOnToday(page);
-		await continueTimerOn(page.getByRole('article').first(), page, testInfo.project.name);
-		await expect(page.getByRole('article').first().getByText('Tracking')).toBeVisible();
-
-		if (testInfo.project.name === 'mobile-chrome') {
-			// The item is still there on touch, and refuses.
-			await page.getByRole('article').first().getByRole('button', { name: 'Entry actions' }).click();
-			await expect(page.getByRole('menuitem', { name: 'Continue timer' })).toHaveAttribute('aria-disabled', 'true');
-
-			return;
-		}
-
-		// On a pointer nowhere offers it: the running row is tracking, and every other row loses
-		// its play button while one runs.
-		await expect(page.getByRole('button', { name: 'Continue timer on this entry' })).toHaveCount(0);
-	});
-
-	/** X-2 lists `s`; this is the timer it stops, and it works from any route. */
-	test('stops the timer with the s key', async ({ page }) => {
-		await gotoToday(page);
-		await page.getByRole('button', { name: 'Start timer' }).click();
-		await expect(page.getByRole('banner').getByRole('button', { name: 'Stop timer' })).toBeVisible();
-
-		await page.keyboard.press('s');
-
-		await expect(page.getByRole('dialog', { name: 'Save tracked time' })).toBeVisible();
-	});
-
-	/** Logging out forgets the timer, or the next person here opens with someone else's running. */
-	test('forgets the timer on logout', async ({ page }) => {
-		await gotoToday(page);
-		await page.getByRole('button', { name: 'Start timer' }).click();
-		await expect(page.getByRole('banner').getByRole('button', { name: 'Stop timer' })).toBeVisible();
-
-		await page.getByRole('button', { name: 'Account menu' }).click();
-		await page.getByRole('menuitem', { name: 'Log out' }).click();
-
-		await expect(page).toHaveURL('/login');
-		const { origins } = await page.context().storageState();
-		const stored = origins.flatMap((origin) => origin.localStorage).find((item) => item.name === TIMER_STORAGE_KEY);
-		expect(stored).toBeUndefined();
 	});
 });

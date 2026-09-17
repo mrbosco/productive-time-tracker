@@ -5,10 +5,8 @@ import { Button } from '@/components/core/Button';
 import { sessionQueryOptions, useLogout } from '@/components/features/auth/useSession';
 import { AppLayout } from '@/components/shared/layouts/AppLayout';
 
-/**
- * The auth boundary. A pathless layout route rather than a check in each page: every route nested
- * under it is guarded by existing, and a new one cannot forget (ADR-0007).
- */
+/** The auth boundary: a pathless layout route, so every route nested under it is guarded by
+ * existing and a new one cannot forget (ADR-0007). */
 export const Route = createFileRoute('/_authenticated')({
 	beforeLoad: ({ context }) => {
 		const { session } = context.auth;
@@ -21,14 +19,9 @@ export const Route = createFileRoute('/_authenticated')({
 	loader: async ({ context, preload }) => {
 		const { session, auth, queryClient } = context;
 
-		/**
-		 * A stored session the API will not stand behind. Dropping it here is the point of the
-		 * re-validation (ADR-0004) - otherwise every later request fails on its own, one at a
-		 * time, with no way back to the login screen.
-		 *
-		 * Never during a preload: hovering a link must not log anyone out. The failure is
-		 * reported so the preload is discarded, and the real navigation deals with it.
-		 */
+		/** A stored session the API will not stand behind, dropped here rather than letting every later
+		 * request fail on its own (ADR-0004). Never during a preload - hovering a link must not log
+		 * anyone out - so the failure is reported and the real navigation deals with it. */
 		function rejectSession(reason: string): never {
 			if (preload) throw new Error(reason);
 
@@ -47,10 +40,8 @@ export const Route = createFileRoute('/_authenticated')({
 			throw error;
 		}
 
-		// The response is checked, not just awaited. Both halves of the stored session are read
-		// back out of the browser on every load: the organization goes out as a header on every
-		// request, and the person is what filters the day list (R-4). The organization has to be
-		// matched here rather than trusted to the header, which does not scope this collection.
+		// The response is checked, not just awaited: the organization has to be matched here rather
+		// than trusted to the header, which does not scope this collection.
 		const membership = findMembershipForOrganization(memberships, session.organizationId);
 		if (membership === undefined) {
 			rejectSession('The stored credentials are not a member of that organization.');
@@ -91,11 +82,8 @@ function RevalidatingSession() {
 	);
 }
 
-/**
- * The re-validation failed for a reason that is not "these credentials are no good" - the API is
- * unreachable or broken. Without this the router's own error screen takes over, which offers no
- * way out: the session cannot be retried and cannot be dropped, on every route at once.
- */
+/** The re-validation failed for a reason that is not "these credentials are no good". Without this
+ * the router's own error screen takes over, and it offers no way to retry or drop the session. */
 function SessionCheckFailed() {
 	const router = useRouter();
 	const logout = useLogout();

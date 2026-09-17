@@ -11,23 +11,11 @@ import {
 } from './client';
 import type { Service } from './types';
 
-/**
- * `filter[time_tracking_enabled]=true` is the only reliable way to list trackable services - the
- * attribute of the same name disagrees with it (the three "Expenses: ..." services report `true`
- * and are still excluded). The filter is authoritative.
- *
- * This list is organization-wide, not person-scoped: `filter[person_id]` is silently ignored here,
- * and whether a given person may track on a service only surfaces as a 422 at create time.
- *
- * Sparse fieldsets cut this 13x. `fields` governs relationships as well as attributes, so `deal`
- * has to be named there or the linkage vanishes while the included deals remain orphaned.
- *
- * The project rides along because A-1's label calls its middle part the project and had been
- * printing the deal there. They are different records - a deal is "Data platform migration - phase
- * 2" where its project is "Data platform migration" - and the entry card names the project now
- * (UI-2), so a picker naming the deal would have two names for one thing. The company logo comes
- * too, because the picker groups by company and draws one per group header.
- */
+/** `filter[time_tracking_enabled]=true` is the only reliable way to list trackable services - the
+ * attribute of the same name disagrees with it and is not authoritative. Organization-wide, not
+ * person-scoped: `filter[person_id]` is silently ignored, and a refusal only surfaces as a 422 at
+ * create time. `fields` governs relationships too, so `deal` must be named there or the linkage
+ * vanishes. */
 const FIELDS =
 	'fields[services]=name,deal&fields[deals]=name,company,project&fields[projects]=name&fields[companies]=name,avatar_url';
 
@@ -38,16 +26,9 @@ function buildPath(page: number): string {
 	);
 }
 
-/**
- * Walks `service -> deal -> project -> company`, plus the section and the deal's own company.
- *
- * Which company is "the company" and which is "the client" is the one judgement in here. The
- * project's is the work's - it is what a logo is recognised as - and the deal's is whoever is
- * billed for it. They are the same record in every entry this account has; they come apart on
- * subcontracted work, which is the case `Service Context.dc.html` designs the Client row for. The
- * project's is used when there is one and the deal's stands in when there is not, so an avatar
- * never goes missing over a deal that was never filed under a project.
- */
+/** Walks `service -> deal -> project -> company`, plus the section and the deal's own company. The
+ * project's company is whose work it is and the deal's is who is billed; they come apart only on
+ * subcontracted work. The deal's stands in when there is no project, so an avatar never goes missing. */
 export function toService(document: JsonApiDocument, resource: Resource): Service {
 	const dealId = readRelationshipId(resource, 'deal');
 	const deal = findIncluded(document, 'deals', dealId);
@@ -76,16 +57,11 @@ export function toService(document: JsonApiDocument, resource: Resource): Servic
 	};
 }
 
-/**
- * "Company · Project · Service" (A-1). Neither service names nor deal names are unique on their own,
- * and the three-part form is unique across the recorded account - but nothing in the API guarantees
- * it, so any label still shared by two services gets its deal ID appended. Only the collided labels
- * are suffixed; suffixing every row would be noise.
- */
+/** "Company · Project · Service". Neither service names nor deal names are unique on their own, and
+ * the three-part form is unique across the recorded account - but nothing in the API guarantees it,
+ * so only the labels that still collide get their deal ID appended. */
 export function labelServices(services: Service[]): { service: Service; label: string }[] {
-	// "Company · Project · Service" (A-1), and the project is the project now. The deal stands in
-	// where a service was never filed under one, which is the only reason that read as correct
-	// before.
+	// The deal stands in where a service was never filed under a project.
 	const base = (service: Service) =>
 		[service.companyName, service.projectName ?? service.dealName, service.name].filter(Boolean).join(' · ');
 

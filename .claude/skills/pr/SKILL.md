@@ -5,7 +5,7 @@ description: Open a pull request - run the full gate, then write the title and b
 
 # Open a pull request
 
-One story per PR (SPEC 12, guidebook 27). If the branch carries two, split it before opening.
+One story per PR (guidebook 27). If the branch carries two, split it before opening.
 
 ## 1. Gate
 
@@ -60,9 +60,9 @@ Why this approach. Alternatives rejected and why. Cite the ADR if one governs it
 ## Spec and design
 
 - Story: US-2
-- Requirements: R-9, R-10 (SPEC 2.1)
-- Route: `/entries/new` (SPEC 6.2)
-- Design: `docs/design/screens/03-new-entry-mobile.png`, `03-new-entry-desktop.png`
+- Feature: add a time entry
+- Route: `/entries/new` (SPEC 1)
+- Screens: `docs/screenshots/entry-form-mobile.png`, `entry-form-desktop.png`
 
 ## Screenshots
 
@@ -74,7 +74,7 @@ Why this approach. Alternatives rejected and why. Cite the ADR if one governs it
 
 - Unit: ...
 - Component: loading, empty, error, data
-- E2E: `e2e/create-entry.spec.ts`, both projects
+- E2E: `e2e/entry-create.spec.ts`, both projects
 - Manual smoke against the real API: ...
 
 ## Open questions

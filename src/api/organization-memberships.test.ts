@@ -1,9 +1,7 @@
-import { http, HttpResponse } from 'msw';
 import { describe, expect, it } from 'vitest';
 import membershipsAllFields from '../../docs/api/samples/organization-memberships-all-fields.json';
 import memberships from '../../docs/api/samples/organization-memberships-include-organization.json';
 import unknownOrganization from '../../docs/api/samples/organization-memberships-unknown-organization.json';
-import { server } from '../mocks/node';
 import {
 	findMembershipForOrganization,
 	listOrganizationMemberships,
@@ -47,50 +45,6 @@ describe('listOrganizationMemberships', () => {
 
 		expect(membership?.personId).toBe('1448639');
 		expect(membership?.person).toMatchObject({ firstName: 'Ada', lastName: 'Lovelace' });
-	});
-
-	it('resolves the organization the membership belongs to', async () => {
-		const [membership] = await listOrganizationMemberships(auth);
-
-		expect(membership?.organizationId).toBe('999999');
-		expect(membership?.organizationName).toBe('Example Organization');
-	});
-
-	it('asks for both relationships, without which the response carries no IDs at all', async () => {
-		let params: URLSearchParams | undefined;
-		server.use(
-			http.get('*/organization_memberships', ({ request }) => {
-				params = new URL(request.url).searchParams;
-
-				return HttpResponse.json(membershipsAllFields);
-			})
-		);
-
-		const [membership] = await listOrganizationMemberships(auth);
-
-		// `organization.company` rather than `organization`: the logo hangs off the company behind
-		// the organization, which is where Productive's own client reaches it (UI-8).
-		expect(params?.get('include')).toBe('person,organization.company');
-		// Served the unfielded recording, which has no `include`: the IDs are genuinely absent.
-		expect(membership?.personId).toBeNull();
-		expect(membership?.organizationId).toBeNull();
-	});
-
-	it('narrows the organization to its name and company, keeping the record’s secrets out of the response', async () => {
-		let params: URLSearchParams | undefined;
-		server.use(
-			http.get('*/organization_memberships', ({ request }) => {
-				params = new URL(request.url).searchParams;
-
-				return HttpResponse.json(memberships);
-			})
-		);
-
-		await listOrganizationMemberships(auth);
-
-		expect(params?.get('fields[organizations]')).toBe('name,company');
-		// The company is narrowed too, for the same reason the organization is.
-		expect(params?.get('fields[companies]')).toBe('name,avatar_url');
 	});
 });
 

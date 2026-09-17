@@ -7,33 +7,23 @@ import { toAuth } from '@/components/features/auth/useSession';
 import { todayIso } from '@/lib/date';
 import { clearTimerState, readTimerState, type Session, writeTimerState } from '@/lib/storage';
 
-/** The running timer as the app bar needs it, from the query or from what a refresh remembered. */
 export interface RunningTimer {
 	id: string;
 	startedAt: string;
-	/**
-	 * The entry the start created. Only `GET /timers?include=time_entry` ever returns it - both the
-	 * create and the stop responses carry `time_entry` un-included (api-client rule 10) - so it is
-	 * learned once and then remembered.
-	 */
+	/** The entry the start created. Only `GET /timers?include=time_entry` ever returns it - the
+	 * create and stop responses carry `time_entry` un-included - so it is learned once and remembered. */
 	entryId: string | null;
 }
 
-/** What a stop leaves behind for the sheet that follows it (X-4). */
 export interface StoppedTimer {
 	entryId: string;
 	startedAt: string;
 	stoppedAt: string;
-	/**
-	 * What the entry held before this timer attached to it, or `null` when the timer created it.
+	/** What the entry held before this timer attached to it, or `null` when the timer created it.
 	 * `Discard` needs the difference: a continuation is put back to this, an entry the timer made
-	 * is deleted.
-	 */
+	 * is deleted. */
 	loggedBefore: number | null;
-	/**
-	 * Minutes X-5 offered to throw away, because the timer appeared to be running on its own. The
-	 * sheet subtracts them from what it prefills; nothing is discarded until it is saved.
-	 */
+	/** Idle minutes offered for discard. The sheet subtracts them from what it prefills. */
 	discardMinutes: number;
 }
 
@@ -44,14 +34,9 @@ export function timerQueryOptions(session: Session) {
 	});
 }
 
-/**
- * Seconds since `startedAt`, ticking, or 0 when nothing is running.
- *
- * The elapsed time is computed during render rather than held in state, and the interval only
- * nudges React into rendering again. It is a reading of the clock, not a value this component
- * owns - holding it would mean a copy that is stale between ticks, and a timer restored from a
- * refresh would read `0:00` for a second before catching up with itself.
- */
+/** Seconds since `startedAt`, ticking, or 0 when nothing is running. Computed during render rather
+ * than held in state - the interval only nudges React - so a timer restored from a refresh does not
+ * read `0:00` for a second before catching up with itself. */
 export function useElapsedSeconds(startedAt: string | null): number {
 	const [, setTick] = useState(0);
 
@@ -76,52 +61,34 @@ function elapsedSince(startedAt: string | null): number {
 	return Math.max(0, Math.floor((Date.now() - new Date(startedAt).getTime()) / 1000));
 }
 
-/**
- * The running timer, and the two things that can be done to it (SPEC 10, X-4).
- *
- * Productive's own timer resource, which is why X-4 is worth doing at all: starting one **also
- * creates a time entry**, dated today with `time: 0` and linked through `time_entry`, and stopping
- * writes the elapsed whole minutes onto that same entry (SPEC 11). So the day list shows a `0h` row
- * the moment a timer starts, and stopping must not create a second entry - it edits the one that is
- * already there.
- *
- * `{ timerId, startedAt, entryId }` is persisted, because the query takes a request to answer and a
- * refresh would otherwise show `Start timer` for a second while a timer was running. What is stored
- * stands in only while the query is pending; the API is the truth the moment it replies, including
- * when it says nothing is running and the stored state is stale.
- */
+/** The running timer, and the two things that can be done to it. Starting one **also creates a time
+ * entry**, dated today with `time: 0` and linked through `time_entry`; stopping writes the elapsed
+ * whole minutes onto that same entry, so stopping must not create a second. The timer is persisted
+ * because a refresh would otherwise show `Start timer` while one was running. */
 export function useTimer(session: Session) {
 	const queryClient = useQueryClient();
 	const query = useQuery(timerQueryOptions(session));
-	/**
-	 * Read once, on the way in, and never written back: it stands in only while the query is
-	 * pending, and from the moment the query answers nothing reads it again. The effect below keeps
-	 * storage itself in step.
-	 */
+	// Stands in only while the query is pending; the effect below keeps storage itself in step.
 	const [restored] = useState(readTimerState);
 
 	const today = todayIso();
 
-	/** A day and the week around it: X-1's strip reads the week, so one without the other disagrees. */
+	/** The week a date falls in - which is also the day list, since that selects from this one key. */
 	function invalidateDay(date: string) {
-		return Promise.all([
-			queryClient.invalidateQueries({ queryKey: ['time-entries', session.personId, date] }),
-			queryClient.invalidateQueries({ queryKey: weekQueryKey(session, date) }),
-		]);
+		return queryClient.invalidateQueries({ queryKey: weekQueryKey(session, date) });
 	}
 
-	/** Where a bare start puts its new entry, and where a stop writes the minutes. */
 	function invalidateToday() {
 		return invalidateDay(today);
 	}
 
-	/**
-	 * A continued entry can be on any day, so the day to refresh is the entry's own. Read from the
-	 * cache rather than fetched: the entry was on screen a moment ago, which is how it was clicked.
-	 */
+	/** A continued entry can be on any day, and only the cache knows which. Read rather than fetched:
+	 * the entry was on screen a moment ago, which is how it came to be clicked. Scans every cached
+	 * week - the entry's own `date` is what names the week to invalidate, so a timer continued on a
+	 * week that is not the one on screen still refreshes the right one. */
 	function invalidateEntryDay(entryId: string) {
 		const entry = queryClient
-			.getQueriesData<{ id: string; date: string }[]>({ queryKey: ['time-entries', session.personId] })
+			.getQueriesData<{ id: string; date: string }[]>({ queryKey: ['week-entries', session.personId] })
 			.flatMap(([, entries]) => entries ?? [])
 			.find((candidate) => candidate.id === entryId);
 
@@ -133,15 +100,13 @@ export function useTimer(session: Session) {
 
 		const timer = query.data ?? null;
 		if (timer === null) {
-			// What was remembered is stale: the API is the truth the moment it replies, including
-			// when it says nothing is running.
+			// What was remembered is stale: the API is the truth the moment it replies.
 			clearTimerState();
 
 			return;
 		}
 
-		// Merged with what is already stored, not replaced: the query knows the timer, and only the
-		// start knew what the entry held before it (`loggedBefore`).
+		// Merged rather than replaced: only the start knew what the entry held before (`loggedBefore`).
 		writeTimerState({
 			...readTimerState(),
 			timerId: timer.id,
@@ -151,30 +116,19 @@ export function useTimer(session: Session) {
 	}, [query.isPending, query.data]);
 
 	const start = useMutation({
-		/**
-		 * Two ways to start one, and the API tells them apart by a relationship: a bare start creates
-		 * a fresh entry on today (`serviceId`), and a start carrying `time_entry` attaches to an entry
-		 * that already exists and adds to it on stop (`entryId`). Continuing is therefore a genuine
-		 * continuation rather than a copy - no second row, and the entry keeps its own service.
-		 */
+		/** Two ways to start one, told apart by a relationship: a bare start creates a fresh entry on
+		 * today, and one carrying `time_entry` attaches to an existing entry and adds to it on stop. */
 		mutationFn: async (input: { serviceId: string } | { entryId: string; loggedBefore: number }) => {
 			const started =
 				'entryId' in input
 					? await continueTimer(toAuth(session), input.entryId)
 					: await startTimer(toAuth(session), session.personId, input.serviceId);
 
-			/*
-			 * A continue asks for `include=time_entry` and gets the link back, so it is already
-			 * known and the cache is simply told. A bare start does not: `timer-create.json` was
-			 * recorded without an include and carries `{"meta":{"included":false}}`, and nothing
-			 * here is going to assume an include works on a call no sample covers (api-client rules
-			 * 10 and 25). That one pays for a read.
-			 *
-			 * `staleTime: 0` on it is load-bearing, and its absence was a real bug: the app's client
-			 * sets `staleTime: 30_000`, so `fetchQuery` answered from the cache - which still held
-			 * the `null` read on mount - and the pill stayed on `Start timer` until the page was
-			 * reloaded. A fetch asking "what is true now" has to say so.
-			 */
+			/* Both start and continue ask for `include=time_entry`, so the link normally comes back on
+			 * the create itself. The read stays as a fallback for a response that omits it anyway.
+			 * `staleTime: 0` there is load-bearing: without it `fetchQuery` inherited the client's 30s
+			 * staleness, answered from the `null` read on mount, and the pill stayed on `Start timer`
+			 * until a reload. */
 			let running: typeof started | null = started;
 			if (started.timeEntryId === null) {
 				running = await queryClient.fetchQuery({ ...timerQueryOptions(session), staleTime: 0 });
@@ -182,8 +136,7 @@ export function useTimer(session: Session) {
 				queryClient.setQueryData(timerQueryOptions(session).queryKey, started);
 			}
 
-			// Remembered here rather than derived later: only the caller knows what the entry held
-			// before, and after the stop the entry holds the sum.
+			// Only the caller knows what the entry held before; after the stop it holds the sum.
 			if (running !== null) {
 				writeTimerState({
 					timerId: running.id,
@@ -196,10 +149,7 @@ export function useTimer(session: Session) {
 			return running;
 		},
 
-		/**
-		 * A bare start put a new entry on today. A continue changed an entry that may be on any day -
-		 * the one it was started from - so that day and its week are what moved.
-		 */
+		/** A continue changed an entry that may be on any day, so that day and its week are what moved. */
 		onSuccess: (_timer, input) => ('entryId' in input ? invalidateEntryDay(input.entryId) : invalidateToday()),
 	});
 
@@ -217,11 +167,8 @@ export function useTimer(session: Session) {
 				const stopped = await stopTimer(toAuth(session), timer.id);
 				stoppedAt = stopped.stoppedAt ?? stoppedAt;
 			} catch (error) {
-				/*
-				 * 409 `timer_already_stopped` is not a failure (api-client rule 19, SPEC 11): the
-				 * timer was stopped in another tab or in Productive itself, and the only wrong thing
-				 * to do is tell someone their timer is still running.
-				 */
+				/* 409 `timer_already_stopped` is not a failure: the timer was stopped in another tab or in
+				 * Productive itself, and the only wrong thing to do is say it is still running. */
 				if (!(error instanceof ApiError) || error.code !== 'timer_already_stopped') throw error;
 			}
 
@@ -238,8 +185,7 @@ export function useTimer(session: Session) {
 		onSuccess: async (stopped) => {
 			clearTimerState();
 			queryClient.setQueryData(timerQueryOptions(session).queryKey, null);
-			// The entry's `time` was written by the stop, so the day it is on disagrees with the
-			// cache - and a continued entry's day is its own, not today.
+			// The stop wrote the entry's `time`, and a continued entry's day is its own, not today.
 			await (stopped === null ? invalidateToday() : invalidateEntryDay(stopped.entryId));
 		},
 	});

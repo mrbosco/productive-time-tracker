@@ -103,4 +103,4 @@ hand-written client; ADR-0005 rules out generating types from the OpenAPI file.
     response body for a real endpoint; if a shape is not recorded, record it. Synthesising a
     _transport_ condition a sample cannot hold — a dead socket, a non-JSON body, an extra page — is
     fine, and should reuse a recorded resource where one exists.
-31. Parsing and error mapping are unit-tested against those samples (SPEC 8).
+31. Parsing and error mapping are unit-tested against those samples (SPEC 7).

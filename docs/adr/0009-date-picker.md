@@ -4,9 +4,9 @@ Status: accepted (2026-09-16)
 
 ## Context
 
-A-3 fixes the date navigation for the day view: previous/next day buttons around a label in words, and **the label opens a calendar popover**. `docs/design/screens/02-day-mobile-calendar.png` designs that popover as a month grid.
+A-3 fixes the date navigation for the day view: previous/next day buttons around a label in words, and **the label opens a calendar popover**. The popover is a month grid.
 
-ADR-0006 already named "Calendar/DatePicker" among the shadcn primitives to copy in, but shadcn's `calendar` is a wrapper: the grid, the month arithmetic and the keyboard model come from `react-day-picker`, which is not installed. Nothing else in the tree can draw a calendar. `docs/adr/0005-scope-cuts.md` cut i18n in favour of `Intl` and CLAUDE.md requires an ADR before any dependency is added, so the choice is recorded here rather than made silently by `shadcn add`.
+ADR-0006 already named "Calendar/DatePicker" among the shadcn primitives to copy in, but shadcn's `calendar` is a wrapper: the grid, the month arithmetic and the keyboard model come from `react-day-picker`, which is not installed. Nothing else in the tree can draw a calendar. `docs/adr/0005-scope-cuts.md` cut i18n in favour of `Intl`, and this project records an ADR before any dependency is added, so the choice is recorded here rather than made silently by `shadcn add`.
 
 Three options were considered: a native `<input type="date">` opened with `showPicker()`, a hand-built month grid on the Radix Popover already in the tree, and shadcn's `calendar`.
 

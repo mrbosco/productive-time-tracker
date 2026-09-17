@@ -1,20 +1,8 @@
 import * as React from 'react';
 import { cn } from '@/lib/utils';
 
-/**
- * A native `<select>`, restyled to the design tokens.
- *
- * Native rather than Radix's Select, which ADR-0006 does not name and nothing else here needs: the
- * design draws exactly a bordered box with a caret, which is what a styled native control is, and
- * the platform then supplies the listbox semantics, type-ahead, keyboard model and - on a phone -
- * the OS picker, for a list of services that is flat and short.
- *
- * This is not the trade ADR-0009 rejected for the date picker. That one turned on the trigger being
- * a words label in a position `showPicker()` cannot control; there is no such constraint here.
- *
- * The caret is drawn rather than left to the browser, because the platform's own arrow is the one
- * part of a native select that looks different on every OS.
- */
+/** A native `<select>`, restyled to the design tokens. The platform supplies listbox semantics,
+ * type-ahead, the keyboard model and the OS picker on a phone, for a list that is flat and short. */
 function Select({ className, children, ...props }: React.ComponentProps<'select'>) {
 	return (
 		<div className="relative flex items-center">

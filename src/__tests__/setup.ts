@@ -9,19 +9,16 @@ import { server } from '@/mocks/node';
 window.scrollTo = () => undefined;
 
 // Same reason, one level down: jsdom ships no `scrollIntoView` at all, so the week strip centring
-// the selected day (X-1) would throw rather than log. There is nothing to scroll here either way -
+// the selected day would throw rather than log. There is nothing to scroll here either way -
 // `css: false` means no layout, so `scrollWidth` and `clientWidth` are both 0 and the guard in
 // `WeekStrip` returns before this is ever reached. Whether it centres is an e2e question.
 Element.prototype.scrollIntoView = () => undefined;
 
 /**
- * jsdom lays nothing out, so it ships no `getClientRects` on `Range`. ProseMirror asks for one
- * every time it scrolls a selection into view (ADR-0010), and the throw lands outside any test's
- * call stack - so the suite reports every test passing and still exits non-zero, which is how this
- * reached CI.
- *
- * An empty list is the honest answer here: there are no rectangles, because there is no layout.
- * Anything that actually depends on geometry is an e2e test.
+ * jsdom lays nothing out, so it ships no `getClientRects` on `Range`. ProseMirror asks for one every
+ * time it scrolls a selection into view (ADR-0010), and the throw lands outside any test's call
+ * stack - so the suite reports every test passing and still exits non-zero. An empty list is the
+ * honest answer: there are no rectangles, because there is no layout.
  */
 const EMPTY_RECT = {
 	x: 0,

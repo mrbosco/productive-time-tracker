@@ -1,15 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { type ActivitySample, looksSynthetic } from '@/lib/activity';
 
-/**
- * X-5's thresholds, in one place (guidebook 13, ADR-0008: "thresholds exposed as configuration,
- * defaults conservative").
- *
- * `detectSyntheticInput` is **off**, and that is a product decision rather than an oversight:
- * Harvest and Toggl both advertise that they do not watch your input, and this is a client-facing
- * tool. The heuristic is built and tested so the decision is reversible and so the interview
- * question has an answer; flipping this to `true` is the whole of turning it on. The README says so.
- */
+/** `detectSyntheticInput` is **off** by default: a product decision, not an oversight. The
+ * heuristic is built and tested so it is reversible - flipping this to `true` is the whole of it. */
 export interface ActivityMonitorConfig {
 	idleMinutes: number;
 	detectSyntheticInput: boolean;
@@ -30,47 +23,24 @@ export const ACTIVITY_MONITOR: ActivityMonitorConfig = {
 	checkIntervalMs: 30_000,
 };
 
-/** What the banner needs to know, and nothing that would let it report anything anywhere. */
 export interface ActivityConcern {
 	reason: 'idle' | 'synthetic';
-	/**
-	 * Whole minutes the concern covers, and what `Pause and discard idle time` would take off.
-	 *
-	 * For `idle` that is the time since the last sign of a person. For `synthetic` it cannot be -
-	 * a jiggler keeps that at zero by definition, which is the whole reason the heuristic exists -
-	 * so it is the span the suspicious window itself covers.
-	 */
+	/** Whole minutes the concern covers, and what `Pause and discard idle time` would take off. For
+	 * `synthetic` that is the suspicious window, since a jiggler keeps idle time at zero. */
 	minutes: number;
 }
 
-/** The events worth counting as a person being here. */
 const WATCHED = ['pointermove', 'keydown', 'wheel', 'click'] as const;
 
-/**
- * Watches for the timer running on its own (SPEC 10, X-5).
- *
- * Listeners go on `window` only while a timer runs and come off with it (ADR-0008) - there is no
- * monitoring happening when there is nothing being timed, which is the point.
- *
- * Gated on `document.visibilityState === 'visible'`, and that gate is load-bearing rather than
- * polite: a background tab receives no input events at all, so counting idleness while hidden would
- * accuse everyone who switched windows. Time spent hidden is not counted as idle - the clock is
- * pushed forward when the tab comes back, so what is measured is inactivity while someone was
- * actually looking at this.
- *
- * Nothing here reaches the network and nothing here stops a timer. It raises a concern; the person
- * decides.
- */
+/** Watches for the timer running on its own. The `visibilityState === 'visible'` gate is load-bearing:
+ * a background tab receives no input events, so counting idleness while hidden would accuse everyone
+ * who switched windows. Nothing here reaches the network or stops a timer; it raises a concern. */
 export function useActivityMonitor(
 	isRunning: boolean,
 	config: ActivityMonitorConfig = ACTIVITY_MONITOR
 ): { concern: ActivityConcern | null; acknowledge: () => void } {
-	/*
-	 * Destructured, and the effect below depends on these rather than on `config` itself. An object
-	 * identity in that array means a caller passing a literal tears the watch down and rebuilds it on
-	 * every render - which empties the sample window each time, so the synthetic heuristic could
-	 * never accumulate enough to judge. Accurate deps, not a memo on every caller (guidebook 9, 11).
-	 */
+	/* Destructured so the effect depends on the values, not `config` itself: a caller passing a
+	 * literal would rebuild the watch every render and empty the sample window. */
 	const { idleMinutes, detectSyntheticInput, cvThreshold, displacementPx, windowSize, minimumSamples } = config;
 	const { checkIntervalMs } = config;
 	const [concern, setConcern] = useState<ActivityConcern | null>(null);
@@ -82,20 +52,11 @@ export function useActivityMonitor(
 	useEffect(() => {
 		if (!isRunning) return;
 
-		// A timer that has just started has by definition just been interacted with.
 		lastActivity.current = Date.now();
 		samples.current = [];
 
-		/*
-		 * Records the activity and restarts the clock, but deliberately does **not** clear a concern
-		 * that is already raised.
-		 *
-		 * Clearing it here made the banner unreachable: moving the mouse towards it is a
-		 * `pointermove`, so it vanished under the cursor on the way to the button. And it would have
-		 * been the wrong thing even if it had worked - "we have not seen activity for fifteen
-		 * minutes" is a statement about the past, and being here now does not make it untrue. The
-		 * question stays until it is answered, which is one click either way.
-		 */
+		/* Deliberately does **not** clear a concern already raised: moving the mouse towards the banner
+		 * is a `pointermove`, so it vanished under the cursor on the way to the button. */
 		function record(event: Event) {
 			lastActivity.current = Date.now();
 
@@ -111,11 +72,7 @@ export function useActivityMonitor(
 			];
 		}
 
-		/*
-		 * Coming back to the tab is not activity, but time spent away is not idleness either - so
-		 * the clock is pushed forward rather than the concern being raised for the minutes nobody
-		 * was here for.
-		 */
+		// Time away is not idleness: push the clock forward rather than raise a concern for it.
 		function onVisibilityChange() {
 			if (document.visibilityState === 'visible') lastActivity.current = Date.now();
 		}
@@ -147,7 +104,6 @@ export function useActivityMonitor(
 			for (const type of WATCHED) window.removeEventListener(type, record);
 			document.removeEventListener('visibilitychange', onVisibilityChange);
 			clearInterval(check);
-			// Nothing is being timed any more, so there is nothing left to be concerned about.
 			setConcern(null);
 		};
 	}, [
@@ -163,10 +119,8 @@ export function useActivityMonitor(
 
 	return {
 		// Guarded as well as cleared on teardown: the render in which the timer stops happens before
-		// the cleanup that clears it, and a banner about a timer that is no longer running is worse
-		// than one frame of nothing.
+		// the cleanup that clears the concern.
 		concern: isRunning ? concern : null,
-		/** `Keep running`, and the dismiss icon: the answer is "I am here", so the clock restarts. */
 		acknowledge: () => {
 			lastActivity.current = Date.now();
 			samples.current = [];

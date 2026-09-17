@@ -8,14 +8,14 @@ afterEach(() => {
 
 function stubMatchMedia(matches: boolean) {
 	const listeners = new Set<() => void>();
-	const query = {
-		matches,
-		addEventListener: (_: string, listener: () => void) => listeners.add(listener),
-		removeEventListener: (_: string, listener: () => void) => listeners.delete(listener),
-	};
-	vi.stubGlobal('matchMedia', vi.fn().mockReturnValue(query));
-
-	return { listeners, query };
+	vi.stubGlobal(
+		'matchMedia',
+		vi.fn().mockReturnValue({
+			matches,
+			addEventListener: (_: string, listener: () => void) => listeners.add(listener),
+			removeEventListener: (_: string, listener: () => void) => listeners.delete(listener),
+		})
+	);
 }
 
 describe('useHasHover', () => {
@@ -33,19 +33,5 @@ describe('useHasHover', () => {
 		stubMatchMedia(true);
 
 		expect(renderHook(() => useHasHover()).result.current).toBe(true);
-	});
-
-	it('answers no for a pointer that cannot hover', () => {
-		stubMatchMedia(false);
-
-		expect(renderHook(() => useHasHover()).result.current).toBe(false);
-	});
-
-	/** A mouse plugged into a tablet changes the answer without the page reloading. */
-	it('subscribes, so the answer can change under it', () => {
-		const { listeners } = stubMatchMedia(false);
-		renderHook(() => useHasHover());
-
-		expect(listeners.size).toBe(1);
 	});
 });

@@ -6,7 +6,7 @@ paths:
 
 # Guidebook rules
 
-The 32 rules distilled in `docs/guidebook/RULES_DRAFT.md`, which in turn distils `docs/guidebook/infinum-handbook.md`. **Numbering is load-bearing**: `prettier.config.mjs`, `eslint.config.mjs` and `commitlint.config.mjs` cite these numbers in comments. Never renumber; append instead.
+32 rules distilled from [Infinum's Frontend Handbook](https://infinum.com/handbook/frontend). **Numbering is load-bearing**: `prettier.config.mjs`, `eslint.config.mjs` and `commitlint.config.mjs` cite these numbers in comments. Never renumber; append instead.
 
 "Adapted" marks a rule that differs from the handbook because the handbook assumes Next.js + Emotion and this is a Vite SPA.
 
@@ -69,7 +69,7 @@ These are already implemented. Treat them as constraints on the config files, no
 Format detail in `.claude/rules/git.md`.
 
 27. Small PRs, one story each. The title carries the requirement ID: `feat(time-entries): add entry form (US-2)`.
-28. PR description: summary and reasoning, links to `docs/design/` and the relevant SPEC sections, screenshots on mobile and desktop, test plan, open questions.
+28. PR description: summary and reasoning, links to the relevant SPEC sections, screenshots on mobile and desktop, test plan, open questions.
 29. Code is linted, formatted and unit-tested before review. Coverage must not drop.
 30. Review language, including from the `reviewer` agent: concise, advise rather than ask, recommend the fix.
 

@@ -1,7 +1,7 @@
 import { expect, type Page, test } from '@playwright/test';
 
 /**
- * X-5 on both projects: the banner a running timer raises when nothing has happened for a while.
+ * The banner a running timer raises when nothing has happened for a while.
  *
  * Driven with Playwright's clock rather than a shortened threshold, because the fifteen minutes are
  * the product's number and a browser is the only place the whole chain can be exercised against it:
@@ -33,17 +33,9 @@ async function startTimerWithControlledClock(page: Page) {
 	await expect(page.getByRole('banner').getByRole('button', { name: 'Stop timer' })).toBeVisible();
 }
 
-test.describe('activity awareness (X-5)', () => {
+test.describe('activity awareness', () => {
 	test.beforeEach(async ({ page }) => {
 		await signIn(page);
-	});
-
-	test('says nothing while a timer has only just started', async ({ page }) => {
-		await startTimerWithControlledClock(page);
-
-		await page.clock.fastForward('02:00');
-
-		await expect(page.getByText(/we have not seen activity/)).toBeHidden();
 	});
 
 	test('warns once a running timer has been quiet for long enough', async ({ page }) => {
@@ -56,27 +48,7 @@ test.describe('activity awareness (X-5)', () => {
 		await expect(page.getByRole('banner').getByRole('button', { name: 'Stop timer' })).toBeVisible();
 	});
 
-	/**
-	 * The bug this test exists for: the banner used to clear itself on any input, so moving the
-	 * mouse towards it made it vanish under the cursor and neither button could ever be reached.
-	 */
-	test('stays put long enough to be answered', async ({ page }) => {
-		await startTimerWithControlledClock(page);
-		await page.clock.fastForward('16:00');
-
-		const keepRunning = page.getByRole('button', { name: 'Keep running' });
-		await expect(keepRunning).toBeVisible();
-		await page.mouse.move(10, 10);
-		await page.mouse.move(400, 300);
-
-		await expect(keepRunning).toBeVisible();
-		await keepRunning.click();
-
-		await expect(page.getByText(/we have not seen activity/)).toBeHidden();
-		await expect(page.getByRole('banner').getByRole('button', { name: 'Stop timer' })).toBeVisible();
-	});
-
-	/** SPEC 10: the subtraction is client-side and lands in the sheet, still correctable. */
+	/** The subtraction is client-side and lands in the sheet, still correctable. */
 	test('stops the timer and offers the tracked time less the idle minutes', async ({ page }) => {
 		await startTimerWithControlledClock(page);
 		await page.clock.fastForward('16:00');

@@ -17,7 +17,7 @@ describe('parseServices', () => {
 	});
 
 	// This started as an assertion that the deal alone disambiguates. It failed - two distinct deals
-	// are both named "Development" - which is why A-1 uses the three-part label. It now guards that rule.
+	// are both named "Development" - which is why the default service uses the three-part label.
 	it('disambiguates every service with Company - Project - Service', () => {
 		const labelled = labelServices(parseServices(asDocument(servicesSample)));
 

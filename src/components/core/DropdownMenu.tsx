@@ -2,16 +2,7 @@ import * as React from 'react';
 import { DropdownMenu as DropdownMenuPrimitive } from 'radix-ui';
 import { cn } from '@/lib/utils';
 
-/**
- * shadcn's DropdownMenu on Radix, restyled to the design tokens (guidebook 16).
- *
- * Trimmed to the six parts the app uses. The generated file also ships checkbox items, radio
- * groups, submenus and a shortcut slot; none of the menus in the design have any of those, and
- * an unused export is a thing to keep working for nothing. `shadcn add` can regenerate them.
- *
- * Radix handles focus trapping, arrow keys, typeahead and Escape, and returns focus to the
- * trigger on close (guidebook 18).
- */
+/** shadcn's DropdownMenu on Radix, restyled and trimmed to the six parts the app uses. */
 function DropdownMenu({ ...props }: React.ComponentProps<typeof DropdownMenuPrimitive.Root>) {
 	return <DropdownMenuPrimitive.Root data-slot="dropdown-menu" {...props} />;
 }
@@ -53,8 +44,6 @@ function DropdownMenuItem({
 			data-slot="dropdown-menu-item"
 			data-variant={variant}
 			className={cn(
-				// No `cursor-default` here, which is what shadcn ships: a menu item is the most
-				// obviously clickable thing on the screen and was drawing an arrow.
 				'relative flex min-h-11 items-center gap-3 rounded-input px-3 text-base outline-hidden select-none',
 				'focus:bg-selection focus:text-accent-dark',
 				'data-[disabled]:pointer-events-none data-[disabled]:opacity-50',

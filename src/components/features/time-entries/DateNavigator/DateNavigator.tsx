@@ -2,10 +2,9 @@ import { DatePicker } from '@/components/shared/DatePicker/DatePicker';
 import { addDays, formatDayLabel, todayIso } from '@/lib/date';
 
 interface DateNavigatorProps {
-	/** The selected calendar day, `YYYY-MM-DD`. */
 	date: string;
 	onSelect: (date: string) => void;
-	/** Injected so the relative wording is testable without faking the clock (guidebook 13). */
+	/** Injected so the relative wording is testable without faking the clock. */
 	today?: string;
 }
 
@@ -32,18 +31,8 @@ function CaretIcon() {
 	);
 }
 
-/**
- * Previous / next day around a label in words, the label opening a calendar, plus a text-labelled
- * `Today` that is absent when today is already selected (A-3, R-5).
- *
- * Mobile centres the label between two ghost arrows; desktop puts both arrows together on the left
- * as outlined circles and sets the label as the page title. The order is declared rather than left
- * to source order, so one element serves both.
- *
- * The label is the page's `h1`: it is what the screen is about, it changes with the date, and
- * `__root.tsx` moves focus to `h1[tabindex="-1"]` after every navigation - so stepping a day
- * announces the day that was stepped to rather than a title that never changes.
- */
+/** Previous / next day around a label in words that opens a calendar, plus a `Today`. The label is the
+ * page's `h1` and `__root.tsx` focuses it after every navigation, so stepping a day announces it. */
 export function DateNavigator({ date, onSelect, today = todayIso() }: DateNavigatorProps) {
 	const isToday = date === today;
 	const arrowClassName =
@@ -87,10 +76,8 @@ export function DateNavigator({ date, onSelect, today = todayIso() }: DateNaviga
 				<ChevronIcon direction="right" />
 			</button>
 
-			{/*
-			 * Absent rather than disabled when today is selected: a control that cannot do
-			 * anything is still a tab stop and still reads out to a screen reader.
-			 */}
+			{/* Absent rather than disabled when today is selected: a control that cannot do
+			 * anything is still a tab stop and still reads out to a screen reader. */}
 			{!isToday && (
 				<button
 					type="button"

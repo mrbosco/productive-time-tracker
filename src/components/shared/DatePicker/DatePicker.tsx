@@ -11,14 +11,8 @@ interface DatePickerProps {
 	children: ReactNode;
 }
 
-/**
- * A calendar popover over an ISO date string (A-3, A-6). Used by the day navigator's label and,
- * from US-2, by the entry form's date field.
- *
- * `Date` never leaves this component: everything above it speaks `YYYY-MM-DD`, so there is one
- * place where a calendar day is turned into a `Date` and back, and it is the one that never
- * crosses UTC.
- */
+/** A calendar popover over an ISO date string. `Date` never leaves this component: everything above
+ * speaks `YYYY-MM-DD`, so one place turns a calendar day into a `Date` and never crosses UTC. */
 export function DatePicker({ value, onSelect, children }: DatePickerProps) {
 	const [isOpen, setIsOpen] = useState(false);
 	const selected = parseIsoDate(value);

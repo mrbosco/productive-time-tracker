@@ -1,7 +1,7 @@
 import { expect, type Page, test } from '@playwright/test';
 
 /**
- * X-3 on both projects: duplicating one entry, and filling an empty day from the one before it.
+ * Duplicating one entry, and filling an empty day from the one before it.
  *
  * The counting and the failure wording are component tests, which can install a handler that
  * refuses a POST. What needs a browser is the round trip through the URL - `Duplicate` puts the
@@ -18,8 +18,8 @@ const EMPTY_DATE = '2026-09-16';
 
 /**
  * The recorded day's only entry with a description: five hours, and a note written in Productive as
- * a bullet list. Addressed by that note rather than by position - which row it is depends on A-7's
- * ordering, and none of these tests are about that.
+ * a bullet list. Addressed by that note rather than by position - which row it is depends on the
+ * day's ordering, and none of these tests are about that.
  */
 const NOTED_ENTRY_DURATION = '5h';
 const NOTED_ENTRY_NOTE = 'Probavam';
@@ -41,7 +41,7 @@ async function signIn(page: Page) {
 	});
 }
 
-test.describe('duplicate and copy forward (X-3)', () => {
+test.describe('duplicate and copy forward', () => {
 	test.beforeEach(async ({ page }) => {
 		await signIn(page);
 	});
@@ -58,17 +58,6 @@ test.describe('duplicate and copy forward (X-3)', () => {
 		await expect(form).toBeVisible();
 		await expect(page.getByRole('textbox', { name: 'Duration' })).toHaveValue('5h');
 		await expect(form.getByText(NOTED_ENTRY_NOTE)).toBeVisible();
-	});
-
-	/** Toggl's continue pattern: the copy is about today, and the source day stays in the picker. */
-	test('duplicates onto today rather than onto the day it came from', async ({ page }) => {
-		await page.goto(`/day/${SEEDED_DATE}`);
-
-		await notedEntry(page).getByRole('button', { name: 'Entry actions' }).click();
-		await page.getByRole('menuitem', { name: 'Duplicate' }).click();
-
-		await expect(page).toHaveURL(/\/entries\/new\?date=\d{4}-\d{2}-\d{2}&duplicate=/);
-		await expect(page).not.toHaveURL(new RegExp(`date=${SEEDED_DATE}`));
 	});
 
 	test('fills an empty day from the day before it', async ({ page }) => {

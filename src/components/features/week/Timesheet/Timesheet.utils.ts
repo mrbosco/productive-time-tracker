@@ -19,24 +19,13 @@ export interface TimesheetRow {
 
 export interface Timesheet {
 	rows: TimesheetRow[];
-	/** One per day of the week, in the same order as every row's cells. */
 	dailyTotals: number[];
 	total: number;
 }
 
-/**
- * A week of entries as one row per project-and-service, one cell per day
- * (`Timesheet.dc.html`).
- *
- * A cell holds the **sum** for that pair on that day, which is what makes it a timesheet rather
- * than a list - and is also what makes editing one ambiguous when several entries sit behind it.
- * The design's own answer, taken here: an edit adjusts the most recent of them, and the cell says
- * how many there are so nobody is surprised by which one moved.
- *
- * Rows are ordered by project then service so the grid is stable between weeks; a row added by
- * hand that has nothing logged on it yet is carried in `extraServiceIds` so it does not vanish the
- * moment it is created.
- */
+/** A week of entries as one row per project-and-service, one cell per day. A cell holds the **sum**
+ * for that pair, so editing one is ambiguous: the edit adjusts the most recent entry behind it. An
+ * empty row added by hand is carried in `extraServiceIds` so it does not vanish when created. */
 export function toTimesheet(entries: TimeEntry[], days: string[], extraServiceIds: string[] = []): Timesheet {
 	const byService = new Map<string, TimeEntry[]>();
 	for (const id of extraServiceIds) byService.set(id, byService.get(id) ?? []);

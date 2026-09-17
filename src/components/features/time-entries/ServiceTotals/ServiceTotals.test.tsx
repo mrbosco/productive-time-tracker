@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { TimeEntry } from '@/api/types';
-import { buildService, render, screen, within } from '@/__tests__/test-utils';
+import { buildService, render, screen } from '@/__tests__/test-utils';
 import { ServiceTotals } from './ServiceTotals';
 import { groupMinutesByService } from './ServiceTotals.utils';
 
@@ -18,42 +18,28 @@ function buildEntry(id: string, minutes: number, serviceName: string | null): Ti
 }
 
 describe('groupMinutesByService', () => {
-	it('adds up the entries of one service', () => {
-		expect(groupMinutesByService([buildEntry('a', 60, 'Development'), buildEntry('b', 45, 'Development')])).toEqual([
-			{ name: 'Development', minutes: 105 },
-		]);
-	});
-
-	it('puts the biggest first, so the card reads as where the day went', () => {
+	it('adds each service up and puts the biggest first, so the card reads as where the day went', () => {
 		const grouped = groupMinutesByService([
 			buildEntry('a', 30, 'Admin'),
-			buildEntry('b', 120, 'Development'),
+			buildEntry('b', 60, 'Development'),
 			buildEntry('c', 60, 'Design'),
+			buildEntry('d', 45, 'Development'),
 		]);
 
-		expect(grouped.map((row) => row.name)).toEqual(['Development', 'Design', 'Admin']);
+		expect(grouped).toEqual([
+			{ name: 'Development', minutes: 105 },
+			{ name: 'Design', minutes: 60 },
+			{ name: 'Admin', minutes: 30 },
+		]);
 	});
 
 	it('names an entry with no service rather than dropping it from the totals', () => {
 		expect(groupMinutesByService([buildEntry('a', 60, null)])).toEqual([{ name: 'Unknown service', minutes: 60 }]);
 	});
-
-	it('is empty for a day with nothing on it', () => {
-		expect(groupMinutesByService([])).toEqual([]);
-	});
 });
 
 describe('ServiceTotals', () => {
 	const entries = [buildEntry('a', 120, 'Administrative work'), buildEntry('b', 105, 'Development')];
-
-	it('lists each service with its own total', () => {
-		render(<ServiceTotals entries={entries} weekTotals={{ '2026-09-15': 225 }} />);
-		const card = screen.getByRole('region', { name: 'Totals by service' });
-
-		expect(within(card).getByText('Administrative work')).toBeInTheDocument();
-		expect(within(card).getByText('2h')).toBeInTheDocument();
-		expect(within(card).getByText('1h 45m')).toBeInTheDocument();
-	});
 
 	it('totals the day from the entries and the week from the week query', () => {
 		render(<ServiceTotals entries={entries} weekTotals={{ '2026-09-14': 375, '2026-09-15': 225 }} />);

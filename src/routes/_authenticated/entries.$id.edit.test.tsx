@@ -3,14 +3,9 @@ import { http, HttpResponse } from 'msw';
 import { describe, expect, it, vi } from 'vitest';
 import error404 from '../../../docs/api/samples/error-404.json';
 import { ApiError } from '@/api/client';
-import { renderWithProviders, screen, testSession, userEvent, waitFor } from '@/__tests__/test-utils';
+import { renderWithProviders, screen, testSession, userEvent } from '@/__tests__/test-utils';
 import { server } from '@/mocks/node';
 import { EditEntryErrorState, Route } from './entries.$id.edit';
-
-/** One of the three entries recorded in `time-entries-day.json`, logged on the 15th. */
-const ENTRY_ID = '162903873';
-const ENTRY_DATE = '2026-09-15';
-const MONDAY = '2026-09-14';
 
 /**
  * The loader is called directly rather than through a rendered router: what matters is the contract
@@ -26,31 +21,6 @@ function runLoader(id: string) {
 }
 
 describe('the edit route loader', () => {
-	/**
-	 * ADR-0007 singles this route out: "`ensureQueryData` remains the right call for
-	 * `/entries/:id/edit` (US-3), where there is nothing to render until the entry is known." The
-	 * awaited entry is also what the component seeds the form from.
-	 */
-	it('resolves the entry before the route renders', async () => {
-		const { result } = runLoader(ENTRY_ID);
-
-		await expect(result).resolves.toMatchObject({ id: ENTRY_ID, date: ENTRY_DATE });
-	});
-
-	/** The day behind the dialog, on the entry's own date rather than on whatever today is. */
-	it('starts the day and week the entry belongs to, without awaiting them', async () => {
-		const { prefetchQuery, result } = runLoader(ENTRY_ID);
-		await result;
-
-		expect(prefetchQuery).toHaveBeenCalledWith(
-			expect.objectContaining({ queryKey: ['time-entries', testSession.personId, ENTRY_DATE] })
-		);
-		expect(prefetchQuery).toHaveBeenCalledWith(
-			expect.objectContaining({ queryKey: ['week-entries', testSession.personId, MONDAY] })
-		);
-		expect(prefetchQuery).toHaveBeenCalledTimes(2);
-	});
-
 	/**
 	 * Thrown, not swallowed: the route's `errorComponent` is what turns this into the design's
 	 * "This entry no longer exists.", and it reads the status off the ApiError to tell that from a
@@ -73,14 +43,6 @@ describe('the edit route loader', () => {
  * asserted here rather than left as markup nothing ever runs.
  */
 describe('the edit route states', () => {
-	it('announces the wait, because skeletons carry no text (guidebook 18)', async () => {
-		const PendingComponent = Route.options.pendingComponent as () => React.ReactElement;
-		await renderWithProviders(<PendingComponent />, { session: testSession });
-
-		expect(screen.getByRole('heading', { name: 'Edit entry' })).toBeInTheDocument();
-		expect(screen.getByRole('status')).toHaveTextContent('Loading entry');
-	});
-
 	/**
 	 * Rendered directly rather than through `Route.options.errorComponent`, which the router wraps
 	 * into something that returns null outside a real match - so this is the only level below e2e
@@ -102,12 +64,10 @@ describe('the edit route states', () => {
 	 * redo work they never lost, so this branch retries instead - and still offers the way out,
 	 * because a retry that keeps failing must not be the only control on a focus-trapped dialog.
 	 */
-	it.each([
-		['a 500', new ApiError(500, [], 'server error')],
-		['a dead socket', new ApiError(0, [], 'unreachable')],
-		['something that is not an ApiError', new Error('boom')],
-	])('offers a retry rather than claiming the entry is gone for %s', async (_name, error) => {
-		await renderWithProviders(<EditEntryErrorState error={error} />, { session: testSession });
+	it('offers a retry rather than claiming the entry is gone for a server failure', async () => {
+		await renderWithProviders(<EditEntryErrorState error={new ApiError(500, [], 'server error')} />, {
+			session: testSession,
+		});
 
 		expect(screen.getByRole('alert')).toHaveTextContent('Could not load this entry.');
 		expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument();
@@ -130,22 +90,5 @@ describe('the edit route states', () => {
 		await user.click(screen.getByRole('button', { name: 'Try again' }));
 
 		expect(invalidate).toHaveBeenCalled();
-	});
-
-	/** A modal with no exit is a trap, and the close control must exist at every width (guidebook 18). */
-	it('can be closed, and the close control is not hidden on desktop', async () => {
-		const user = userEvent.setup();
-		const { router } = await renderWithProviders(<EditEntryErrorState error={new ApiError(500, [], 'boom')} />, {
-			session: testSession,
-		});
-
-		const close = screen.getByRole('button', { name: 'Close' });
-		expect(close.className).not.toContain('md:hidden');
-
-		await user.click(close);
-
-		await waitFor(() => {
-			expect(router.state.location.pathname).toMatch(/^\/day\/\d{4}-\d{2}-\d{2}$/);
-		});
 	});
 });

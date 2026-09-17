@@ -1,70 +1,65 @@
-# Tracktive
+# Productive Time Tracker
 
-A client-side time tracker for [Productive](https://www.productive.io/): log in with an API
-token and organization ID, then list, add, edit and delete your own time entries for a chosen
-day. No server-side code — the browser talks to the Productive API directly.
+A client-side time tracker for [Productive](https://www.productive.io/). Log in with an API token
+and organization ID, then list, add, edit and delete your own time entries for any day. No
+server-side code: the browser talks to the Productive API directly.
 
-Full specification: [`docs/SPEC.md`](docs/SPEC.md). Decisions: [`docs/adr/`](docs/adr/).
+![The day view on desktop](docs/screenshots/day-desktop.png)
 
-## What shipped
+Technical specification: [`docs/SPEC.md`](docs/SPEC.md) · Decisions: [`docs/adr/`](docs/adr/) ·
+API notes: [`docs/api/README.md`](docs/api/README.md), what the Productive API actually does,
+established by recording real responses into [`docs/api/samples/`](docs/api/samples/)
 
-All four assignment stories, the login and session they rest on, and every extra from
-[`docs/SPEC.md`](docs/SPEC.md) section 10 except one.
-
-|          |                                                                                        |
-| -------- | -------------------------------------------------------------------------------------- |
-| **US-0** | Log in with an API token and organization ID, stay logged in across refreshes, log out |
-| **US-1** | The entries for a selected date, with the week around it and totals by service         |
-| **US-2** | Add an entry: duration, description, date                                              |
-| **US-3** | Edit an entry in its own route                                                         |
-| **US-4** | Delete an entry, behind one confirmation                                               |
-| **X-1**  | Week strip and totals: seven days and a weekly total, one request, three cell states   |
-| **X-2**  | Keyboard shortcuts: `n`, `←` `→`, `t`, `↑` `↓`, `e`, `Del`, `s`, `?`, `Esc`            |
-| **P-2**  | Start/end range mode: log an entry as "nine to half ten" instead of a duration         |
-| **X-3**  | Duplicate an entry, and fill an empty day from the day before it                       |
-| **X-4**  | Timer: start, stop, continue an existing entry, and survive a refresh                  |
-| **X-5**  | Activity awareness: notice a timer running with nobody there, and offer a choice       |
-
-Descriptions are rich text in both directions (ADR-0010): a list written here is stored as the HTML
-Productive's own editor produces, and one written there renders as a list.
-
-## What was cut
-
-**P-1, the quick-add line.** SPEC 10 ranks it last and says to cut it first; it is the only extra
-that needed a parser of its own (`1.5h client call yesterday` into a date, a duration and a note)
-rather than reusing what was already there. The input is still on the day view, because the design
-puts it there and it does something useful without the parser: it opens the entry form. It does not
-read what you typed.
-
-**The synthetic-input heuristic is built but off.** X-5 can also notice input that looks automated -
-regular as a metronome, barely moving - and `detectSyntheticInput` in
-`src/components/features/timer/useActivityMonitor.ts` turns it on. It ships `false`, and that is the
-decision rather than the default: Harvest and Toggl both advertise that they do not watch how you
-type, and this is a tool people use to bill clients. It is written and tested so the choice is
-reversible and so it can be argued about with something real; idle detection, which needs no such
-watching, is on.
-
-**Two smaller things worth knowing.** A stored entry does not remember that it was entered as a
-range - Productive stores minutes and nothing else - so an entry logged as 09:00 to 10:30 reopens as
-`1h 30m`. And the timer control in the app bar does not animate its width between states; everything
-else from the design's motion spec is there.
-
-## Requirements
-
-- Node 22 (`.nvmrc`; `nvm use`)
-- pnpm 12 (`corepack enable`)
-
-## Setup
+## Quick start
 
 ```sh
+nvm use                # Node 22 (.nvmrc)
+corepack enable        # pnpm 12
 pnpm install
-cp .env.example .env
+```
+
+**Without a Productive account** — runs against mock handlers, no credentials needed:
+
+```sh
+pnpm dev:mock          # http://localhost:5173, any token and org ID will do
+```
+
+**Against the real API:**
+
+```sh
+cp .env.example .env   # sets VITE_API_BASE_URL=https://api.productive.io/api/v2
 pnpm dev
 ```
 
-`.env` holds the API base URL only. Your token and organization ID are never stored in the
-repo or the build: you enter them on the login screen and they live in `localStorage`
-([ADR-0004](docs/adr/0004-credentials-in-browser.md)).
+Then log in with an **API token** and an **organization ID**. Both are in Productive under
+**Settings → API integrations**: the organization ID is shown at the top of that screen, and the
+token is created there too.
+
+Credentials are never in the repo, the `.env` file or the build. You type them on the login screen
+and they live in `localStorage` ([ADR-0004](docs/adr/0004-credentials-in-browser.md)); logging out
+clears them.
+
+## What it does
+
+|                |                                                                                                                  |
+| -------------- | ---------------------------------------------------------------------------------------------------------------- |
+| **Log in**     | API token and organization ID, resolved to the person who owns the entries. Survives a refresh; logout clears it |
+| **View a day** | The entries for a date, with the surrounding week and totals by service. Empty, loading and error states         |
+| **Add**        | Duration, date and description. The person is set from the session, never typed                                  |
+| **Edit**       | In its own route (`/entries/:id/edit`), deep-linkable                                                            |
+| **Delete**     | Behind a confirmation naming the entry, from the list or the edit form                                           |
+
+Beyond the assignment: a running timer with idle detection, a week strip and timesheet grid,
+keyboard shortcuts (`?` lists them), duplicate and copy-a-day-forward, start/end range entry, and
+rich-text descriptions that round-trip with Productive's own editor
+([ADR-0010](docs/adr/0010-rich-text-notes.md)).
+
+<p>
+  <img src="docs/screenshots/day-mobile.png" alt="The day view on a phone" width="240">
+  <img src="docs/screenshots/entry-form-mobile.png" alt="The entry form on a phone" width="240">
+</p>
+
+More screens: [`docs/screenshots/`](docs/screenshots/).
 
 ## Scripts
 
@@ -72,41 +67,23 @@ repo or the build: you enter them on the login screen and they live in `localSto
 | ---------------- | ------------------------------------------------------------- |
 | `pnpm dev`       | Vite dev server against the real Productive API               |
 | `pnpm dev:mock`  | Same, but against MSW handlers — no credentials needed        |
-| `pnpm build`     | Type-check the project, then build to `dist/`                 |
+| `pnpm build`     | Type-check, then build to `dist/`                             |
 | `pnpm preview`   | Serve the production build                                    |
 | `pnpm typecheck` | `tsc -b`, no emit                                             |
-| `pnpm lint`      | ESLint (type-aware rules + Prettier as a rule)                |
+| `pnpm lint`      | ESLint, type-aware rules plus Prettier                        |
 | `pnpm format`    | Prettier over the repo                                        |
 | `pnpm test`      | Vitest: unit and component tests                              |
-| `pnpm test:e2e`  | Playwright: desktop and mobile projects, served by `dev:mock` |
-| `pnpm changeset` | Record a changeset for the current change                     |
+| `pnpm test:e2e`  | Playwright, desktop and mobile projects, served by `dev:mock` |
 
-E2E never hits the real API: it runs against MSW so CI stays deterministic and secret-free
-([ADR-0003](docs/adr/0003-testing.md)). The real API is exercised manually against a smoke
-checklist before release.
+End-to-end tests never hit the real API — they run against MSW so CI stays deterministic and
+secret-free ([ADR-0003](docs/adr/0003-testing.md)).
 
-## Optional: Productive MCP server
+## Notes
 
-`.mcp.json` configures [Productive's MCP server](https://help.productive.io/en/articles/14817386-mcp-server)
-so an agent working in this repo can ask the API questions directly. It is **entirely optional** and
-nothing here depends on it.
+The interface deliberately reuses Productive's wordmark and accent purple: this is a tool for
+Productive's own product, and matching the parent app is the point rather than a liberty taken.
+Swap the tokens in `src/styles/index.css` to rebrand it.
 
-- It requires Productive's **Ultimate** plan. On any other plan the connection simply will not
-  authorise, which is harmless — decline the approval prompt and carry on.
-- There is no key to add. The file holds only the server URL; authentication is a browser OAuth
-  sign-in, per user, bound to one organization.
-- Connect with `/mcp` inside Claude Code, or remove it entirely with
-  `claude mcp remove productive -s project`.
-
-API questions this repo cannot answer are settled by recording a real response into
-[`docs/api/samples/`](docs/api/samples/), which needs no subscription. The MCP only makes that
-faster.
-
-## Conventions
-
-- Component layout, naming, hooks, a11y and testing rules:
-  [`docs/guidebook/RULES_DRAFT.md`](docs/guidebook/RULES_DRAFT.md), distilled from the Infinum
-  Frontend Handbook.
-- Commits follow [Conventional Commits](https://www.conventionalcommits.org/), no emoji;
-  `commitlint` enforces it and `lint-staged` runs on every commit.
-- Every behaviour change carries a changeset.
+Code conventions follow [Infinum's Frontend Handbook](https://infinum.com/handbook/frontend).
+Commits follow [Conventional Commits](https://www.conventionalcommits.org/), enforced by
+`commitlint`.

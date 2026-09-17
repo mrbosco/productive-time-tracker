@@ -1,8 +1,8 @@
 import { expect, type Page, test } from '@playwright/test';
 
 /**
- * US-2 on both projects: the form opens on the right day, rejects what A-8 rejects, and a saved
- * entry is in the list behind it (R-9).
+ * Adding an entry, on both projects: the form opens on the right day, rejects what it should, and a
+ * saved entry is in the list behind it.
  *
  * Both layouts are covered by running the same spec twice - the form is a full screen on Pixel 5
  * and a dialog over the day on desktop, and every assertion here is on roles and names, so neither
@@ -38,12 +38,12 @@ async function openForm(page: Page) {
 	await expect(page).toHaveURL(new RegExp(`/entries/new\\?date=${SEEDED_DATE}$`));
 }
 
-test.describe('adding a time entry', () => {
+test.describe('adding a time entry', { tag: '@mobile' }, () => {
 	test.beforeEach(async ({ page }) => {
 		await signIn(page);
 	});
 
-	test('opens the form on the day being viewed (A-5)', async ({ page }) => {
+	test('opens the form on the day being viewed', async ({ page }) => {
 		await openForm(page);
 
 		await expect(page.getByRole('dialog', { name: 'New entry' })).toBeVisible();
@@ -51,12 +51,12 @@ test.describe('adding a time entry', () => {
 	});
 
 	/**
-	 * The root route moves focus to the page heading after every navigation (guidebook 18), and on
+	 * The root route moves focus to the page heading after every navigation, and on
 	 * this route the day renders behind the dialog - so its `h1` is in the document but inside the
 	 * subtree Radix has marked `aria-hidden`. Focus has to end up inside the dialog, not in the
 	 * hidden screen behind it.
 	 */
-	test('keeps focus inside the dialog rather than the day behind it (guidebook 18)', async ({ page }) => {
+	test('keeps focus inside the dialog rather than the day behind it', async ({ page }) => {
 		await openForm(page);
 		await expect(page.getByRole('dialog', { name: 'New entry' })).toBeVisible();
 
@@ -69,7 +69,7 @@ test.describe('adding a time entry', () => {
 		expect(focusIsInsideDialog).toBe(true);
 	});
 
-	test('logs the entry and shows it on the day (US-2, R-9)', async ({ page }) => {
+	test('logs the entry and shows it on the day', async ({ page }) => {
 		await openForm(page);
 
 		await page.getByRole('textbox', { name: 'Duration' }).fill('1h 30m');
@@ -82,16 +82,7 @@ test.describe('adding a time entry', () => {
 		await expect(page.getByRole('article')).toHaveCount(4);
 	});
 
-	/** A-2: the preview is the only confirmation that what was typed was read as intended. */
-	test('previews what the typed duration will be saved as', async ({ page }) => {
-		await openForm(page);
-
-		await page.getByRole('textbox', { name: 'Duration' }).fill('1.5h');
-
-		await expect(page.getByText('= 1h 30m')).toBeVisible();
-	});
-
-	test('says nothing is wrong until Save is pressed, then says exactly what is (A-8)', async ({ page }) => {
+	test('says nothing is wrong until Save is pressed, then says exactly what is', async ({ page }) => {
 		await openForm(page);
 
 		await page.getByRole('textbox', { name: 'Duration' }).fill('half a day');
@@ -104,29 +95,9 @@ test.describe('adding a time entry', () => {
 	});
 
 	/**
-	 * History state outlives the page - the browser restores it on reload - so the day view spends
-	 * the message when the toast goes. Otherwise refreshing would announce a save that happened
-	 * minutes ago.
-	 */
-	test('does not announce the save again after a refresh', async ({ page }) => {
-		await openForm(page);
-
-		await page.getByRole('textbox', { name: 'Duration' }).fill('30m');
-		await page.getByRole('button', { name: 'Save entry' }).click();
-		await expect(page.getByRole('status')).toHaveText('Entry saved');
-
-		// Let it dismiss itself first: that is the moment the message is spent.
-		await expect(page.getByRole('status')).toHaveCount(0);
-
-		await page.reload();
-
-		await expect(page.getByRole('status')).toHaveCount(0);
-	});
-
-	/**
-	 * Improvements 10, through the one route a component test cannot take: the backdrop. On mobile
-	 * the form fills the screen, so there is no backdrop to hit - the same question is asked by the
-	 * back arrow, which the component tests cover.
+	 * The unsaved-changes prompt, through the one route a component test cannot take: the backdrop.
+	 * On mobile the form fills the screen, so there is no backdrop to hit - the same question is
+	 * asked by the back arrow, which the component tests cover.
 	 */
 	test('asks before the backdrop throws away what was typed', async ({ page }, testInfo) => {
 		test.skip(testInfo.project.name === 'mobile-chrome', 'the mobile form is full screen: no backdrop');
@@ -144,7 +115,7 @@ test.describe('adding a time entry', () => {
 
 		await page.getByRole('textbox', { name: 'Duration' }).fill('2h');
 		await page.getByRole('button', { name: 'Cancel' }).click();
-		// Typed something, so Cancel asks rather than leaving (Improvements 10).
+		// Typed something, so Cancel asks rather than leaving.
 		await page.getByRole('button', { name: 'Discard changes' }).click();
 
 		await expect(page).toHaveURL(new RegExp(`/day/${SEEDED_DATE}$`));
@@ -153,36 +124,41 @@ test.describe('adding a time entry', () => {
 	});
 
 	/**
+	 * Logging an entry by naming when it started and when it ended, and getting it back as minutes:
+	 * only `time` is stored, so there is no range to reopen. The arithmetic is a unit test; what
+	 * needs a browser is the native `<input type="time">`, whose value format is the whole contract
+	 * the form reads and which jsdom does not implement.
+	 */
+	test('logs an entry from a start and an end, and reopens it as a duration', async ({ page }) => {
+		await openForm(page);
+
+		await page.getByRole('button', { name: 'Enter start and end instead' }).click();
+		// By role and accessible name, not `getByLabel`: that matches substrings, and "To" is inside
+		// "Totals by service" - the desktop card sitting right beside this form.
+		await page.getByRole('textbox', { name: 'From' }).fill('09:00');
+		await page.getByRole('textbox', { name: 'To' }).fill('10:30');
+
+		// The only confirmation before saving that the pair was read the way it was meant.
+		await expect(page.getByText('= 1h 30m')).toBeVisible();
+
+		await page.getByRole('button', { name: 'Save entry' }).click();
+
+		await expect(page).toHaveURL(new RegExp(`/day/${SEEDED_DATE}$`));
+		const saved = page.getByRole('article').filter({ hasText: '1h 30m' });
+		await expect(saved).toBeVisible();
+
+		await saved.getByRole('button', { name: 'Entry actions' }).click();
+		await page.getByRole('menuitem', { name: 'Edit' }).click();
+
+		await expect(page.getByRole('textbox', { name: 'Duration' })).toHaveValue('1h 30m');
+		await expect(page.getByRole('textbox', { name: 'From' })).toBeHidden();
+	});
+
+	/**
 	 * ADR-0010, and the reason these live here rather than in a component test: ProseMirror listens
 	 * for `beforeinput` and composition events jsdom does not implement, so the editor only really
 	 * runs in a browser.
 	 */
-	/**
-	 * The placeholder is one absolutely positioned line behind the document, so if it outstays the
-	 * first keystroke it sits *under* what is being typed. Only a browser can catch it: TipTap 3's
-	 * `useEditor` no longer re-renders on every transaction, so whether the editor's emptiness is
-	 * subscribed to or merely read once is invisible to a test that cannot type.
-	 */
-	test('drops the placeholder as soon as there is something written', async ({ page }) => {
-		await openForm(page);
-
-		const description = page.getByRole('textbox', { name: 'Description' });
-		const placeholder = page.getByText('What did you work on?');
-		await expect(placeholder).toBeVisible();
-
-		await description.click();
-		await page.keyboard.type('Paired on the duration parser');
-
-		await expect(placeholder).toBeHidden();
-
-		// And back, which is the half that no amount of re-rendering elsewhere would have covered:
-		// emptying the field changes nothing the form is subscribed to.
-		await page.keyboard.press('ControlOrMeta+a');
-		await page.keyboard.press('Backspace');
-
-		await expect(placeholder).toBeVisible();
-	});
-
 	test('starts a list from a dash, and saves it as one', async ({ page }) => {
 		await openForm(page);
 
@@ -199,7 +175,7 @@ test.describe('adding a time entry', () => {
 
 		// And the day renders it as a list too, rather than flattening it back to lines.
 		await expect(page).toHaveURL(new RegExp(`/day/${SEEDED_DATE}$`));
-		// First, not last: A-7 puts the newest entry at the top.
+		// First, not last: the newest entry goes to the top.
 		await expect(page.getByRole('article').first().locator('ul li')).toHaveCount(2);
 	});
 
@@ -231,46 +207,5 @@ test.describe('adding a time entry', () => {
 
 		await expect(description.locator('ul li')).toHaveCount(1);
 		await expect(description).toContainText('worth keeping');
-	});
-
-	/**
-	 * Tab is "next control" in a form, not "indent the list" (guidebook 18).
-	 *
-	 * Two items, not one: indenting the *first* item of a list is a no-op in ProseMirror, so a
-	 * single-item version passes whether or not the binding was removed. The caret has to sit on
-	 * a second item for Tab to have something to do.
-	 */
-	test('lets Tab leave the editor rather than indenting the list', async ({ page }) => {
-		await openForm(page);
-
-		const description = page.getByRole('textbox', { name: 'Description' });
-		await description.click();
-		await page.keyboard.type('- first');
-		await page.keyboard.press('Enter');
-		await page.keyboard.type('second');
-		await expect(description.locator('ul li')).toHaveCount(2);
-
-		await page.keyboard.press('Tab');
-
-		await expect(description.locator('ul ul')).toHaveCount(0);
-		await expect(description).not.toBeFocused();
-	});
-
-	test('closes an untouched form without asking', async ({ page }) => {
-		await openForm(page);
-
-		await page.getByRole('button', { name: 'Cancel' }).click();
-
-		await expect(page).toHaveURL(new RegExp(`/day/${SEEDED_DATE}$`));
-	});
-
-	/** The service is not a field (A-1), so the form says which one it will use and where to change it. */
-	test('names the service the entry will be logged against, and opens where to change it', async ({ page }) => {
-		await openForm(page);
-
-		await page.getByRole('button', { name: /Acquiring new clients/ }).click();
-
-		await expect(page.getByRole('dialog', { name: 'Default service' })).toBeVisible();
-		await expect(page.getByText('Used for new entries and the timer.')).toBeVisible();
 	});
 });

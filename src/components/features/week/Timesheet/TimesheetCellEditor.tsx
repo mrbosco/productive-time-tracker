@@ -13,18 +13,8 @@ function StopIcon() {
 	);
 }
 
-/**
- * One cell of the grid: a sum you can type over (UI-7).
- *
- * Empty cells stay blank rather than showing `0h`, so the eye finds real time; a hover offers a
- * `+`. Editing borrows the entry form's own rules through `readDuration`, so the grid accepts
- * `1h 30m`, `1:30`, `1.5h` or `90` and refuses what the form refuses.
- *
- * A cell with a timer running in it is the one filled cell in the grid and is never editable -
- * the number is climbing, so there is nothing stable to type over. It shows the timer's elapsed
- * rather than the day's sum, which is what the app bar and the header pill show too. Clicking it
- * stops the timer and the cell settles into an ordinary total.
- */
+/** One cell of the grid: a sum you can type over, borrowing the entry form's rules through
+ * `readDuration`. A cell with a timer running in it is never editable - the number is climbing. */
 export function TimesheetCellEditor({
 	cell,
 	elapsed,
@@ -35,9 +25,7 @@ export function TimesheetCellEditor({
 	onSave,
 }: {
 	cell: TimesheetCell;
-	/** The running timer's own count, already formatted, so every cell reads from one clock. */
 	elapsed: string;
-	/** For the accessible name, since a bare number in a grid says nothing on its own. */
 	rowName: string;
 	isNonWorking: boolean;
 	isTracking: boolean;
@@ -46,11 +34,9 @@ export function TimesheetCellEditor({
 }) {
 	const [draft, setDraft] = useState<string | null>(null);
 	const [isSaving, setIsSaving] = useState(false);
-	/*
-	 * Enter submits the form and the blur that follows it commits again, which wrote the same cell
+	/* Enter submits the form and the blur that follows it commits again, which wrote the same cell
 	 * twice - one `1h 30m` became 3h. A ref rather than `isSaving`, because the blur arrives in the
-	 * same tick and a state update has not landed by then.
-	 */
+	 * same tick and a state update has not landed by then. */
 	const isCommitting = useRef(false);
 
 	if (isTracking) {
@@ -119,11 +105,9 @@ export function TimesheetCellEditor({
 					+
 				</span>
 			) : (
-				/*
-				 * The sum, and only the sum. A tally of the entries behind it sat beside a duration
+				/* The sum, and only the sum. A tally of the entries behind it sat beside a duration
 				 * and read as a multiplier - "8h 21m ×4" looks like four times the time rather than
-				 * four entries - so what it was there to warn about is said in the toast instead.
-				 */
+				 * four entries - so what it was there to warn about is said in the toast instead. */
 				formatDuration(cell.minutes)
 			)}
 		</button>
@@ -163,8 +147,7 @@ export function TimesheetCellEditor({
 			await onSave(read.minutes);
 			setDraft(null);
 		} catch {
-			// Left open with what was typed: the view raised the toast, and retyping it would be
-			// the only alternative.
+			// Left open with what was typed; the view has already raised the toast.
 		} finally {
 			setIsSaving(false);
 		}

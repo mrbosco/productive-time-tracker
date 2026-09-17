@@ -44,7 +44,7 @@ describe('timeEntrySchema', () => {
 	});
 
 	/**
-	 * Four messages, not one (A-8). They are what the field says out loud, so each has to name the
+	 * Four messages, not one. They are what the field says out loud, so each has to name the
 	 * thing that is actually wrong rather than restating the rule.
 	 */
 	it.each([
@@ -63,7 +63,7 @@ describe('timeEntrySchema', () => {
 		expect(durationError('24h')).toBeUndefined();
 	});
 
-	/** A-8: the description is optional, and the API takes an empty or null note. */
+	/** The description is optional, and the API takes an empty or null note. */
 	it('accepts an empty description', () => {
 		expect(schema.safeParse(values({ duration: '30m' })).success).toBe(true);
 	});
@@ -74,7 +74,7 @@ describe('timeEntrySchema', () => {
 		expect(result.success).toBe(false);
 	});
 
-	it('takes the limit as an argument rather than reading a constant (guidebook 13)', () => {
+	it('takes the limit as an argument rather than reading a constant', () => {
 		const tiny = timeEntrySchema(5);
 
 		expect(tiny.safeParse(values({ duration: '30m', note: 'too long' })).success).toBe(false);
@@ -87,7 +87,7 @@ describe('timeEntrySchema', () => {
 });
 
 describe('isServiceRefusal', () => {
-	/** A-1b: the one failure whose fix is a different screen, so it has to be told apart. */
+	/** The one failure whose fix is a different screen, so it has to be told apart. */
 	it('recognises Productive refusing the service the app chose', () => {
 		expect(isServiceRefusal(toApiError(422, error422))).toBe(true);
 	});
@@ -121,7 +121,7 @@ describe('toSaveErrorMessage', () => {
 	});
 
 	/**
-	 * Only reachable from the edit form (US-3), and only when the entry was deleted elsewhere while
+	 * Only reachable from the edit form, and only when the entry was deleted elsewhere while
 	 * it was open. "Try again" would be advice that cannot work.
 	 */
 	it('says the entry is gone rather than offering a retry that cannot work', () => {
@@ -136,7 +136,7 @@ describe('toSaveErrorMessage', () => {
 	});
 });
 
-/** P-2: the same entry described as two points on a clock, producing the same minutes. */
+/** The same entry described as two points on a clock, producing the same minutes. */
 describe('timeEntrySchema in range mode', () => {
 	it('turns a start and an end into minutes for the API', () => {
 		const result = rangeSchema.safeParse(values({ from: '09:00', to: '10:30' }));
@@ -160,7 +160,7 @@ describe('timeEntrySchema in range mode', () => {
 		expect(rangeError(from, to)).toBe('Start and end are required.');
 	});
 
-	/** SPEC 10: an end before its start is an error, never a wrap onto the next day. */
+	/** An end before its start is an error, never a wrap onto the next day. */
 	it('refuses an end before its start rather than crossing midnight', () => {
 		expect(rangeError('23:00', '01:00')).toBe('End must be after start.');
 	});
@@ -169,7 +169,7 @@ describe('timeEntrySchema in range mode', () => {
 		expect(rangeError('09:00', '09:00')).toBe('End must be after start.');
 	});
 
-	/** A-8's 24h ceiling needs no second check here: one day cannot hold a longer span. */
+	/** The 24h ceiling needs no second check here: one day cannot hold a longer span. */
 	it('accepts the longest span a day can hold', () => {
 		const result = rangeSchema.safeParse(values({ from: '00:00', to: '23:59' }));
 
@@ -228,13 +228,13 @@ describe('summariseUnsavedEntry', () => {
 	 * The prompt names what would be lost, and in range mode the duration field is empty - so it
 	 * has to read the pair instead, or it would offer "your changes" for an entry it could name.
 	 */
-	it('names a range the same way it names a duration (P-2)', () => {
+	it('names a range the same way it names a duration', () => {
 		const summary = summariseUnsavedEntry(values({ from: '09:00', to: '10:30' }), 'range');
 
 		expect(summary.duration).toBe('1h 30m');
 	});
 
-	it('names nothing while the end is still before the start (P-2)', () => {
+	it('names nothing while the end is still before the start', () => {
 		expect(summariseUnsavedEntry(values({ from: '10:30', to: '09:00' }), 'range').duration).toBeNull();
 	});
 });

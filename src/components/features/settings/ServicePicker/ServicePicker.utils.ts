@@ -16,26 +16,13 @@ export interface PickerGroup {
 
 export interface PickerList {
 	groups: PickerGroup[];
-	/** Every row in reading order, which is what the arrow keys walk - headers are not stops. */
 	rows: PickerRow[];
 	total: number;
 }
 
-/**
- * The picker's list: filtered, grouped by company, ordered (`Default Service.dc.html`).
- *
- * Searching is client-side over the list already in the cache, matched against company, project and
- * service together so "dev" finds every development service and "company c" narrows to one company.
- * Everything a person can log to arrives in one request; a search endpoint would be a round trip to
- * filter an array that is already here.
- *
- * While searching the groups collapse to one - a header with a single row under it is noise - and
- * the company moves onto the row's own second line instead.
- *
- * Order, within a group: the current default, then anything tracked in the last 30 days, then by
- * name. Between groups: the person's own organization leads, then alphabetically. Which puts the
- * row somebody wants at the top without hiding the rest behind a "recent" tab.
- */
+/** The picker's list: filtered, grouped by company, ordered. Searching is client-side over the cached
+ * list and collapses the groups to one. Order within a group: the current default, then anything
+ * tracked in the last 30 days, then by name; between groups, the person's own organization leads. */
 export function toPickerList(
 	services: Service[],
 	{
@@ -97,7 +84,6 @@ export function toPickerList(
 	return { groups, rows: groups.flatMap((group) => group.rows), total: services.length };
 }
 
-/** `21 services · 5 companies`, or `5 of 21 services` while searching. */
 export function describeCount(list: PickerList, query: string, companies: number): string {
 	const services = (count: number) => `${String(count)} service${count === 1 ? '' : 's'}`;
 

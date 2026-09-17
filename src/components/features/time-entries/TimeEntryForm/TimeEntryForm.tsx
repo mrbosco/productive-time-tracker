@@ -51,69 +51,23 @@ function CalendarIcon() {
 
 interface TimeEntryFormProps {
 	session: Session;
-	/**
-	 * The day this form belongs to when creating: the route's search param (A-5). When editing, the
-	 * entry's own date wins over whatever is passed here - a caller that disagreed with the entry
-	 * would otherwise discard to a day the entry was never on.
-	 */
 	date: string;
-	/** The entry being edited (US-3). Absent means this is the New entry form. */
 	entry?: TimeEntry;
-	/**
-	 * Values a new entry starts from without being an edit of anything (X-3's `Duplicate`). Ignored
-	 * while `entry` is present: an edit already has values, and its own are the right ones.
-	 */
-	/**
-	 * Values to open on without them counting as edits. X-3's duplicate brings both; UI-3's `Log
-	 * time` brings only the description, and a null duration leaves that field empty rather than
-	 * seeding it with a `0h` nobody typed.
-	 */
+	/** Values to open on without them counting as edits. A null duration leaves that field empty
+	 * rather than seeding it with a `0h` nobody typed. Ignored while `entry` is present. */
 	prefill?: { minutes: number | null; note: string | null } | null;
-	maxNoteLength?: number;
 }
 
-/**
- * The entry form: New entry when `entry` is absent (US-2, R-9), Edit entry when it is (US-3, R-11).
- * Three fields and nothing else: the service is chosen once in settings (A-1), and the person is
- * the session's (R-10).
- *
- * One component rather than two, because the design draws one screen twice - 3.4 is "same layout as
- * New entry, prefilled" - and because everything that is hard here is shared: the dirty-state
- * blocker, the `beforeunload` guard, the discard prompt, the duration preview and the
- * error-replaces-the-hint row. What differs is a title, a button label, where the values start and
- * which mutation runs. Editing sends no service (A-1) and so never waits on one.
- *
- * A modal at both widths, which is what the design draws: a full screen on mobile, a 560px dialog
- * over the day on desktop, where "adding time is never worth a page change". That is also what
- * makes the accessibility work free - Radix traps focus, restores it on close, and hides the day
- * behind from assistive technology (guidebook 18).
- *
- * Validation runs on submit rather than on change, unlike `LoginForm`. The design is explicit that
- * errors "show on submit, not while typing", and it follows that Save is never disabled for
- * invalid input: pressing it is how someone is told what is wrong. It disables only while the save
- * is in flight, and while no service has resolved, because a create without one cannot be sent.
- *
- * P-2's toggle swaps Duration for From/To time inputs (`03-new-entry-mobile-range.png`). Only the
- * minutes are ever stored, so nothing downstream knows which mode produced them - and nothing can
- * reopen a range, which is why editing always starts back in duration mode. X-4's stop-timer sheet
- * is a surface of its own rather than a third mode here: per SPEC 11 it edits the entry the timer
- * already created, and it has no date, no service and no draft to protect.
- */
-export function TimeEntryForm({ session, date, entry, prefill, maxNoteLength = MAX_NOTE_LENGTH }: TimeEntryFormProps) {
+/** The entry form: New entry when `entry` is absent, Edit entry when it is. Validation runs on submit,
+ * so Save is never disabled for invalid input - it disables only while the save is in flight, and
+ * while no service has resolved, because a create without one cannot be sent. */
+export function TimeEntryForm({ session, date, entry, prefill }: TimeEntryFormProps) {
 	const navigate = useNavigate();
 	const isEditing = entry !== undefined;
-	// The entry is authoritative about its own day; the prop only answers for the New entry form.
 	const dayDate = entry?.date ?? date;
-	/*
-	 * ponytail: one component for both surfaces, so the edit path also runs `useDefaultService` and
-	 * ignores its answer - A-1 keeps the entry's own service. The `/services` request behind it is
-	 * not wasted, though: `useServiceLabel` below reads the same query to label the entry's service
-	 * the way the default is labelled. Splitting this into a shell plus two wrappers would charge
-	 * six drilled props and a rewrite of US-2's tested markup to save nothing.
-	 */
+	// The edit path runs this too and ignores its answer - it keeps the entry's own service. The
+	// `/services` request is shared with `useServiceLabel` below, so neither path pays twice.
 	const { service, label, isPending: isServicePending, isError: isServiceError } = useDefaultService(session);
-	// The entry's own service, labelled the way the default is - both read the one `/services`
-	// query, so this costs no extra request on either path.
 	const entryServiceLabel = useServiceLabel(session, entry?.service ?? null);
 	const createEntry = useCreateTimeEntry(session);
 	const updateEntry = useUpdateTimeEntry(session);
@@ -123,29 +77,16 @@ export function TimeEntryForm({ session, date, entry, prefill, maxNoteLength = M
 	const [isUnsavedOpen, setIsUnsavedOpen] = useState(false);
 	const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 	const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState(false);
-	/**
-	 * A delete in flight or already done. Separate from `isConfirmDeleteOpen` because it has to
-	 * outlive the dialog: it is what tells the blocker below that the navigation which follows is
-	 * not someone walking away from a draft.
-	 */
+	/* A delete in flight or already done. It outlives the dialog, which is what tells the blocker
+	 * below that the navigation following it is not someone walking away from a draft. */
 	const [isDeleting, setIsDeleting] = useState(false);
-	/**
-	 * P-2. Always `duration` on the way in, editing included: the API stores minutes and keeps no
-	 * range, so an entry logged as 09:00 to 10:30 reopens as `1h 30m` because that is all there is
-	 * to reopen. Local state rather than a form field - it decides which fields are asked for, and a
-	 * field that changed the shape of its own form would be dirty for having been looked at.
-	 */
+	// Local state rather than a form field: it decides which fields are asked for, and a field that
+	// changed the shape of its own form would be dirty for having been looked at.
 	const [mode, setMode] = useState<DurationMode>('duration');
 	const fieldId = useId();
 
-	/**
-	 * What the fields start from: the entry's own values for an edit, a duplicate's for a copy, and
-	 * blank otherwise.
-	 *
-	 * A prefilled form is not a dirty one. These are `defaultValues`, so `isDirty` stays false until
-	 * something is actually changed, and closing a duplicate nobody touched asks nothing - the same
-	 * reason editing seeds from `formatDuration` rather than from raw minutes.
-	 */
+	// What the fields start from. A prefilled form is not a dirty one: these feed `defaultValues`,
+	// so closing a duplicate nobody touched asks nothing.
 	const source = entry ?? prefill ?? undefined;
 	const seed = {
 		date: dayDate,
@@ -163,39 +104,22 @@ export function TimeEntryForm({ session, date, entry, prefill, maxNoteLength = M
 		getValues,
 		formState: { errors, dirtyFields, isDirty, isSubmitting },
 	} = useForm<TimeEntryFormValues, unknown, TimeEntryFormOutput>({
-		resolver: zodResolver(timeEntrySchema(maxNoteLength, mode)),
+		resolver: zodResolver(timeEntrySchema(MAX_NOTE_LENGTH, mode)),
 		mode: 'onSubmit',
 		reValidateMode: 'onSubmit',
-		/*
-		 * Editing starts from the entry rather than from blank, and `formatDuration` is what the
-		 * field would have accepted anyway (A-2) - so `isDirty` stays false until something is
-		 * actually changed, and the dismissal prompt does not fire on a form nobody touched.
-		 */
 		defaultValues: seed,
 
-		/*
-		 * `values` as well, because `defaultValues` is read once at mount and the entry can arrive
-		 * after it. Opening an entry the router still holds a stale copy of mounted this form on the
-		 * old values; the fresh ones landed a render later and were ignored, so reopening an entry
+		/* `values` as well as `defaultValues`, which is read once at mount: opening an entry the
+		 * router still held a stale copy of mounted the form on the old values, so reopening an entry
 		 * just saved showed what it said before the save - and saving that form put it back.
-		 *
-		 * `keepDirtyValues` is what makes re-seeding safe: a field someone has typed in is left
-		 * alone, and only the ones they have not touched follow the entry.
-		 */
+		 * `keepDirtyValues` leaves any field already typed in alone. */
 		values: entry === undefined ? undefined : seed,
 		resetOptions: { keepDirtyValues: true },
 	});
 
-	// `useWatch` rather than `watch`: it returns the value instead of a function, which is what
-	// lets the React Compiler keep optimising this component.
-	/**
-	 * Why the entry cannot be saved, when the reason is the service rather than a field.
-	 *
-	 * Without this a failed `/services` load leaves Save disabled and silent - and a disabled
-	 * button cannot be focused, so a keyboard user has no route to an explanation at all. A-1
-	 * keeps the two causes apart: a list that would not load is worth retrying, an organization
-	 * that tracks nothing is not.
-	 */
+	/** Why the entry cannot be saved, when the reason is the service rather than a field. Without
+	 * this a failed `/services` load leaves Save disabled and silent - and a disabled button cannot
+	 * be focused, so a keyboard user has no route to an explanation at all. */
 	const serviceProblem = isEditing
 		? null
 		: isServiceError
@@ -204,11 +128,8 @@ export function TimeEntryForm({ session, date, entry, prefill, maxNoteLength = M
 				? 'This organization has no services with time tracking enabled, so entries cannot be logged yet.'
 				: null;
 
-	/**
-	 * A refresh or a closed tab cannot be intercepted by the dialog, so it gets the browser's own
-	 * prompt instead. Registered only while there is something to lose: a page that always asks is
-	 * a page people stop reading.
-	 */
+	/* A refresh or a closed tab cannot be intercepted by the dialog, so it gets the browser's own
+	 * prompt. Registered only while there is something to lose. */
 	useEffect(() => {
 		if (!isDirty || isSubmitting) return;
 
@@ -223,41 +144,26 @@ export function TimeEntryForm({ session, date, entry, prefill, maxNoteLength = M
 		};
 	}, [isDirty, isSubmitting]);
 
-	/**
-	 * In-app back, which never reaches `beforeunload`: the browser button walks the router's own
-	 * history rather than unloading the page, so the same question is asked in the same dialog.
-	 */
-	/*
-	 * `isDeleting` belongs in this condition and `isSubmitting` does not cover it: a delete is not a
-	 * form submit, so react-hook-form never sees it. Without it, deleting an entry on a form that
-	 * had been edited would ask whether to save the changes to the entry being deleted.
-	 */
+	/* In-app back never reaches `beforeunload`, so the same question is asked in the dialog.
+	 * `isSubmitting` does not cover `isDeleting`: a delete is not a form submit, and without it,
+	 * deleting an edited entry would ask whether to save changes to the entry being deleted. */
 	const blocker = useBlocker({
 		shouldBlockFn: () => isDirty && !isSubmitting && !isUnsavedOpen && !isDeleting,
 		enableBeforeUnload: false,
 		withResolver: true,
 	});
 
+	// `useWatch` rather than `watch`: it re-renders on one field, where `watch` re-renders the whole
+	// form on every keystroke in any of them.
 	const selectedDate = useWatch({ control, name: 'date' });
 	const durationMinutes = parseDuration(useWatch({ control, name: 'duration' }));
 	const spanMinutes = rangeMinutes(useWatch({ control, name: 'from' }), useWatch({ control, name: 'to' }));
 	const minutes = mode === 'range' ? spanMinutes : durationMinutes;
-	// The only confirmation before saving that `1.5h`, or 09:00 to 10:30, was read the way it was
-	// meant, so it tracks every keystroke - and stays blank rather than guessing while the value is
-	// unreadable or the end is before the start.
 	const preview = minutes !== null && minutes > 0 ? `= ${formatDuration(minutes)}` : '';
-	// Both messages land under the pair on one line, the way the duration field's does. `from`
-	// carries "required" when it is the empty one; everything else is answerable at `to`.
 	const rangeError = errors.from?.message ?? errors.to?.message;
 
-	/**
-	 * Dismissal (Improvements 10). Anything that closes the form comes through here - the backdrop,
-	 * Escape, Cancel and the header's close icon - so the question is asked once, in one place,
-	 * rather than at four call sites that could drift apart.
-	 *
-	 * An untouched form still closes immediately. A prompt on a dialog nobody typed in is noise
-	 * people learn to click through, which is how a real warning gets ignored later.
-	 */
+	/** Everything that closes the form comes through here - backdrop, Escape, Cancel, close icon -
+	 * so the question is asked once. An untouched form still closes immediately. */
 	function close() {
 		if (isDirty && !isSubmitting) {
 			setIsUnsavedOpen(true);
@@ -272,13 +178,8 @@ export function TimeEntryForm({ session, date, entry, prefill, maxNoteLength = M
 		void navigate({ to: '/day/$date', params: { date: dayDate } });
 	}
 
-	/**
-	 * R-12 from the edit form. Awaited rather than navigating straight away: the day view deletes
-	 * optimistically because it is watching the row go, but here the entry is what the screen is
-	 * *for* - so a failure is reported in the banner already on this form, beside the values, and
-	 * the form stays open. Leaving first and raising the failure on another screen would tell
-	 * someone their entry is gone and then, elsewhere, that it is not.
-	 */
+	/** Awaited rather than navigating straight away: the entry is what this screen is for, so a
+	 * failure is reported in the form's own banner and the form stays open. */
 	async function confirmDelete() {
 		if (entry === undefined) return;
 
@@ -313,17 +214,17 @@ export function TimeEntryForm({ session, date, entry, prefill, maxNoteLength = M
 					serviceId: service.id,
 				});
 			} else {
-				/*
-				 * SPEC 4.1: "Only changed attributes". `dirtyFields` is react-hook-form's own answer
-				 * to what was edited, measured against the values the entry was loaded with, so a
-				 * field someone typed in and then typed back does not count as a change.
-				 *
-				 * No `serviceId` in any case: A-1 keeps the entry's existing service. `previousDate`
-				 * is what tells the hook which other day to invalidate when the date moved (SPEC 4.2).
-				 */
+				/* Only changed attributes go on the wire; `dirtyFields` measures against the loaded
+				 * values, so a field typed in and back does not count. Never `serviceId` - the entry
+				 * keeps its own. `previousDate` tells the hook which other day to invalidate. */
 				const changes: Partial<TimeEntryInput> = {};
+				// In range mode the minutes are derived from `from`/`to`, so the duration field itself
+				// is never touched and would report clean - which silently dropped the edit.
+				const isDurationDirty =
+					mode === 'range' ? dirtyFields.from === true || dirtyFields.to === true : dirtyFields.duration === true;
+
 				if (dirtyFields.date === true) changes.date = values.date;
-				if (dirtyFields.duration === true) changes.minutes = values.duration;
+				if (isDurationDirty) changes.minutes = values.duration;
 				if (dirtyFields.note === true) changes.note = note;
 
 				// Nothing to send is not a failure, and PATCHing an empty body to say so would be a
@@ -347,8 +248,8 @@ export function TimeEntryForm({ session, date, entry, prefill, maxNoteLength = M
 			});
 		} catch (error) {
 			setErrorMessage(toSaveErrorMessage(error));
-			// A-1b: the refused service is not a field on this form, so saying so is not enough -
-			// the only place it can be changed is opened too.
+			// The refused service is not a field on this form, so saying so is not enough - the only
+			// place it can be changed is opened too.
 			if (isServiceRefusal(error)) setIsSettingsOpen(true);
 		}
 	}
@@ -361,11 +262,6 @@ export function TimeEntryForm({ session, date, entry, prefill, maxNoteLength = M
 					if (!next) close();
 				}}
 			>
-				{/*
-				 * A full screen on mobile, a 560px dialog centred over the day from `md`. One element
-				 * either way - the day behind is what the design keeps visible on desktop, and Radix
-				 * marks it `aria-hidden` at both widths.
-				 */}
 				<DialogContent
 					className="inset-0 flex h-dvh w-full flex-col overflow-hidden md:inset-auto md:top-1/2 md:left-1/2 md:h-auto md:max-h-[calc(100%-64px)] md:w-[min(600px,calc(100%-64px))] md:-translate-x-1/2 md:-translate-y-1/2 md:overflow-y-auto md:rounded-panel md:shadow-dialog"
 					aria-describedby={undefined}
@@ -377,12 +273,6 @@ export function TimeEntryForm({ session, date, entry, prefill, maxNoteLength = M
 						}}
 						className="flex min-h-0 flex-1 flex-col"
 					>
-						{/*
-						 * One header that restyles across the breakpoint rather than two hidden by CSS:
-						 * a back chevron on the left on mobile, a close cross on the right on desktop.
-						 * Only the glyphs swap - both are decorative, so the button keeps one
-						 * accessible name at every width.
-						 */}
 						<div className="flex h-14 flex-none items-center gap-1 border-b border-line bg-surface px-2 md:h-auto md:flex-row-reverse md:justify-between md:bg-canvas/65 md:px-6 md:py-5">
 							<button
 								type="button"
@@ -419,11 +309,6 @@ export function TimeEntryForm({ session, date, entry, prefill, maxNoteLength = M
 						</div>
 
 						<div className="flex min-h-0 flex-1 flex-col gap-[22px] overflow-y-auto px-4 pt-6 pb-32 md:overflow-visible md:px-6 md:py-6">
-							{/*
-							 * Date and Duration share a row on desktop and stack on mobile. In range
-							 * mode they stack at every width, as the design draws it: two time inputs
-							 * and the preview do not fit half of a 560px dialog.
-							 */}
 							<div
 								className={cn('flex flex-col gap-[22px] md:items-start md:gap-4', mode === 'duration' && 'md:flex-row')}
 							>
@@ -437,10 +322,6 @@ export function TimeEntryForm({ session, date, entry, prefill, maxNoteLength = M
 											setValue('date', next, { shouldDirty: true });
 										}}
 									>
-										{/*
-										 * A button, not an input, so it takes its accessible name from
-										 * the label beside it plus the date it is showing.
-										 */}
 										<button
 											type="button"
 											aria-labelledby={`${fieldId}-date-label ${fieldId}-date-value`}
@@ -469,13 +350,9 @@ export function TimeEntryForm({ session, date, entry, prefill, maxNoteLength = M
 												className="min-w-0 flex-1 tabular-nums md:h-13 md:px-3.5 md:text-list"
 												{...register('duration')}
 											/>
-											{/*
-											 * Reserves its width so the field does not resize as you
-											 * type. Described by the input rather than hidden from
-											 * assistive technology: this is the only confirmation
-											 * that `1.5h` was read as ninety minutes, and an empty
-											 * described node costs nothing.
-											 */}
+											{/* Reserves its width so the field does not resize as you type, and is
+											     described by the input: it is the only confirmation that `1.5h`
+											     was read as ninety minutes. */}
 											<span
 												id={`${fieldId}-duration-preview`}
 												className="min-w-[74px] flex-none text-base font-medium text-accent tabular-nums md:min-w-[66px] md:text-list"
@@ -483,11 +360,6 @@ export function TimeEntryForm({ session, date, entry, prefill, maxNoteLength = M
 												{preview}
 											</span>
 										</div>
-										{/*
-										 * One line under the field, never two: the error replaces the
-										 * helper caption rather than pushing it down, so nothing below
-										 * moves when a save is rejected.
-										 */}
 										<p
 											id={`${fieldId}-duration-hint`}
 											className={
@@ -503,13 +375,6 @@ export function TimeEntryForm({ session, date, entry, prefill, maxNoteLength = M
 									<div className="flex w-full flex-col gap-1.5">
 										<span className="text-label font-medium text-muted">Start and end</span>
 										<div className="flex items-end gap-3 md:gap-2.5">
-											{/*
-											 * `<input type="time">`, not a picker: the platform already
-											 * has one, it is keyboard-operable and locale-aware, and it
-											 * opens the phone's own time wheel on mobile (N-4). Its
-											 * value is always `HH:MM`, which is what `toMinutesOfDay`
-											 * reads.
-											 */}
 											<div className="flex min-w-0 flex-1 flex-col gap-1">
 												<label htmlFor={`${fieldId}-from`} className="text-label text-muted md:text-caption">
 													From
@@ -536,7 +401,6 @@ export function TimeEntryForm({ session, date, entry, prefill, maxNoteLength = M
 													{...register('to')}
 												/>
 											</div>
-											{/* The same reserved-width preview the duration field carries. */}
 											<span
 												id={`${fieldId}-range-preview`}
 												className="min-w-[74px] flex-none pb-3.5 text-base font-medium text-accent tabular-nums md:min-w-[66px] md:pb-3 md:text-list"
@@ -558,13 +422,8 @@ export function TimeEntryForm({ session, date, entry, prefill, maxNoteLength = M
 								)}
 							</div>
 
-							{/*
-							 * P-2's toggle. A plain button, not `role="switch"`: its label names the
-							 * action rather than the state ("Enter start and end instead"), and a
-							 * switch announcing that label with `aria-checked` would be telling a
-							 * screen-reader user two contradictory things. The pill beside it is the
-							 * control the design draws, and is decoration to assistive technology.
-							 */}
+							{/* A plain button, not `role="switch"`: the label names the action rather than the
+							     state, so `aria-checked` on it would announce a contradiction. */}
 							<button
 								type="button"
 								onClick={() => {
@@ -592,11 +451,6 @@ export function TimeEntryForm({ session, date, entry, prefill, maxNoteLength = M
 							</button>
 
 							<div className="flex flex-col gap-1.5">
-								{/*
-								 * A span, not a `<label htmlFor>`: the editor is a contenteditable
-								 * div, which is not a labelable element, so the name is attached
-								 * the same way the Date button's is.
-								 */}
 								<span id={`${fieldId}-note-label`} className="text-label font-medium text-muted">
 									Description
 								</span>
@@ -619,13 +473,6 @@ export function TimeEntryForm({ session, date, entry, prefill, maxNoteLength = M
 										/>
 									)}
 								/>
-								{/*
-								 * The field is rich and nothing else says so: the formatting is
-								 * reachable only through shortcuts and the `- ` rule, which a
-								 * screen-reader user would otherwise never learn about. Wired
-								 * through `aria-describedby` so it is announced with the field
-								 * rather than sitting beside it as decoration.
-								 */}
 								<p id={`${fieldId}-note-hint`} className="text-label text-muted md:text-caption">
 									Start a line with <span className="font-medium">-</span> for a list, or use Ctrl/Cmd+B for bold.
 								</p>
@@ -636,16 +483,6 @@ export function TimeEntryForm({ session, date, entry, prefill, maxNoteLength = M
 								)}
 							</div>
 
-							{/*
-							 * Read-only meta, not a field (A-1).
-							 *
-							 * On the New entry form the service is a link, because the sheet behind it
-							 * is what decides the one this entry will get. On the edit form it is
-							 * plain text: A-1 keeps the entry's existing service and the PATCH never
-							 * carries one, so the sheet would open showing a different service
-							 * selected than the line that was just clicked - a control that appears to
-							 * change this entry and does not.
-							 */}
 							<div className="flex flex-col items-start gap-1.5 rounded-control border border-line/70 bg-canvas/70 px-3.5 py-3 text-label leading-[1.5] text-muted">
 								<span>Logging as {session.personName} · Service:</span>
 								{entry === undefined ? (
@@ -673,11 +510,6 @@ export function TimeEntryForm({ session, date, entry, prefill, maxNoteLength = M
 								</div>
 							)}
 
-							{/*
-							 * At the end of the fields rather than in the button bar (design brief
-							 * 3.4): a destructive control next to Save is one mis-tap from the thing
-							 * it undoes. It asks before it acts, like the day view's menu does.
-							 */}
 							{isEditing && (
 								<button
 									type="button"
@@ -692,10 +524,6 @@ export function TimeEntryForm({ session, date, entry, prefill, maxNoteLength = M
 							)}
 						</div>
 
-						{/*
-						 * The same two buttons at both widths: a sticky bar over the scrolling fields
-						 * on mobile, a right-aligned row at the end of the dialog on desktop.
-						 */}
 						<div className="absolute inset-x-0 bottom-0 flex flex-none gap-3 border-t border-line bg-surface px-4 pt-3 pb-6 md:static md:justify-end md:bg-canvas/65 md:px-6 md:py-4">
 							<Button
 								type="button"
@@ -705,11 +533,8 @@ export function TimeEntryForm({ session, date, entry, prefill, maxNoteLength = M
 							>
 								Cancel
 							</Button>
-							{/*
-							 * Editing never waits on the service: A-1 keeps the entry's own and the
-							 * PATCH does not carry one, so a `/services` request that has not landed
-							 * (or failed) must not hold the save.
-							 */}
+							{/* Editing never waits on the service: the PATCH does not carry one, so a
+							     `/services` request that has not landed must not hold the save. */}
 							<Button
 								type="submit"
 								disabled={isSubmitting || (!isEditing && service === null)}
@@ -725,18 +550,8 @@ export function TimeEntryForm({ session, date, entry, prefill, maxNoteLength = M
 				</DialogContent>
 			</Dialog>
 
-			{/*
-			 * A sibling of the form rather than a child of it: two modals that open independently,
-			 * one of which (A-1b) is opened by the form failing. Radix stacks them, so the sheet
-			 * takes focus while it is up and hands it back to the form on close.
-			 */}
 			<SettingsSheet session={session} open={isSettingsOpen} onOpenChange={setIsSettingsOpen} />
 
-			{/*
-			 * A third layer over the form, on the same stacking `SettingsSheet` and the unsaved
-			 * prompt already use. The day view's dialog, because it is the same question about the
-			 * same entry (design brief 4).
-			 */}
 			<TimeEntryDeleteDialog
 				entry={isConfirmDeleteOpen ? (entry ?? null) : null}
 				onOpenChange={setIsConfirmDeleteOpen}
@@ -751,7 +566,6 @@ export function TimeEntryForm({ session, date, entry, prefill, maxNoteLength = M
 					if (next) return;
 
 					setIsUnsavedOpen(false);
-					// Staying put is what "Continue editing" means to the router too.
 					if (blocker.status === 'blocked') blocker.reset();
 				}}
 				{...summariseUnsavedEntry(getValues(), mode)}

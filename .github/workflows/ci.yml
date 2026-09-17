@@ -29,7 +29,7 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      # Mirrors the README setup. VITE_API_BASE_URL is unread today, but src/api/ (SPEC 6.1)
+      # Mirrors the README setup. VITE_API_BASE_URL is unread today, but src/api/
       # will read it; this keeps build and e2e working when it lands. No secrets: e2e runs
       # against MSW in the browser, never the real API (ADR-0003).
       - run: cp .env.example .env

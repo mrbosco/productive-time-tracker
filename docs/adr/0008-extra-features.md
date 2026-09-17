@@ -8,7 +8,7 @@ The evaluation explicitly says CRUD alone is incomplete. The assignment allows a
 
 ## Decision
 
-Implement, after all required stories are merged and in this order: X-1 week strip with totals, X-2 keyboard shortcuts, P-2 start/end range mode, X-3 duplicate and copy-from-yesterday, X-4 timer, X-5 activity awareness while a timer runs, P-1 quick add line. Scope of each is defined in SPEC section 10 (refined by the competitive analysis). Each is one PR and one changeset; any can be dropped, and P-1 is cut first.
+Implement, after all required stories are merged and in this order: X-1 week strip with totals, X-2 keyboard shortcuts, P-2 start/end range mode, X-3 duplicate and copy-from-yesterday, X-4 timer, X-5 activity awareness while a timer runs, P-1 quick add line. Scope of each is defined in SPEC section 6. This reverses ADR-0005's row cutting the timer. Each is one PR and one changeset; any can be dropped, and P-1 is cut first.
 
 ## Rationale
 

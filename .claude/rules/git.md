@@ -23,7 +23,7 @@ Refs: US-2, R-9
 
 ## Scopes
 
-Feature scopes, one per domain in `src/components/features/` (SPEC 6.1):
+Feature scopes, one per domain in `src/components/features/` (SPEC 1):
 
 `auth` · `time-entries` · `settings` · `timer` · `week` · `quick-add`
 
@@ -51,8 +51,8 @@ Refs: US-2, R-9
 Refs: X-1
 ```
 
-- `US-n` is the canonical form, from SPEC 2.1's Source column. `UC-n` in `docs/diagrams/01-use-cases.mmd` maps 1:1 to `US-n`; write `US-n`.
-- `R-n` for a functional requirement, `X-n` / `P-n` for an extra feature from SPEC 10.
+- `UC-n` in `docs/diagrams/01-use-cases.mmd` names a use case; reference it as `UC-n`.
+- Name the feature the change belongs to.
 - Chores (tooling, CI, docs, config) use `Refs: ADR-000n` when a decision drove them, otherwise no footer.
 - Never invent an ID. If nothing in `docs/SPEC.md` covers the change, either it belongs to a requirement you have not identified, or the spec needs updating first.
 
@@ -75,7 +75,7 @@ Refs: ADR-0005
 
 ## Branches and pull requests
 
-- One user story per branch and per PR (SPEC 12). Branch `type/scope-short-description`, e.g. `feat/time-entries-create`.
+- One feature per branch and per PR. Branch `type/scope-short-description`, e.g. `feat/time-entries-create`.
 - PR title repeats the commit format with the ID in parentheses: `feat(time-entries): add entry form (US-2)`.
 - PR body follows `.github/PULL_REQUEST_TEMPLATE.md`, which is guidebook rule 28 verbatim: Summary, Reasoning, Spec and design, Screenshots, Test plan, Open questions, then a Checklist. Use the `pr` skill. `US-n` in the Spec and design section, never `UC-n`.
 - Before opening: lint, typecheck, unit tests, e2e all pass and a changeset exists (guidebook 29, 31). `.github/workflows/ci.yml` runs the same gate on every PR, and fails a `feat/`, `fix/` or `perf/` branch that carries no changeset.

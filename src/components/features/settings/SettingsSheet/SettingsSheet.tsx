@@ -14,29 +14,15 @@ interface SettingsSheetProps {
 	onOpenChange: (open: boolean) => void;
 }
 
-/**
- * The Default service sheet (A-1): a bottom sheet on mobile, a side panel on desktop.
- *
- * It exists because the entry form has exactly three fields and the API needs a service on every
- * create. The service is therefore chosen once, here, rather than on every entry - and this is the
- * only place it can be changed, which is why A-1b sends a person here when Productive refuses the
- * service their entry was logged against.
- *
- * There are no Cancel and Save buttons: choosing applies immediately, so `Done` only closes.
- *
- * Failing to load and having nothing to load are rendered differently on purpose (A-1). "We could
- * not read the list" is a problem to retry; "this organization tracks nothing" is a fact about the
- * account, and showing the second when the first happened sends someone to the wrong place.
- */
+/** The Default service sheet. The entry form has three fields and the API needs a service on every
+ * create, so it is chosen once here. Choosing applies immediately, so `Done` only closes. */
 export function SettingsSheet({ session: routeSession, open, onOpenChange }: SettingsSheetProps) {
 	const { session: liveSession, login } = useSession();
-	/*
-	 * The live session, not the one the route handed down. Choosing writes through `login`, and the
+	/* The live session, not the one the route handed down. Choosing writes through `login`, and the
 	 * prop is a snapshot taken before that - so reading it left the row still unticked and the
-	 * footer still naming the old service after a successful pick.
-	 */
+	 * footer still naming the old service after a successful pick. */
 	const session = liveSession ?? routeSession;
-	// Only while it is open. The list is already prefetched at login for the entry form (A-1), and
+	// Only while it is open. The list is already prefetched at login for the entry form, and
 	// a closed sheet mounted on every authenticated screen has no business issuing a request - or
 	// re-issuing one the moment logout clears the cache.
 	const { data, isPending, isError, refetch } = useQuery({ ...servicesQueryOptions(session), enabled: open });
@@ -44,22 +30,15 @@ export function SettingsSheet({ session: routeSession, open, onOpenChange }: Set
 	const ownCompanyId = useOrganizationCompanyId(session);
 
 	const services = data ?? [];
-	/**
-	 * Resolved against the list, not just read off the session: a service that was the default and
+	/** Resolved against the list, not just read off the session: a service that was the default and
 	 * has since been disabled is no longer among the options, and marking a row that is not there
-	 * would disagree with `useDefaultService`, which has already fallen back to the first by name.
-	 */
+	 * would disagree with `useDefaultService`, which has already fallen back to the first by name. */
 	const stored = services.find((service) => service.id === session.defaultServiceId);
 	const selected = stored ?? [...services].sort((a, b) => a.name.localeCompare(b.name))[0];
 	const [current] = labelServices(selected === undefined ? [] : [selected]);
 
 	return (
 		<Sheet open={open} onOpenChange={onOpenChange}>
-			{/*
-			 * A fixed height rather than one that fits its contents: the search field would
-			 * otherwise walk up the screen as results filter, which is the one thing a field being
-			 * typed into must not do. 88% on a phone, the full column on desktop.
-			 */}
 			<SheetContent aria-describedby={undefined} className="flex h-[88dvh] flex-col md:h-auto">
 				<div className="flex-none">
 					<SheetTitle className="block">Default service</SheetTitle>
@@ -113,15 +92,11 @@ export function SettingsSheet({ session: routeSession, open, onOpenChange }: Set
 								ownCompanyId={ownCompanyId}
 								onSelect={(service) => {
 									login({ ...session, defaultServiceId: service.id });
-									// On touch there is nothing else to do in here, so choosing closes it.
-									// A pointer keeps the sheet open, where `Done` is one click away.
 									if (!window.matchMedia?.('(hover: hover)').matches) onOpenChange(false);
 								}}
 							/>
 						</div>
 
-						{/* Says what is set from anywhere in the list, so the sheet can be closed without
-						    scrolling back to check. */}
 						<div className="flex flex-none items-center gap-3 border-t border-line pt-3.5">
 							<span className="min-w-0 flex-1 truncate text-caption text-muted">
 								Default: <span className="font-medium text-ink">{current?.label ?? '—'}</span>

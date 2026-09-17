@@ -35,18 +35,8 @@ function ClearIcon() {
 	);
 }
 
-/**
- * Choosing the default service from a searchable list, grouped by company
- * (`Default Service.dc.html`).
- *
- * It replaces a native `select`, which held up with a handful of services and stops holding up with
- * eighty: a select cannot be searched, truncates its options to the width of the control - the
- * recorded label really does cut off at "Company C [SAMPLE] · Development · D" - and cannot carry a
- * logo, a second line or a group header inside an option.
- *
- * Selecting applies immediately. There is nothing to confirm, which is why the sheet has a `Done`
- * that only closes and no `Save` at all.
- */
+/** Choosing the default service from a searchable list, grouped by company. It replaces a native
+ * `select`, which cannot be searched and truncates its options to the control's width. */
 export function ServicePicker({
 	services,
 	selectedId,
@@ -64,7 +54,6 @@ export function ServicePicker({
 	const listId = useId();
 	const searchRef = useRef<HTMLInputElement>(null);
 	const [query, setQuery] = useState('');
-	/** Which row the arrow keys are standing on. Null until they are used, as the day's list does. */
 	const [activeIndex, setActiveIndex] = useState<number | null>(null);
 
 	const list = toPickerList(services, { query, selectedId, recentIds, ownCompanyId });
@@ -110,8 +99,6 @@ export function ServicePicker({
 							setQuery(event.target.value);
 							setActiveIndex(null);
 						}}
-						// The keys the design lists. Escape clears the search before it closes the
-						// sheet, so a mistyped query is one key to undo rather than a reopen.
 						onKeyDown={(event) => {
 							if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
 								event.preventDefault();
@@ -167,8 +154,6 @@ export function ServicePicker({
 				) : (
 					list.groups.map((group) => (
 						<div key={group.companyId || 'all'} className="flex flex-col gap-0.5 pt-2.5">
-							{/* Absent while searching: a header over a single result is noise, so the
-							    company moves onto each row's second line instead. */}
 							{!isSearching && (
 								<div className="sticky top-0 z-1 flex items-center gap-2.5 bg-surface px-3 pt-1.5 pb-2">
 									<Avatar
@@ -216,8 +201,6 @@ function Row({
 	return (
 		<button
 			type="button"
-			// `aria-pressed` rather than a radio: this is a list of buttons that each set a value,
-			// and a radiogroup would put every service in one tab stop the arrow keys already cover.
 			aria-pressed={isSelected}
 			onClick={onSelect}
 			className={cn(

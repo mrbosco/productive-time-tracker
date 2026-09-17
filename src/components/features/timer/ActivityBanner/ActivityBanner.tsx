@@ -22,20 +22,8 @@ function CloseIcon() {
 	);
 }
 
-/**
- * X-5, above the day's list (`02-day-mobile-timer-banner.png`).
- *
- * Harvest's resolution model, which the competitive analysis picked out: it offers a choice rather
- * than acting. Nothing has been sent anywhere and no timer has been stopped by the time this is
- * read - the primary button is the one that changes something, and it says exactly what it changes.
- *
- * The copy admits the guess. "We have not seen activity" is what actually happened; "you were away"
- * would be a claim about a person from the absence of mouse events, which is not the same thing and
- * is wrong every time someone reads a long document. ADR-0008 asks for that in the UI copy.
- *
- * Amber, not red. A timer running while you are not at the desk is worth mentioning and is not a
- * failure, and the design's warning tokens are the ones that say so.
- */
+/** The idle-timer banner, above the day's list. It offers a choice rather than acting: nothing has
+ * been sent and no timer stopped by the time this is read. Amber, not red. */
 export function ActivityBanner({
 	concern,
 	onDiscard,
@@ -48,8 +36,7 @@ export function ActivityBanner({
 	const elapsed = formatDuration(concern.minutes);
 
 	return (
-		// `role="status"`, not `alert`: it is worth announcing when it arrives and it is not an
-		// emergency, and `alert` interrupts whatever a screen reader was in the middle of saying.
+		// `role="status"`, not `alert`: `alert` interrupts whatever a screen reader was mid-sentence on.
 		<div
 			role="status"
 			className="flex items-start gap-3 rounded-entry border border-warning-border bg-warning-bg px-4 py-3.5"
@@ -67,10 +54,6 @@ export function ActivityBanner({
 					<Button size="sm" onClick={onDiscard}>
 						Pause and discard idle time
 					</Button>
-					{/*
-					 * Quiet, and second: carrying on is the default answer, and a heuristic does not
-					 * get to make the confident-looking button the one that agrees with it.
-					 */}
 					<button
 						type="button"
 						onClick={onKeepRunning}

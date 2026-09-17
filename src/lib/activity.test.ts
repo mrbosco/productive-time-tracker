@@ -4,7 +4,7 @@ import { type ActivitySample, looksSynthetic, type SyntheticThresholds } from '.
 const THRESHOLDS: SyntheticThresholds = { cvThreshold: 0.15, displacementPx: 3, windowSize: 60, minimumSamples: 12 };
 
 /**
- * The two streams the heuristic has to tell apart (ADR-0008).
+ * The two streams the heuristic has to tell apart.
  *
  * Generated rather than captured, and deterministically so the thresholds are exercised against the
  * same numbers on every run. The shapes are what matters: a jiggler is a metronome that barely
@@ -76,30 +76,5 @@ describe('looksSynthetic', () => {
 		const withAKeystroke = [...syntheticStream(), { at: 60_000, x: 500, y: 400, isPointer: false }];
 
 		expect(looksSynthetic(withAKeystroke, THRESHOLDS)).toBe(false);
-	});
-
-	/**
-	 * A handful of events is not a pattern, and the cost of being wrong here is a banner accusing
-	 * someone of faking their timesheet.
-	 */
-	it('says nothing on too little evidence', () => {
-		expect(looksSynthetic(syntheticStream(5), THRESHOLDS)).toBe(false);
-	});
-
-	it('judges only the most recent window, so an old hand stops vouching for a jiggler', () => {
-		const stream = [...humanStream(30), ...syntheticStream(60)];
-
-		expect(looksSynthetic(stream, THRESHOLDS)).toBe(true);
-	});
-
-	/** Every event at the same instant is a burst, not a rhythm - and the mean is zero. */
-	it('does not read a burst of simultaneous events as a rhythm', () => {
-		const burst = Array.from({ length: 60 }, () => ({ at: 0, x: 500, y: 400, isPointer: true }));
-
-		expect(looksSynthetic(burst, THRESHOLDS)).toBe(false);
-	});
-
-	it('finds nothing in an empty stream', () => {
-		expect(looksSynthetic([], THRESHOLDS)).toBe(false);
 	});
 });

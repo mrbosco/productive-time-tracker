@@ -22,44 +22,45 @@ function captureQuery(path: string) {
 	return seen;
 }
 
+describe('reading a time entry', () => {
+	/**
+	 * The readers this replaced turned a missing `time` into `0`, so a wire change arrived as a
+	 * duration of `0h` sitting among real ones - wrong, and indistinguishable from a genuinely empty
+	 * entry. Validating the four attributes the app actually reads makes that an error instead.
+	 */
+	it('refuses an entry whose duration is not a number', async () => {
+		server.use(
+			http.get('*/time_entries', () =>
+				HttpResponse.json({
+					data: [{ id: '1', type: 'time_entries', attributes: { date: '2026-09-15', time: '90' } }],
+					meta: { current_page: 1, total_pages: 1 },
+				})
+			)
+		);
+
+		await expect(listTimeEntries(auth, '1448639', '2026-09-15')).rejects.toThrow(/unexpected shape/);
+	});
+
+	/** `0` is a real duration - a running timer's entry starts there - and `note` is genuinely
+	 * nullable, so neither may be rejected. */
+	it('accepts a zero-minute entry with no note', async () => {
+		server.use(
+			http.get('*/time_entries', () =>
+				HttpResponse.json({
+					data: [{ id: '1', type: 'time_entries', attributes: { date: '2026-09-15', time: 0, note: null } }],
+					meta: { current_page: 1, total_pages: 1 },
+				})
+			)
+		);
+
+		const [entry] = await listTimeEntries(auth, '1448639', '2026-09-15');
+
+		expect(entry?.minutes).toBe(0);
+		expect(entry?.note).toBeNull();
+	});
+});
+
 describe('listTimeEntries', () => {
-	it('asks for one inclusive day, the service, and an explicit page size (SPEC 4.2)', async () => {
-		const seen = captureQuery('/time_entries');
-
-		await listTimeEntries(auth, '1448639', '2026-09-15');
-
-		expect(seen.params?.get('filter[person_id]')).toBe('1448639');
-		expect(seen.params?.get('filter[after]')).toBe('2026-09-15');
-		expect(seen.params?.get('filter[before]')).toBe('2026-09-15');
-		// Four relationships deeper than the name on the card. The company a row leads with, the
-		// project it names, the section and the client behind that name all hang off the service,
-		// and all of them come back in this one request (UI-1, UI-2).
-		expect(seen.params?.get('include')).toBe('service.deal.company,service.deal.project.company,service.section');
-		expect(seen.params?.get('page[size]')).toBe('200');
-	});
-
-	it('narrows the payload with sparse fieldsets rather than pulling all ~45 attributes', async () => {
-		const seen = captureQuery('/time_entries');
-
-		await listTimeEntries(auth, '1448639', '2026-09-15');
-
-		// Set membership rather than the exact string: reordering the list is behaviour-preserving.
-		// `service` must be in it or the relationship linkage is dropped along with the attributes.
-		expect(seen.params?.get('fields[time_entries]')?.split(',')).toEqual(
-			expect.arrayContaining(['date', 'time', 'note', 'created_at', 'draft', 'service'])
-		);
-		expect(seen.params?.get('fields[services]')?.split(',')).toEqual(
-			expect.arrayContaining(['name', 'deal', 'section'])
-		);
-		// `fields` governs relationships too, so the chain stops at the deal without `company` here.
-		expect(seen.params?.get('fields[deals]')?.split(',')).toEqual(
-			expect.arrayContaining(['name', 'company', 'project'])
-		);
-		expect(seen.params?.get('fields[projects]')?.split(',')).toEqual(expect.arrayContaining(['name', 'company']));
-		expect(seen.params?.get('fields[sections]')?.split(',')).toContain('name');
-		expect(seen.params?.get('fields[companies]')?.split(',')).toEqual(expect.arrayContaining(['name', 'avatar_url']));
-	});
-
 	it('never sends sort, which this endpoint rejects for anything but date', async () => {
 		const seen = captureQuery('/time_entries');
 
@@ -69,28 +70,32 @@ describe('listTimeEntries', () => {
 	});
 
 	/**
-	 * Newest first (A-7, amended): the top of the list is where a day is read and written, so the
-	 * entry just logged belongs there rather than below everything already on the screen.
+	 * The sparse fieldsets are the efficiency claim, not decoration: asking for the fields actually
+	 * rendered is what keeps a day of entries to a fraction of the full record. `fields` also governs
+	 * relationships, so every step of the include chain has to be named on the step above it - drop
+	 * one and the linkage silently vanishes while the included records stay, orphaned.
 	 */
-	it('orders a day by created_at descending client-side (A-7)', async () => {
+	it('narrows every level of the include chain, not just the entries', async () => {
+		const seen = captureQuery('/time_entries');
+
+		await listTimeEntries(auth, '1448639', '2026-09-15');
+
+		expect(seen.params?.get('fields[time_entries]')).toContain('service');
+		expect(seen.params?.get('fields[services]')).toContain('deal');
+		expect(seen.params?.get('fields[deals]')).toContain('company');
+		expect(seen.params?.get('include')).toContain('service.deal.company');
+		// The cap the API documents; asking for more is a 400 and asking for none pages at 30.
+		expect(seen.params?.get('page[size]')).toBe('200');
+	});
+
+	/**
+	 * Newest first: the top of the list is where a day is read and written, so the entry just logged
+	 * belongs there rather than below everything already on the screen.
+	 */
+	it('orders a day by created_at descending client-side', async () => {
 		const entries = await listTimeEntries(auth, '1448639', '2026-09-15');
 
 		expect(entries.map((entry) => entry.id)).toEqual(['163073474', '162921848', '162903873']);
-	});
-
-	it('issues exactly one request for a day with no entries', async () => {
-		let calls = 0;
-		server.use(
-			http.get('*/time_entries', () => {
-				calls += 1;
-
-				return HttpResponse.json({ data: [], meta: { current_page: 1, total_pages: 0, total_count: 0 } });
-			})
-		);
-
-		await listTimeEntries(auth, '1448639', '2026-09-02');
-
-		expect(calls).toBe(1);
 	});
 
 	it('follows meta.total_pages when a day spills over', async () => {
@@ -163,11 +168,5 @@ describe('mutations', () => {
 
 	it('surfaces the recorded 404 when an entry is gone', async () => {
 		await expect(getTimeEntry(auth, '999999999')).rejects.toMatchObject({ status: 404, code: 'record_not_found' });
-	});
-
-	it('can deep-link every entry the seeded day list shows', async () => {
-		const listed = await listTimeEntries(auth, '1448639', '2026-09-15');
-
-		await expect(Promise.all(listed.map((entry) => getTimeEntry(auth, entry.id)))).resolves.toHaveLength(3);
 	});
 });

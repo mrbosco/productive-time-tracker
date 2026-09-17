@@ -1,6 +1,6 @@
 ---
 name: release
-description: Cut a release - version with Changesets, update the changelog, tag and push. Use when a milestone from SPEC 12 is complete.
+description: Cut a release - version with Changesets, update the changelog, tag and push. Use when a milestone is complete.
 ---
 
 # Cut a release
@@ -11,7 +11,7 @@ The package is `private: true` and `.changeset/config.json` sets `privatePackage
 
 `.github/workflows/release.yml` drives this. You review and merge; the action versions, tags and publishes the GitHub Release.
 
-## Milestones (SPEC 12)
+## Milestones
 
 | Tag      | Contains                                                 |
 | -------- | -------------------------------------------------------- |

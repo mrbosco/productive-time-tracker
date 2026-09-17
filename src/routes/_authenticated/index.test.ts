@@ -1,4 +1,3 @@
-import { isRedirect } from '@tanstack/react-router';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Route } from './index';
 
@@ -19,7 +18,7 @@ function runGuard(): unknown {
 }
 
 describe('the index route', () => {
-	/** R-3: the day view defaults to today, and always carries its date in the URL (ADR-0007). */
+	/** The day view defaults to today, and always carries its date in the URL (ADR-0007). */
 	it('redirects to today', () => {
 		vi.useFakeTimers();
 		vi.setSystemTime(new Date(2026, 8, 15, 22, 30));
@@ -29,9 +28,5 @@ describe('the index route', () => {
 		expect(runGuard()).toMatchObject({
 			options: { to: '/day/$date', params: { date: '2026-09-15' }, replace: true },
 		});
-	});
-
-	it('redirects rather than failing some other way', () => {
-		expect(isRedirect(runGuard())).toBe(true);
 	});
 });

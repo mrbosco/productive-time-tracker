@@ -31,7 +31,7 @@ describe('availability', () => {
 		expect(expectedMinutesOn(periods, '2026-09-22')).toBe(480);
 	});
 
-	/** Nothing said is not the same as zero expected, and UI-6 hides its numbers on null. */
+	/** Nothing said is not the same as zero expected, and the week strip hides its numbers on null. */
 	it('says nothing for a date outside every period, and for anything unparseable', () => {
 		expect(expectedMinutesOn(parseAvailabilities(RECORDED), '2026-09-14')).toBeNull();
 		expect(parseAvailabilities(null)).toEqual([]);

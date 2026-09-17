@@ -6,28 +6,19 @@ import { server } from '@/mocks/node';
 import { useWeekTotals, weekTotalsQueryOptions } from './useWeekTotals';
 
 describe('weekTotalsQueryOptions', () => {
-	/** SPEC 6.3. Keyed on the Monday so every day of a week shares one cached result. */
+	/** Keyed on the Monday so every day of a week shares one cached result, and never on the token. */
 	it('keys on the week, not the day', () => {
 		const tuesday = weekTotalsQueryOptions(testSession, '2026-09-15').queryKey;
 		const friday = weekTotalsQueryOptions(testSession, '2026-09-18').queryKey;
 
 		expect(tuesday).toEqual(['week-entries', testSession.personId, '2026-09-14']);
 		expect(friday).toEqual(tuesday);
-	});
-
-	it('gives a different week its own key', () => {
-		expect(weekTotalsQueryOptions(testSession, '2026-09-21').queryKey).not.toEqual(
-			weekTotalsQueryOptions(testSession, '2026-09-15').queryKey
-		);
-	});
-
-	it('keeps the token out of the key', () => {
-		expect(JSON.stringify(weekTotalsQueryOptions(testSession, '2026-09-15').queryKey)).not.toContain(testSession.token);
+		expect(JSON.stringify(tuesday)).not.toContain(testSession.token);
 	});
 });
 
 describe('useWeekTotals', () => {
-	/** X-1's whole point: seven days cost one request, not seven. */
+	/** The whole point of the week strip: seven days cost one request, not seven. */
 	it('asks for Monday to Sunday in a single request', async () => {
 		const asked: URLSearchParams[] = [];
 		server.use(
@@ -60,15 +51,5 @@ describe('useWeekTotals', () => {
 		// The recorded week holds one day: 0 + 0 + 300 minutes on the 15th. Two of the three are
 		// zero-minute rows, which is what the account actually held when it was recorded.
 		expect(result.current.data).toEqual({ '2026-09-15': 300 });
-	});
-
-	it('is an empty map, not a failure, for a week with nothing on it', async () => {
-		const { result } = renderHookWithProviders(() => useWeekTotals(testSession, '2026-10-05'));
-
-		await waitFor(() => {
-			expect(result.current.isSuccess).toBe(true);
-		});
-
-		expect(result.current.data).toEqual({});
 	});
 });

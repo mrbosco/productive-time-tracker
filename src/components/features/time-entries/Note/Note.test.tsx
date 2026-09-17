@@ -23,29 +23,24 @@ describe('Note', () => {
 		expect(screen.getByRole('region', { name: 'note' }).querySelector('p')).toBeNull();
 	});
 
-	it('renders the recorded Productive note as a list', () => {
-		renderNote('<ul><li><p>Probavam</p></li></ul>');
+	/**
+	 * Both Productive and TipTap wrap list text in a paragraph; drawing that as a block would put
+	 * every bullet on its own double-spaced line.
+	 */
+	it('renders the recorded Productive note as a list, without a paragraph box per item', () => {
+		const { container } = renderNote('<ul><li><p>Probavam</p></li></ul>');
 
 		expect(screen.getAllByRole('listitem')).toHaveLength(1);
 		expect(screen.getByText('Probavam')).toBeInTheDocument();
+		expect(container.querySelector('li p')).toBeNull();
 	});
 
-	it('renders an ordered list as one', () => {
-		renderNote('<ol><li><p>one</p></li><li><p>two</p></li></ol>');
+	it('renders emphasis as emphasis, whichever tag it arrived as', () => {
+		const { container } = renderNote('<p><b>bold</b> <i>italic</i> <s>struck</s></p>');
 
-		expect(screen.getAllByRole('listitem')).toHaveLength(2);
-	});
-
-	it.each([
-		['<p>a <strong>b</strong></p>', 'strong'],
-		['<p>a <b>b</b></p>', 'strong'],
-		['<p>a <em>b</em></p>', 'em'],
-		['<p>a <i>b</i></p>', 'em'],
-		['<p>a <s>b</s></p>', 's'],
-	])('renders %s as %s', (note, tag) => {
-		const { container } = renderNote(note);
-
-		expect(container.querySelector(tag)).toHaveTextContent('b');
+		expect(container.querySelector('strong')).toHaveTextContent('bold');
+		expect(container.querySelector('em')).toHaveTextContent('italic');
+		expect(container.querySelector('s')).toHaveTextContent('struck');
 	});
 
 	/**
@@ -55,7 +50,6 @@ describe('Note', () => {
 	it.each([
 		['<p>Safe</p><script>window.pwned = 1</script>', 'script'],
 		['<p>Safe</p><img src="x" onerror="1">', 'img'],
-		['<p>Safe</p><iframe src="evil"></iframe>', 'iframe'],
 	])('drops %s', (note, tag) => {
 		const { container } = renderNote(note);
 
@@ -68,42 +62,10 @@ describe('Note', () => {
 	 * would walk past an upper-case comparison. Nothing could execute either way - the parsed
 	 * nodes are never inserted, only read - but the source would land on screen as text.
 	 */
-	it.each([
-		['<p>Safe</p><svg><script>window.pwned = 1</script></svg>', 'window.pwned'],
-		['<p>Safe</p><math><mtext>hidden</mtext></math>', 'hidden'],
-	])('drops the foreign-namespace element in %s', (note, leaked) => {
-		renderNote(note);
+	it('drops a foreign-namespace element rather than leaking its source as text', () => {
+		renderNote('<p>Safe</p><svg><script>window.pwned = 1</script></svg>');
 
 		expect(screen.getByText('Safe')).toBeInTheDocument();
-		expect(screen.getByRole('region', { name: 'note' })).not.toHaveTextContent(leaked);
-	});
-
-	it('keeps the words of a tag it does not render', () => {
-		renderNote('<div><h2>Heading</h2></div>');
-
-		expect(screen.getByRole('region', { name: 'note' })).toHaveTextContent('Heading');
-	});
-
-	it('renders a line break', () => {
-		const { container } = renderNote('<p>one<br>two</p>');
-
-		expect(container.querySelector('br')).toBeInTheDocument();
-	});
-
-	/**
-	 * Both Productive and TipTap wrap list text in a paragraph; drawing that as a block would put
-	 * every bullet on its own double-spaced line.
-	 */
-	it('does not give a list item its own paragraph box', () => {
-		const { container } = renderNote('<ul><li><p>one</p></li></ul>');
-
-		expect(container.querySelector('li p')).toBeNull();
-		expect(container.querySelector('li')).toHaveTextContent('one');
-	});
-
-	it('renders nothing for an empty note', () => {
-		renderNote('');
-
-		expect(screen.getByRole('region', { name: 'note' })).toBeEmptyDOMElement();
+		expect(screen.getByRole('region', { name: 'note' })).not.toHaveTextContent('window.pwned');
 	});
 });

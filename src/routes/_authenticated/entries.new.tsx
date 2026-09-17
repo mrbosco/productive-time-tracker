@@ -3,20 +3,14 @@ import { z } from 'zod';
 import { DayView } from '@/components/features/time-entries/DayView/DayView';
 import { TimeEntryForm } from '@/components/features/time-entries/TimeEntryForm/TimeEntryForm';
 import { timeEntryQueryOptions } from '@/components/features/time-entries/timeEntryQueryOptions';
-import { timeEntriesQueryOptions } from '@/components/features/time-entries/useTimeEntries';
-import { weekTotalsQueryOptions } from '@/components/features/week/useWeekTotals';
+import { weekEntriesQueryOptions } from '@/components/features/week/useWeekEntries';
 import { isoDateSchema, todayIso } from '@/lib/date';
 
 export const Route = createFileRoute('/_authenticated/entries/new')({
-	/*
-	 * A-5: the day being logged travels in the search param, so the form opens on the date the
-	 * user was looking at. Validated here for the same reason `/day/$date` validates its param.
-	 *
-	 * `duplicate` is X-3's: the entry whose duration and description this one starts from. An ID in
-	 * the URL rather than the values themselves, because a note is a document - putting it in a
-	 * query string would put someone's writing in their history, in any link they shared, and in
-	 * whatever length limit the browser has.
-	 */
+	/* The day being logged travels in the search param, so the form opens on the date the user was
+	 * looking at. `duplicate` is the entry this one starts from - an ID rather than the values
+	 * themselves, because a note is a document, and a query string ends up in someone's history,
+	 * in any link they share, and inside whatever length limit the browser has. */
 	validateSearch: z.object({ date: isoDateSchema.catch(todayIso), duplicate: z.string().optional() }),
 
 	// The same two requests the day route starts, because the same day is rendered underneath the
@@ -24,20 +18,14 @@ export const Route = createFileRoute('/_authenticated/entries/new')({
 	// what this covers.
 	loaderDeps: ({ search }) => ({ date: search.date, duplicate: search.duplicate }),
 	loader: async ({ context, deps }) => {
-		void context.queryClient.prefetchQuery(timeEntriesQueryOptions(context.session, deps.date));
-		void context.queryClient.prefetchQuery(weekTotalsQueryOptions(context.session, deps.date));
+		void context.queryClient.prefetchQuery(weekEntriesQueryOptions(context.session, deps.date));
 
 		if (deps.duplicate === undefined) return { prefill: null };
 
-		/*
-		 * Awaited, unlike the two above, for the reason the edit route awaits its own: a form
-		 * cannot open half-prefilled, and this one is being opened *because* of those values.
-		 *
-		 * Swallowed rather than thrown, unlike the edit route's. There the entry is the screen, so
-		 * "this entry no longer exists" is the whole answer; here it is a starting point, and an
-		 * error page in place of a blank New entry form would be refusing to let someone log time
-		 * because the thing they wanted to copy is gone.
-		 */
+		/* Awaited, unlike the two above: a form cannot open half-prefilled, and this one is opened
+		 * *because* of those values. Swallowed rather than thrown - here the source is a starting
+		 * point, and an error page would refuse to let someone log time because the entry they
+		 * wanted to copy is gone. */
 		const source = await context.queryClient
 			.ensureQueryData(timeEntryQueryOptions(context.session, deps.duplicate))
 			.catch(() => null);
@@ -48,24 +36,15 @@ export const Route = createFileRoute('/_authenticated/entries/new')({
 	component: NewEntryRoute,
 });
 
-/**
- * Adding an entry (US-2, R-9).
- *
- * The day renders underneath rather than being replaced: on desktop the design puts the form in a
- * dialog over it, and on mobile the same dialog fills the screen, so the day is there to return to
- * the moment it closes. Radix hides it from assistive technology while the form is open, so what
- * is behind is decoration in both senses.
- */
+/** Adding an entry. The day renders underneath rather than being replaced, so it is there to return
+ * to the moment the form closes; Radix hides it from assistive technology while the form is open. */
 function NewEntryRoute() {
 	const { session } = Route.useRouteContext();
 	const { date } = Route.useSearch();
 	const { prefill } = Route.useLoaderData();
-	/*
-	 * UI-3's `Log time`: the words typed into the quick-add line, carried in history state rather
-	 * than in the search params for the reason `duplicate` is an ID - a description is somebody's
-	 * writing, and a query string ends up in their history and in any link they share. Lost on a
-	 * reload, which is right for a draft nobody has saved.
-	 */
+	/* The words typed into the quick-add line, carried in history state rather than the search
+	 * params for the reason `duplicate` is an ID. Lost on a reload, which is right for a draft
+	 * nobody has saved. */
 	const quickAddNote = useRouterState({ select: (state) => state.location.state.quickAddNote });
 
 	return (
@@ -82,7 +61,7 @@ function NewEntryRoute() {
 
 declare module '@tanstack/react-router' {
 	interface HistoryState {
-		/** UI-3: what the quick-add line was carrying when `Log time` was pressed. */
+		/** What the quick-add line was carrying when `Log time` was pressed. */
 		quickAddNote?: string;
 	}
 }

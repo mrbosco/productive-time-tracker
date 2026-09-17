@@ -4,12 +4,10 @@ import { weekEntriesQueryOptions } from '@/components/features/week/useWeekEntri
 import { isIsoDate, startOfWeek, todayIso } from '@/lib/date';
 
 export const Route = createFileRoute('/_authenticated/week/$date')({
-	/**
-	 * Validated and normalised at the boundary, like `/day/$date` (ADR-0007). Normalised as well as
+	/** Validated and normalised at the boundary, like `/day/$date` (ADR-0007). Normalised as well as
 	 * validated: a week is identified by its Monday, so `/week/2026-09-17` redirects to
 	 * `/week/2026-09-14` rather than leaving seven URLs that all render the same grid and split its
-	 * cache seven ways.
-	 */
+	 * cache seven ways. */
 	beforeLoad: ({ params }) => {
 		if (!isIsoDate(params.date)) {
 			throw redirect({ to: '/week/$date', params: { date: startOfWeek(todayIso()) }, replace: true });

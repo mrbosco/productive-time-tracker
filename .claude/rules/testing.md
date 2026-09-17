@@ -8,7 +8,7 @@ paths:
 
 # Testing
 
-Strategy in SPEC 8; conventions are guidebook rules 19-23. ADR-0003 holds the reasoning.
+Strategy in SPEC 7; conventions are guidebook rules 19-23. ADR-0003 holds the reasoning.
 
 ## Levels
 

@@ -2,17 +2,7 @@ import { Popover as PopoverPrimitive } from 'radix-ui';
 import type * as React from 'react';
 import { cn } from '@/lib/utils';
 
-/**
- * shadcn's Popover on Radix, restyled to the design tokens (guidebook 16).
- *
- * Trimmed to the three parts the app uses; the generated file also ships an anchor, header, title
- * and description, none of which any popover in the design has. The generated animation classes
- * went with them: they are `tailwindcss-animate` utilities, which this project does not install,
- * and the design specifies motion on colour and background only.
- *
- * Radix handles the focus trap, Escape, outside-click dismissal and returning focus to the
- * trigger on close (guidebook 18).
- */
+/** shadcn's Popover on Radix, restyled and trimmed to the three parts the app uses. */
 function Popover({ ...props }: React.ComponentProps<typeof PopoverPrimitive.Root>) {
 	return <PopoverPrimitive.Root data-slot="popover" {...props} />;
 }

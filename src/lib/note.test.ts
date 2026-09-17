@@ -15,7 +15,7 @@ describe('toPlainText', () => {
 		expect(toPlainText('First line\nSecond line')).toBe('First line\nSecond line');
 	});
 
-	/** The note actually recorded from the API (A-9, docs/api/samples/time-entries-day.json). */
+	/** The note actually recorded from the API (docs/api/samples/time-entries-day.json). */
 	it('strips the recorded rich-text note to its words', () => {
 		expect(toPlainText('<ul><li><p>Probavam</p></li></ul>')).toBe('Probavam');
 	});

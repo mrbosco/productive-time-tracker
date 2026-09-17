@@ -5,16 +5,9 @@ export interface ServiceContextRow {
 	value: string;
 }
 
-/**
- * The rows behind a project name (UI-2): who is billed, under which agreement, in which section.
- *
- * A row is left out when it has no value, and the client is left out when it is the same
- * organisation as the one already on the card's avatar - printing a name twice costs a line and
- * says nothing. Never an em dash and never "None": an absent row is the honest rendering of a
- * relationship the record does not have.
- *
- * Compared by ID rather than by name, because two companies are allowed to share one.
- */
+/** The rows behind a project name: who is billed, under which agreement, in which section. A row with
+ * no value is left out rather than shown as an em dash or "None", and the client is left out when it
+ * is the company already on the card's avatar - compared by ID, since two companies may share a name. */
 export function serviceContextRows(service: Service | null): ServiceContextRow[] {
 	if (service === null) return [];
 

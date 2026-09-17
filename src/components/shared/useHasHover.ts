@@ -1,15 +1,8 @@
 import { useSyncExternalStore } from 'react';
 
-/**
- * Whether the pointer on this device can hover.
- *
- * Which is not the same question as "is this screen narrow". A laptop at a small window still
- * hovers and a tablet at 1024px still does not, so the surfaces that answer a hover - UI-2's
- * service context, UI-6's expected hours - pick by input rather than by breakpoint.
- *
- * `matchMedia` is missing under jsdom, so a component test always takes the touch branch. That is
- * deliberate: the hover branch needs real pointer events and is covered in `e2e/` instead.
- */
+/** Whether the pointer on this device can hover - not "is this screen narrow". A laptop at a small
+ * window still hovers and a tablet at 1024px does not. `matchMedia` is missing under jsdom, so
+ * component tests always take the touch branch and `e2e/` covers the other. */
 const HOVER_QUERY = '(hover: hover)';
 
 function subscribe(onChange: () => void): () => void {

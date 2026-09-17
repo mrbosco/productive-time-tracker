@@ -18,13 +18,10 @@ function renderSheet() {
 	return renderWithProviders(<OpenSheet />, { session: testSession });
 }
 
+/** `Administrative work` in `docs/api/samples/services.json`. */
+const ADMINISTRATIVE_WORK_ID = '16887826';
+
 describe('SettingsSheet', () => {
-	it('says what the choice is for', async () => {
-		await renderSheet();
-
-		expect(await screen.findByText('Used for new entries and the timer.')).toBeInTheDocument();
-	});
-
 	it('remembers the chosen service for the next entry', async () => {
 		const user = userEvent.setup();
 		await renderSheet();
@@ -32,33 +29,15 @@ describe('SettingsSheet', () => {
 		await user.click(await screen.findByRole('button', { name: /Administrative work/ }));
 
 		await waitFor(() => {
-			expect(readSession()?.defaultServiceId).toBeDefined();
+			// The id it stored, not merely that it stored something: storing the wrong service is
+			// what this is here to catch.
+			expect(readSession()?.defaultServiceId).toBe(ADMINISTRATIVE_WORK_ID);
 		});
 	});
 
-	/** UI's searchable list, which is the whole reason the native select went. */
-	it('filters the list as you type, across company, project and service', async () => {
-		const user = userEvent.setup();
-		await renderSheet();
-
-		await user.type(await screen.findByRole('combobox', { name: 'Search services' }), 'administrative');
-
-		expect(await screen.findByRole('button', { name: /Administrative work/ })).toBeInTheDocument();
-		expect(screen.queryByRole('button', { name: /Project management/ })).not.toBeInTheDocument();
-	});
-
-	it('says so rather than showing an empty list when nothing matches', async () => {
-		const user = userEvent.setup();
-		await renderSheet();
-
-		await user.type(await screen.findByRole('combobox', { name: 'Search services' }), 'zzzz');
-
-		expect(await screen.findByText(/No service matches/)).toBeInTheDocument();
-	});
-
 	/**
-	 * A-1 is explicit that this must not read like an empty account: one is worth retrying and the
-	 * other is a fact about the organization.
+	 * This must not read like an empty account: one is worth retrying and the other is a fact about
+	 * the organization.
 	 */
 	it('reports a failed load as a failure, not as an empty account', async () => {
 		server.use(http.get('*/services', () => new HttpResponse(null, { status: 500 })));

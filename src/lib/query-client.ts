@@ -1,10 +1,7 @@
 import { QueryClient } from '@tanstack/react-query';
 
-/**
- * One client per app instance, and a fresh one per test (see `src/__tests__/test-utils.tsx`).
- * Defaults are conservative: a time tracker's day view changes rarely within a session,
- * and a background refetch on every window focus would be noise, not freshness.
- */
+/** One client per app instance, a fresh one per test. Defaults are conservative: a day view changes
+ * rarely within a session, and refetching on every window focus would be noise, not freshness. */
 export function createQueryClient() {
 	return new QueryClient({
 		defaultOptions: {

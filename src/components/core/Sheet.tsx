@@ -2,15 +2,8 @@ import { Dialog as DialogPrimitive } from 'radix-ui';
 import type * as React from 'react';
 import { cn } from '@/lib/utils';
 
-/**
- * The settings surface: a bottom sheet on mobile, a right-hand side panel from `md`
- * (`05-global-default-service.png` and its desktop twin).
- *
- * Radix's Dialog again rather than a second primitive - a sheet is a modal that enters from an
- * edge, and reusing it keeps the focus trap, Escape and backdrop dismissal identical to
- * `Dialog`'s (guidebook 18). One element that restyles across the breakpoint rather than two
- * hidden by CSS, so only one is ever in the accessibility tree.
- */
+/** The settings surface: a bottom sheet on mobile, a right-hand side panel from `md`. Radix's Dialog
+ * again rather than a second primitive, so the focus trap and dismissal behaviour are identical. */
 function Sheet({ ...props }: React.ComponentProps<typeof DialogPrimitive.Root>) {
 	return <DialogPrimitive.Root data-slot="sheet" {...props} />;
 }
@@ -29,8 +22,6 @@ function SheetContent({ className, children, ...props }: React.ComponentProps<ty
 				)}
 				{...props}
 			>
-				{/* The grabber the design draws on the mobile sheet. Decoration: the sheet is
-				    dismissed with Escape, the backdrop or the control that opened it. */}
 				<div aria-hidden="true" className="mx-auto mb-[18px] h-1 w-9 rounded-pill bg-line md:hidden" />
 				{children}
 			</DialogPrimitive.Content>
@@ -38,7 +29,6 @@ function SheetContent({ className, children, ...props }: React.ComponentProps<ty
 	);
 }
 
-/** 17px on the mobile sheet, 22px on the desktop panel, as drawn. */
 function SheetTitle({ className, ...props }: React.ComponentProps<typeof DialogPrimitive.Title>) {
 	return (
 		<DialogPrimitive.Title

@@ -15,9 +15,9 @@ Why this approach. Alternatives rejected and why. Cite the ADR if one governs it
 ## Spec and design
 
 - Story: US-n
-- Requirements: R-n (SPEC 2.1)
-- Route: `/...` (SPEC 6.2)
-- Design: `docs/design/screens/...-mobile.png`, `...-desktop.png`
+- Feature:
+- Route: `/...`
+- Screens: mobile and desktop captures of the change
 
 ## Screenshots
 

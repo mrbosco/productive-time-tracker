@@ -14,20 +14,14 @@ export interface AuthContextValue {
 
 const SessionContext = createContext<AuthContextValue | null>(null);
 
-/** The credentials, in the shape `src/api` takes them. */
 export function toAuth(session: Session): Auth {
 	return { token: session.token, organizationId: session.organizationId };
 }
 
-/**
- * Re-validates a stored session against the API on app start (ADR-0004): a token can be revoked
- * or the person removed from the organization between visits, and the stored session would
- * otherwise keep letting them in until the first day request failed.
- *
- * `staleTime: Infinity` because this is checked once per app load, not per navigation - the route
- * loader awaits it, and every later navigation reads the cache. The query key holds the person ID
- * and never the token (api-client rule 7): keys end up in devtools and in error reports.
- */
+/** Re-validates a stored session against the API on app start (ADR-0004): a token can be revoked or
+ * the person removed from the organization between visits. `staleTime: Infinity` because this is
+ * checked once per app load, not per navigation. The key holds the person ID and never the token -
+ * keys end up in devtools and error reports. */
 export function sessionQueryOptions(session: Session) {
 	return queryOptions({
 		queryKey: ['session', session.personId],
@@ -40,7 +34,6 @@ export function sessionQueryOptions(session: Session) {
 }
 
 export function SessionProvider({ children }: { children: ReactNode }) {
-	// Lazy initialiser: reading storage once at mount, not on every render.
 	const [session, setSession] = useState(readSession);
 	const queryClient = useQueryClient();
 
@@ -75,14 +68,9 @@ export function useSession(): AuthContextValue {
 	return value;
 }
 
-/**
- * Logging out, from anywhere inside the router.
- *
- * Dropping the session does not move anyone: the router only re-runs its guards on navigation, so
- * a caller that merely cleared it would leave the person sitting on a guarded URL with no session.
- * The navigation belongs with the clearing, not with each caller - `SessionProvider` cannot do it
- * itself because it sits above the router.
- */
+/** Logging out, from anywhere inside the router. Dropping the session moves nobody - the router only
+ * re-runs guards on navigation - so the navigation belongs here rather than in each caller;
+ * `SessionProvider` cannot do it, because it sits above the router. */
 export function useLogout(): () => void {
 	const { logout } = useSession();
 	const navigate = useNavigate();

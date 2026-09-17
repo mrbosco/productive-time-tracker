@@ -3,17 +3,8 @@ import { Link, useRouterState } from '@tanstack/react-router';
 import { startOfWeek } from '@/lib/date';
 import { cn } from '@/lib/utils';
 
-/**
- * Day or Timesheet, in the app bar (UI-7).
- *
- * Two items, so a segmented control rather than tabs or a dropdown. It is a route change and not a
- * filter, and it carries the date across: switching from Tue 15 lands on the week containing Tue 15,
- * and switching back returns to Tue 15 rather than to today.
- *
- * Hidden below `md` rather than disabled-and-explained in the bar: the design disables it under
- * 900px, and the timesheet route says the same thing in full when somebody arrives there anyway -
- * which is the only way they can, since nothing here offers it.
- */
+/** Day or Timesheet, in the app bar. A route change rather than a filter, carrying the date across.
+ * Hidden below `md`; the timesheet route explains itself to anyone who deep-links there. */
 export function ViewSwitch({ date }: { date: string }) {
 	const isWeek = useRouterState({ select: (state) => state.location.pathname.startsWith('/week/') });
 	const item =
