@@ -85,7 +85,7 @@ export function toMinutesOfDay(value: string): number | null {
 }
 
 /**
- * A running timer's elapsed time (X-4): `9m 20s`, `1h 9m 20s`.
+ * A running timer's elapsed time (X-4): `23s`, `9m 20s`, `1h 9m 20s`.
  *
  * Units, not a clock. `9:20` is nine minutes and twenty seconds here and nine hours twenty minutes
  * three lines away on the same screen, and nothing in the glyphs says which - the design's own
@@ -100,10 +100,13 @@ export function formatElapsed(seconds: number): string {
 	const total = Number.isFinite(seconds) ? Math.max(0, Math.floor(seconds)) : 0;
 	const hours = Math.floor(total / 3600);
 	const minutes = Math.floor((total % 3600) / 60);
-	// Seconds padded so the pill does not jitter a character wider every ten ticks; minutes not,
-	// because they only roll over once an hour and `1h 9m` is the way it is said.
-	const padded = String(total % 60).padStart(2, '0');
+	const remainder = total % 60;
+	// Padded so the pill does not jitter a character wider every ten ticks - but only once there is
+	// a minutes place to hold the column steady. `0m 23s` says a zero nobody asked about, the same
+	// way `formatDuration` writes `45m` and never `0h 45m`.
+	const padded = String(remainder).padStart(2, '0');
 
+	if (hours === 0 && minutes === 0) return `${String(remainder)}s`;
 	if (hours === 0) return `${String(minutes)}m ${padded}s`;
 
 	return `${String(hours)}h ${String(minutes)}m ${padded}s`;

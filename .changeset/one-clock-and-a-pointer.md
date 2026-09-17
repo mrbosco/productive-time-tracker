@@ -9,7 +9,7 @@ header pill, and the cell it is running in. Two of those were showing something 
 entry's stored total and the day's sum, so a timesheet with a timer on it printed three different
 durations and left you to work out which one was the clock.
 
-It is also written in units now - `9m 20s`, `1h 9m 20s` - because `9:20` on a timer and `9h 20m` on
+It is also written in units now - `23s`, `9m 20s`, `1h 9m 20s` - because `9:20` on a timer and `9h 20m` on
 the card below it are the same glyphs meaning wildly different amounts of time.
 
 Every clickable thing has a pointer cursor again. Tailwind 4 leaves a `<button>` with the arrow

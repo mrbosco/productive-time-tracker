@@ -126,9 +126,9 @@ describe('toMinutesOfDay', () => {
 
 describe('formatElapsed', () => {
 	it.each([
-		[0, '0m 00s'],
-		[9, '0m 09s'],
-		[42, '0m 42s'],
+		[0, '0s'],
+		[9, '9s'],
+		[42, '42s'],
 		[60, '1m 00s'],
 		[725, '12m 05s'],
 		[3600, '1h 0m 00s'],
@@ -140,7 +140,7 @@ describe('formatElapsed', () => {
 
 	/** A clock that ran backwards would be a stranger thing to show than one that reads zero. */
 	it.each([-1, Number.NaN, Number.POSITIVE_INFINITY])('renders %s as zero', (seconds) => {
-		expect(formatElapsed(seconds)).toBe('0m 00s');
+		expect(formatElapsed(seconds)).toBe('0s');
 	});
 
 	/**
@@ -158,7 +158,7 @@ describe('formatElapsed', () => {
 	 * minutes, and `0h` for a timer forty seconds old hides the only sign it is running.
 	 */
 	it('shows seconds where formatDuration shows nothing', () => {
-		expect(formatElapsed(40)).toBe('0m 40s');
+		expect(formatElapsed(40)).toBe('40s');
 		expect(formatDuration(0)).toBe('0h');
 	});
 });
