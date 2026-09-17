@@ -158,17 +158,22 @@ test('opens the field with Enter on the focused row, and Undo puts the number ba
 	await expect(card.getByRole('button', { name: 'Edit logged time, 5h' })).toBeVisible();
 });
 
-test('continues the timer on the focused row with p, and says which day it lands on', async ({ page }, testInfo) => {
+/**
+ * A clock runs now, so neither the button nor its key offers to start one on a row from another
+ * day - the timer attaches to that entry and would count into it. `e2e/timer.spec.ts` covers the
+ * today side, where both do work.
+ */
+test('will not start a timer on a row from another day, by button or by key', async ({ page }, testInfo) => {
 	test.skip(testInfo.project.name === 'mobile-chrome', 'touch keeps both actions in the kebab');
 	await page.goto(`/day/${SEEDED_DATE}`);
 
 	const card = page.getByRole('article').filter({ hasText: 'Probavam' });
+	await card.hover();
+	await expect(page.getByRole('button', { name: 'Continue timer on this entry' })).toHaveCount(0);
+
 	await card.focus();
 	await page.keyboard.press('p');
 
-	await expect(card).toContainText('Tracking');
-	// The entry is not today's, and the timer attaches to it rather than making a new one, so the
-	// day it is counting onto is worth saying.
-	// Not `getByRole('status')`: the app bar's live pill is one too, and it says `Timer running`.
-	await expect(page.getByText('Timer running on Tue 15 Sep')).toBeVisible();
+	await expect(card.getByText('Tracking')).toHaveCount(0);
+	await expect(page.getByRole('button', { name: 'Start timer' })).toBeVisible();
 });

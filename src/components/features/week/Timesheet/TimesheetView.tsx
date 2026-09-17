@@ -128,13 +128,13 @@ export function TimesheetView({ session, date }: { session: Session; date: strin
 	return (
 		<>
 			{/* Below `md` the grid is unreadable rather than cramped, so it is not drawn at all. */}
-			<main className="mx-4 flex flex-col gap-5 pt-6 pb-14 md:mx-12">
+			<main className="mx-auto flex w-full max-w-[1376px] flex-col gap-6 px-4 pt-6 pb-14 md:px-8 md:pt-8 xl:px-12">
 				<div className="rounded-entry border border-line bg-surface p-6 text-center md:hidden">
 					<p className="text-list">The timesheet needs a wider screen. Rotate, or use the day view.</p>
 					<button
 						type="button"
 						onClick={() => void navigate({ to: '/day/$date', params: { date: today } })}
-						className="duration-ui mt-3.5 h-11 rounded-pill border border-line px-4.5 text-meta font-medium transition-colors ease-ui hover:bg-subtle"
+						className="duration-ui mt-3.5 h-11 rounded-control border border-line px-4.5 text-meta font-medium transition-colors ease-ui hover:bg-subtle"
 					>
 						Go to the day view
 					</button>
@@ -145,7 +145,7 @@ export function TimesheetView({ session, date }: { session: Session; date: strin
 						type="button"
 						aria-label="Previous week"
 						onClick={() => void navigate({ to: '/week/$date', params: { date: addDays(date, -7) } })}
-						className="duration-ui grid size-11 flex-none place-items-center rounded-pill border border-line bg-surface text-muted transition-colors ease-ui hover:bg-subtle"
+						className="duration-ui grid size-11 flex-none place-items-center rounded-control border border-line bg-surface text-muted transition-colors ease-ui hover:bg-subtle"
 					>
 						<ChevronIcon back />
 					</button>
@@ -153,7 +153,7 @@ export function TimesheetView({ session, date }: { session: Session; date: strin
 						type="button"
 						aria-label="Next week"
 						onClick={() => void navigate({ to: '/week/$date', params: { date: addDays(date, 7) } })}
-						className="duration-ui grid size-11 flex-none place-items-center rounded-pill border border-line bg-surface text-muted transition-colors ease-ui hover:bg-subtle"
+						className="duration-ui grid size-11 flex-none place-items-center rounded-control border border-line bg-surface text-muted transition-colors ease-ui hover:bg-subtle"
 					>
 						<ChevronIcon />
 					</button>
@@ -164,7 +164,7 @@ export function TimesheetView({ session, date }: { session: Session; date: strin
 						<button
 							type="button"
 							onClick={() => void navigate({ to: '/week/$date', params: { date: todayIso() } })}
-							className="duration-ui h-9 flex-none rounded-pill border border-line bg-surface px-3.5 text-label font-medium transition-colors ease-ui hover:bg-subtle"
+							className="duration-ui h-9 flex-none rounded-control border border-line bg-surface px-3.5 text-label font-medium transition-colors ease-ui hover:bg-subtle"
 						>
 							This week
 						</button>
@@ -185,14 +185,14 @@ export function TimesheetView({ session, date }: { session: Session; date: strin
 					</span>
 				</div>
 
-				<div className="hidden overflow-hidden rounded-entry border border-line bg-surface md:block">
+				<div className="hidden overflow-x-auto rounded-entry border border-line bg-surface md:block">
 					{isError ? (
 						<div role="alert" className="flex flex-col items-center gap-3.5 px-5 py-12 text-center">
 							<p className="text-list">Could not load this week.</p>
 							<button
 								type="button"
 								onClick={() => void refetch()}
-								className="duration-ui h-11 rounded-pill border border-line px-4.5 text-meta font-medium transition-colors ease-ui hover:bg-subtle"
+								className="duration-ui h-11 rounded-control border border-line px-4.5 text-meta font-medium transition-colors ease-ui hover:bg-subtle"
 							>
 								Retry
 							</button>
@@ -201,7 +201,7 @@ export function TimesheetView({ session, date }: { session: Session; date: strin
 						<table className="w-full border-collapse">
 							<caption className="sr-only">Logged time for {describeWeek(date, today)}</caption>
 							<thead>
-								<tr className={cn(GRID, 'border-b border-line bg-subtle')}>
+								<tr className={cn(GRID, 'border-b border-line bg-canvas')}>
 									<th scope="col" className="px-5 py-3.5 text-left text-caption font-medium text-muted">
 										Project · service
 									</th>
@@ -256,7 +256,10 @@ export function TimesheetView({ session, date }: { session: Session; date: strin
 											</tr>
 										))
 									: sheet.rows.map((row) => (
-											<tr key={row.serviceId} className={cn(GRID, 'items-stretch border-b border-line')}>
+											<tr
+												key={row.serviceId}
+												className={cn(GRID, 'items-stretch border-b border-line hover:bg-canvas/60')}
+											>
 												<th scope="row" className="flex min-w-0 flex-col justify-center px-5 py-3.5 text-left">
 													<span className="block truncate text-meta font-medium">{row.project}</span>
 													<span className="block truncate text-caption font-normal text-muted">{row.service}</span>

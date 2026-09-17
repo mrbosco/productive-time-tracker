@@ -128,7 +128,7 @@ function AppChrome({ session, children }: { session: Session; children: ReactNod
 
 	return (
 		<div className="min-h-dvh">
-			<header className="flex h-14 items-center gap-2 border-b border-line bg-surface pr-2 pl-4 md:h-16 md:gap-3 md:px-12">
+			<header className="flex h-14 items-center gap-2 border-b border-line bg-surface pr-2 pl-4 md:h-[72px] md:gap-4 md:px-8 xl:px-[max(48px,calc((100%-1280px)/2))]">
 				<img src={logoUrl} alt="Productive" className="hidden h-6 md:block" />
 				<span aria-hidden="true" className="mx-1 hidden h-5 w-px bg-line md:block" />
 				{/* Between the product name and the timer - the one place both views share (UI-7). */}
@@ -157,7 +157,7 @@ function AppChrome({ session, children }: { session: Session; children: ReactNod
 					onClick={() => {
 						setIsShortcutsOpen(true);
 					}}
-					className="duration-ui hidden size-10 flex-none place-items-center rounded-pill border border-line bg-surface text-meta font-medium text-muted transition-colors ease-ui hover:bg-subtle md:grid"
+					className="duration-ui hidden size-10 flex-none place-items-center rounded-control text-meta font-medium text-muted transition-colors ease-ui hover:bg-subtle hover:text-ink md:grid"
 				>
 					?
 				</button>

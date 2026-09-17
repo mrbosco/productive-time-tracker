@@ -58,7 +58,7 @@ export function QuickAddInput({ date }: { date: string }) {
 
 	return (
 		<form
-			className="flex flex-col gap-1.5"
+			className="flex flex-col gap-2"
 			onSubmit={(event) => {
 				event.preventDefault();
 				// Enter starts the clock, because that is the action the row is primarily for. `Log
@@ -71,7 +71,7 @@ export function QuickAddInput({ date }: { date: string }) {
 				startTracking();
 			}}
 		>
-			<div className="flex items-center gap-2">
+			<div className="flex items-center gap-1 rounded-entry border border-line bg-surface p-1.5 transition-colors focus-within:border-accent/50 sm:gap-2">
 				<label htmlFor={fieldId} className="sr-only">
 					Quick add an entry
 				</label>
@@ -82,7 +82,7 @@ export function QuickAddInput({ date }: { date: string }) {
 						setValue(event.target.value);
 					}}
 					placeholder="What are you working on?"
-					className="h-12 flex-1 text-list"
+					className="h-11 flex-1 border-0 bg-transparent px-2.5 text-base md:text-list"
 				/>
 
 				{canTrack && (
@@ -92,8 +92,8 @@ export function QuickAddInput({ date }: { date: string }) {
 						// refusing, which is what somebody moving on to the next thing means by it.
 						disabled={described === ''}
 						className={cn(
-							'duration-ui flex h-10 flex-none items-center gap-2 rounded-pill bg-accent px-4 text-meta font-medium text-on-accent transition-colors ease-ui',
-							'hover:bg-accent-dark disabled:cursor-not-allowed disabled:opacity-40'
+							'duration-ui flex h-11 flex-none items-center gap-2 rounded-control bg-accent px-4 text-meta font-medium text-on-accent transition-colors ease-ui',
+							'hover:bg-accent-dark disabled:cursor-not-allowed disabled:bg-subtle disabled:text-muted'
 						)}
 					>
 						<PlayIcon />
@@ -105,7 +105,7 @@ export function QuickAddInput({ date }: { date: string }) {
 					type={canTrack ? 'button' : 'submit'}
 					onClick={logTime}
 					className={cn(
-						'duration-ui h-10 flex-none rounded-pill px-4 text-meta font-medium transition-colors ease-ui',
+						'duration-ui h-11 flex-none rounded-control px-4 text-meta font-medium transition-colors ease-ui',
 						canTrack
 							? 'hidden border border-line hover:bg-subtle sm:block'
 							: 'bg-accent text-on-accent hover:bg-accent-dark'
@@ -115,7 +115,7 @@ export function QuickAddInput({ date }: { date: string }) {
 				</button>
 			</div>
 
-			<span className="pl-0.5 text-caption text-muted">
+			<span className="px-1 text-caption leading-relaxed text-muted">
 				{!canTrack
 					? 'Log time opens the form for this day · the timer only runs on today'
 					: isTracking

@@ -171,7 +171,7 @@ export function TimeEntryCard({
 			// No focus classes: `styles/index.css` draws one accent ring on `:focus-visible`
 			// everywhere, which is the ring the design brief asks cards to have.
 			className={cn(
-				'group relative flex min-h-[76px] items-start gap-3.5 rounded-entry border bg-surface p-4 md:items-center md:gap-[18px] md:px-5 md:py-[18px]',
+				'duration-ui group relative flex min-h-[76px] items-start gap-3.5 rounded-entry border bg-surface p-4 transition-colors md:items-center md:gap-[18px] md:px-5 md:py-5',
 				/*
 				 * The indigo edge the design gives a tracking row, so it is findable down a long
 				 * day - drawn as a thick left border rather than an absolutely positioned bar. A
@@ -180,7 +180,7 @@ export function TimeEntryCard({
 				 * three extra pixels come back out of the padding so nothing shifts when a timer
 				 * starts.
 				 */
-				isTracking ? 'border-l-4 border-accent pl-[13px] md:pl-[17px]' : 'border-line'
+				isTracking ? 'border-l-4 border-accent pl-[13px] md:pl-[17px]' : 'border-line hover:border-muted/40'
 			)}
 		>
 			{/*
@@ -207,11 +207,7 @@ export function TimeEntryCard({
 			/>
 
 			<div className="flex min-w-0 flex-1 flex-col gap-1.5">
-				{hasNote ? (
-					<ClampedNote note={entry.note ?? ''} />
-				) : (
-					<p className="text-list text-muted italic">No description</p>
-				)}
+				{hasNote ? <ClampedNote note={entry.note ?? ''} /> : <p className="text-list text-muted">No description</p>}
 
 				<div className="flex flex-wrap items-center gap-2">
 					{/* `project · service`, and everything behind the project name (UI-2). */}
@@ -225,7 +221,7 @@ export function TimeEntryCard({
 					{isTracking && (
 						<>
 							<span aria-hidden="true" className="hidden h-[11px] w-px bg-line md:block" />
-							<span className="flex items-center gap-1.5 text-micro font-bold tracking-[.06em] text-accent uppercase">
+							<span className="flex items-center gap-1.5 text-caption font-medium text-accent">
 								Tracking
 								<TimerDot className="size-[7px]" />
 							</span>
@@ -280,7 +276,7 @@ export function TimeEntryCard({
 						title="Continue timer"
 						onClick={onContinueTimer}
 						className={cn(
-							'duration-ui grid size-9 flex-none place-items-center rounded-pill border border-line text-accent transition-colors ease-ui hover:border-transparent hover:bg-selection',
+							'duration-ui grid size-9 flex-none place-items-center rounded-control border border-line text-accent transition-colors ease-ui hover:border-transparent hover:bg-selection',
 							REVEALED
 						)}
 					>
@@ -324,7 +320,7 @@ export function TimeEntryCard({
 			<DropdownMenu>
 				<DropdownMenuTrigger
 					aria-label="Entry actions"
-					className="duration-ui -mt-2.5 -mr-2.5 grid size-11 flex-none place-items-center rounded-pill text-muted transition-colors ease-ui hover:bg-subtle hover:text-ink md:-mt-0 md:-mr-1 md:size-9"
+					className="duration-ui -mt-2.5 -mr-2.5 grid size-11 flex-none place-items-center rounded-control text-muted transition-colors ease-ui hover:bg-subtle hover:text-ink md:-mt-0 md:-mr-1 md:size-9"
 				>
 					<KebabIcon />
 				</DropdownMenuTrigger>

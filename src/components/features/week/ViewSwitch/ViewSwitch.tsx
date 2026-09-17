@@ -16,21 +16,21 @@ import { cn } from '@/lib/utils';
 export function ViewSwitch({ date }: { date: string }) {
 	const isWeek = useRouterState({ select: (state) => state.location.pathname.startsWith('/week/') });
 	const item =
-		'duration-ui grid h-[34px] place-items-center rounded-pill px-4 text-label font-medium transition-colors ease-ui';
+		'duration-ui grid h-[34px] place-items-center rounded-[7px] px-4 text-label font-medium transition-colors ease-ui';
 
 	return (
-		<div className="hidden rounded-pill bg-subtle p-[3px] md:flex md:gap-0.5">
+		<div className="hidden rounded-control bg-subtle p-1 md:flex md:gap-0.5">
 			<Link
 				to="/day/$date"
 				params={{ date }}
-				className={cn(item, isWeek ? 'text-muted hover:text-ink' : 'bg-surface shadow-menu')}
+				className={cn(item, isWeek ? 'text-muted hover:text-ink' : 'bg-surface text-ink shadow-control')}
 			>
 				Day
 			</Link>
 			<Link
 				to="/week/$date"
 				params={{ date: startOfWeek(date) }}
-				className={cn(item, isWeek ? 'bg-surface shadow-menu' : 'text-muted hover:text-ink')}
+				className={cn(item, isWeek ? 'bg-surface text-ink shadow-control' : 'text-muted hover:text-ink')}
 			>
 				Timesheet
 			</Link>

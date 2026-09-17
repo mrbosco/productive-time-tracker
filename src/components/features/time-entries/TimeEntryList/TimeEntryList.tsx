@@ -41,7 +41,7 @@ function ListState({ children, role }: { children: ReactNode; role?: 'alert' }) 
 	return (
 		<div
 			role={role}
-			className="flex flex-col items-center gap-4 rounded-entry border border-line bg-surface px-5 py-7 text-center"
+			className="flex flex-col items-center gap-4 rounded-entry border border-line bg-surface px-5 py-10 text-center md:py-14"
 		>
 			{children}
 		</div>
@@ -171,7 +171,7 @@ export function TimeEntryList({
 	const tabStopId = focusedEntryId ?? entries[0]?.id;
 
 	return (
-		<ul className="flex flex-col gap-3">
+		<ul className="flex flex-col gap-2.5">
 			{entries.map((entry) => (
 				<li key={entry.id}>
 					<TimeEntryCard

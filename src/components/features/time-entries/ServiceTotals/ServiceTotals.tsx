@@ -28,31 +28,33 @@ export function ServiceTotals({
 		// declared twice.
 		<section
 			aria-labelledby="service-totals"
-			className="flex flex-col gap-3.5 rounded-entry border border-line bg-surface p-5"
+			className="flex flex-col gap-4 rounded-entry border border-line bg-surface p-5"
 		>
-			<h2 id="service-totals" className="text-label font-medium text-muted">
+			<h2 id="service-totals" className="text-meta font-semibold text-ink">
 				Totals by service
 			</h2>
 
-			<div className="flex flex-col gap-3">
+			<div className="flex flex-col gap-4">
 				{byService.map(({ name, minutes }) => (
 					<div key={name} className="flex items-baseline gap-3">
-						<span className="flex-1 text-meta leading-[140%]">{name}</span>
-						<span className="text-meta font-medium tabular-nums">{formatDuration(minutes)}</span>
+						<span className="min-w-0 flex-1 text-label leading-relaxed text-muted">{name}</span>
+						<span className="shrink-0 text-label font-medium tabular-nums">{formatDuration(minutes)}</span>
 					</div>
 				))}
 			</div>
 
-			<div className="h-px bg-line" />
+			<div className="-mx-5 h-px bg-line" />
 
 			<div className="flex items-baseline gap-3">
 				<span className="flex-1 text-meta font-medium">Day total</span>
-				<span className="text-duration font-medium tabular-nums">{formatDuration(calculateDayTotal(entries))}</span>
+				<span className="text-title font-semibold tracking-tight tabular-nums">
+					{formatDuration(calculateDayTotal(entries))}
+				</span>
 			</div>
 
 			<div className="flex items-baseline gap-3">
 				<span className="flex-1 text-label text-muted">Week total</span>
-				<span className="text-label font-medium text-muted tabular-nums">
+				<span className="text-meta font-semibold text-ink tabular-nums">
 					{isWeekError ? 'unavailable' : formatDuration(weekTotal)}
 				</span>
 			</div>

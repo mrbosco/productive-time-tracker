@@ -5,22 +5,21 @@
 @custom-variant dark (&:is(.dark *));
 
 /* ---------------------------------------------------------------------------
-   Design tokens — pasted from docs/design/README.md §1.
-   Names on the right are the design-system variables the values come from.
+   Design tokens — a restrained refresh of the Productive palette.
    --------------------------------------------------------------------------- */
 @theme {
 	/* Colour — surfaces and ink */
-	--color-canvas: #f8f7fb; /* --bg          page ground */
+	--color-canvas: #f6f7f9; /* --bg          page ground */
 	--color-surface: #ffffff; /* --surface-2   cards, app bar, sheets */
-	--color-subtle: #efedf5; /* --subtle      skeletons, quiet fills, key caps */
-	--color-line: #e2dfec; /* --border      1px hairline, the only structure */
-	--color-ink: #111111; /* --text */
-	--color-muted: #6b687a; /* --muted-2     meta text, labels, captions */
+	--color-subtle: #eef0f4; /* --subtle      skeletons, quiet fills, key caps */
+	--color-line: #e1e4eb; /* --border      hairlines */
+	--color-ink: #20232d; /* --text */
+	--color-muted: #697080; /* --muted-2     meta text, labels, captions */
 
 	/* Colour — accent (one accent, one accented object per view) */
-	--color-accent: #5d2bff; /* --accent      indigo: primary fill, links, focus */
-	--color-accent-dark: #2d00ad; /* --indigo-dark text on the selection wash */
-	--color-selection: #efeaff; /* --selection   selected day, timer pill, avatar */
+	--color-accent: #643de0; /* --accent      primary fill, links, focus */
+	--color-accent-dark: #4826ae; /* --indigo-dark text on the selection wash */
+	--color-selection: #f0ecfc; /* --selection   selected day, timer pill, avatar */
 	--color-on-accent: #ffffff; /* --on-accent */
 
 	/*
@@ -72,16 +71,18 @@
 	/* gutters: 16 mobile, 48 desktop · card padding 16–20 · field gap 22 · label-to-field 6 */
 
 	/* Radius — semantic, not a scale */
-	--radius-input: 12px; /* inputs, menus, popovers, toasts, key caps */
-	--radius-entry: 20px; /* entry cards, dialogs, list states */
-	--radius-panel: 28px; /* login card, bottom sheets */
-	--radius-pill: 999px; /* every button and pill */
+	--radius-input: 8px; /* inputs, menus, popovers, toasts, key caps */
+	--radius-control: 10px; /* buttons and segmented navigation */
+	--radius-entry: 12px; /* entry cards, dialogs, list states */
+	--radius-panel: 20px; /* login card, bottom sheets */
+	--radius-pill: 999px; /* avatars, status pills, circular controls */
 
 	/* Elevation — hairlines carry structure; shadow only for overlays */
 	--shadow-menu: 0 8px 24px rgba(17, 17, 17, 0.12);
+	--shadow-control: 0 1px 3px rgb(32 35 45 / 8%), 0 0 0 1px rgb(32 35 45 / 4%);
 	--shadow-popover: 0 10px 30px rgba(17, 17, 17, 0.14);
 	--shadow-dialog: 0 12px 40px rgba(17, 17, 17, 0.2);
-	--shadow-fab: 0 6px 20px rgba(93, 43, 255, 0.3);
+	--shadow-fab: 0 6px 20px rgb(100 61 224 / 24%);
 
 	/* Motion */
 	--ease-ui: cubic-bezier(0.2, 0.8, 0.2, 1);
@@ -226,8 +227,7 @@
 }
 
 :root {
-	/* 12px: the design's input radius. Buttons and pills override it with `rounded-pill`. */
-	--radius: 0.75rem;
+	--radius: 0.5rem;
 	--background: var(--color-canvas);
 	--foreground: var(--color-ink);
 	--card: var(--color-surface);
@@ -259,7 +259,7 @@
 	background-image: repeating-linear-gradient(
 		135deg,
 		transparent 0 5px,
-		color-mix(in oklab, var(--color-muted) 13%, transparent) 5px 6px
+		color-mix(in oklab, var(--color-muted) 7%, transparent) 5px 6px
 	);
 }
 
@@ -268,8 +268,13 @@
 		@apply border-border;
 	}
 
+	html {
+		scrollbar-gutter: stable;
+	}
+
 	body {
 		@apply bg-canvas font-sans text-ink antialiased;
+		font-feature-settings: 'cv11', 'ss01';
 	}
 
 	/*

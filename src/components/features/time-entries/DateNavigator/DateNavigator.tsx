@@ -47,7 +47,7 @@ function CaretIcon() {
 export function DateNavigator({ date, onSelect, today = todayIso() }: DateNavigatorProps) {
 	const isToday = date === today;
 	const arrowClassName =
-		'flex size-11 flex-none place-items-center justify-center rounded-pill text-muted transition-colors duration-ui ease-ui hover:bg-subtle hover:text-ink md:border md:border-line md:bg-surface';
+		'flex size-11 flex-none place-items-center justify-center rounded-control text-muted transition-colors duration-ui ease-ui hover:bg-subtle hover:text-ink md:border md:border-line md:bg-surface';
 
 	return (
 		<div className="flex w-full items-center gap-1 md:w-auto md:gap-2">
@@ -66,7 +66,7 @@ export function DateNavigator({ date, onSelect, today = todayIso() }: DateNaviga
 				<DatePicker value={date} onSelect={onSelect}>
 					<button
 						type="button"
-						className="duration-ui flex h-11 items-center gap-2 rounded-input px-1 text-base font-medium tracking-[-.01em] whitespace-nowrap transition-colors ease-ui hover:bg-subtle md:px-2 md:text-title md:font-bold md:tracking-tight"
+						className="duration-ui flex h-11 items-center gap-2 rounded-input px-1 text-base font-medium tracking-[-.01em] whitespace-nowrap transition-colors ease-ui hover:bg-subtle md:px-2 md:text-title md:font-semibold md:tracking-tight"
 					>
 						{formatDayLabel(date, today)}
 						<CaretIcon />
@@ -92,7 +92,7 @@ export function DateNavigator({ date, onSelect, today = todayIso() }: DateNaviga
 			{!isToday && (
 				<button
 					type="button"
-					className="duration-ui h-9 flex-none rounded-pill border border-line bg-surface px-3.5 text-label font-medium transition-colors ease-ui hover:bg-subtle md:order-4"
+					className="duration-ui h-9 flex-none rounded-control border border-line bg-surface px-3.5 text-label font-medium transition-colors ease-ui hover:bg-subtle md:order-4"
 					onClick={() => {
 						onSelect(today);
 					}}

@@ -19,7 +19,7 @@ import { useWeekTotals } from '@/components/features/week/useWeekTotals';
 import { useExpectedHours } from '@/components/features/week/useExpectedHours';
 import { WeekStrip } from '@/components/features/week/WeekStrip/WeekStrip';
 import { useHotkeys } from '@/components/shared/useHotkeys';
-import { addDays, formatDayShort, todayIso } from '@/lib/date';
+import { addDays, todayIso } from '@/lib/date';
 import { formatDuration } from '@/lib/duration';
 import type { Session } from '@/lib/storage';
 
@@ -52,6 +52,12 @@ export function DayView({ session, date }: { session: Session; date: string }) {
 	const updateEntry = useUpdateTimeEntry(session);
 	const copyDay = useCopyDayForward(session);
 	const timer = useTimerContext();
+	/*
+	 * Continuing an entry is a today-only action. The timer attaches to the entry rather than making
+	 * a new one (SPEC 11, finding 4), so playing yesterday's row would start a clock counting into
+	 * yesterday - and the one thing a running timer is is now. One at a time, as X-4 set.
+	 */
+	const canContinue = timer.running === null && date === todayIso();
 
 	/** The entry the confirm dialog is asking about, and the only thing that opens it (R-12). */
 	const [entryPendingDelete, setEntryPendingDelete] = useState<TimeEntry | null>(null);
@@ -148,7 +154,7 @@ export function DayView({ session, date }: { session: Session; date: string }) {
 					 * the duration field and lives on the card: only the row knows it has one.
 					 */
 					p: () => {
-						if (timer.running === null) continueTimerOn(focusedEntry);
+						if (canContinue) continueTimerOn(focusedEntry);
 					},
 					Delete: () => {
 						setEntryPendingDelete(focusedEntry);
@@ -240,20 +246,8 @@ export function DayView({ session, date }: { session: Session; date: string }) {
 		}
 	}
 
-	/**
-	 * Starting a timer on an entry that already exists, from the row's play button or from `p`.
-	 *
-	 * One function for both, because the line of copy belongs to the act rather than to the control:
-	 * the design assumed play made a new entry today, and the API attaches the timer to the entry
-	 * itself (SPEC 11, finding 4), so the minutes land on that entry's own date. When that is not
-	 * the day being looked at, the toast says which day it is.
-	 */
 	function continueTimerOn(entry: TimeEntry) {
 		timer.continueEntry(entry.id, entry.minutes);
-
-		if (entry.date !== todayIso()) {
-			setToast({ message: `Timer running on ${formatDayShort(entry.date)}`, variant: 'success' });
-		}
 	}
 
 	/** The way back from an inline correction. No Undo of its own, or there would be no way out. */
@@ -296,7 +290,7 @@ export function DayView({ session, date }: { session: Session; date: string }) {
 			 * `pb-24` on mobile: the Add entry FAB is `fixed` at the bottom right, so without room
 			 * reserved for it the last card of a scrolling day sits under an opaque 56px circle (N-4).
 			 */}
-			<main className="mx-4 flex flex-col gap-3 pt-3.5 pb-24 md:mx-12 md:gap-5 md:pt-7 md:pb-14">
+			<main className="mx-auto flex w-full max-w-[1376px] flex-col gap-4 px-4 pt-4 pb-24 md:gap-6 md:px-8 md:pt-8 md:pb-14 xl:px-12">
 				<div className="flex items-center gap-4">
 					<DateNavigator
 						date={date}
@@ -318,7 +312,7 @@ export function DayView({ session, date }: { session: Session; date: string }) {
 						ref={addEntryRef}
 						to="/entries/new"
 						search={{ date }}
-						className="duration-ui fixed right-4 bottom-7 z-10 inline-flex size-14 items-center justify-center gap-2 rounded-pill bg-accent text-on-accent shadow-fab transition-colors ease-ui hover:bg-accent-dark md:static md:ml-auto md:h-11 md:w-auto md:px-5 md:shadow-none"
+						className="duration-ui fixed right-4 bottom-7 z-10 inline-flex size-14 items-center justify-center gap-2 rounded-pill bg-accent text-on-accent shadow-fab transition-colors ease-ui hover:bg-accent-dark md:static md:ml-auto md:h-11 md:w-auto md:rounded-control md:px-5 md:shadow-none"
 					>
 						<PlusIcon />
 						<span className="sr-only md:not-sr-only md:text-meta md:font-medium">Add entry</span>
@@ -333,8 +327,8 @@ export function DayView({ session, date }: { session: Session; date: string }) {
 					availability={availability}
 				/>
 
-				<div className="grid items-start gap-3 md:grid-cols-[minmax(0,1fr)_340px] md:gap-8">
-					<div className="flex flex-col gap-3 md:gap-3.5">
+				<div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_288px] lg:gap-6">
+					<div className="flex min-w-0 flex-col gap-4">
 						{/*
 						 * Only once there is something to summarise. `0h logged · 0 entries` would be
 						 * a lie while the day is loading or failing, and on a genuinely empty day it
@@ -405,7 +399,7 @@ export function DayView({ session, date }: { session: Session; date: string }) {
 							 */
 							onSaveDuration={saveDuration}
 							onShowTimerLogs={setEntryShowingLogs}
-							onContinueTimer={timer.running === null ? continueTimerOn : undefined}
+							onContinueTimer={canContinue ? continueTimerOn : undefined}
 							/*
 							 * The row a timer is running against says so, and carries a stop of its
 							 * own: the app bar's pill can be scrolled a long way from it on a full
@@ -418,7 +412,7 @@ export function DayView({ session, date }: { session: Session; date: string }) {
 					</div>
 
 					{hasEntries && (
-						<div className="hidden md:block">
+						<div className="hidden lg:block">
 							<ServiceTotals entries={entries} weekTotals={weekTotals} isWeekError={isWeekError} />
 						</div>
 					)}

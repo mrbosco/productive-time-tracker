@@ -142,7 +142,7 @@ export function TimerControl({
 				type="button"
 				disabled={isBusy}
 				onClick={onStart}
-				className="duration-ui flex h-11 flex-none items-center gap-[9px] rounded-pill border border-line bg-surface pr-5 pl-[18px] text-label font-medium transition-colors ease-ui hover:border-muted hover:bg-subtle disabled:opacity-60 disabled:hover:border-line disabled:hover:bg-surface"
+				className="duration-ui flex h-11 flex-none items-center gap-[9px] rounded-control border border-line bg-surface pr-5 pl-[18px] text-label font-medium transition-colors ease-ui hover:border-muted hover:bg-subtle disabled:opacity-60 disabled:hover:border-line disabled:hover:bg-surface"
 			>
 				<PlayIcon />
 				Start timer

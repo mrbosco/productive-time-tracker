@@ -29,6 +29,8 @@ const SEEDED_DATE = '2026-09-15';
 const NOTED_ENTRY_NOTE = 'Probavam';
 /** What that entry already holds, which a continuation counts up from rather than replacing. */
 const NOTED_ENTRY_DURATION = '5h';
+/** What a seeded entry on today is worth, so a continuation has something to count up from. */
+const SEEDED_DURATION = '45m';
 
 /** Addressed by its note, not by position: which row it is depends on A-7, not on this test. */
 function notedEntry(page: Page) {
@@ -155,20 +157,55 @@ test.describe('timer (X-4)', () => {
 		await entry.getByRole('button', { name: 'Continue timer on this entry' }).click();
 	}
 
-	test('continues the entry it was started from, on its own day', async ({ page }, testInfo) => {
-		await page.goto(`/day/${SEEDED_DATE}`);
-		await expect(page.getByRole('article')).toHaveCount(3);
+	/**
+	 * Continuing is a today-only action, so the entry to continue has to be made here: a timer run,
+	 * stopped and saved, which is the shortest way to a row on today holding real minutes.
+	 */
+	async function seedEntryOnToday(page: Page) {
+		await gotoToday(page);
+		await page.getByRole('button', { name: 'Start timer' }).click();
+		await expect(page.getByRole('article')).toHaveCount(1);
 
-		const entry = notedEntry(page);
+		await page.getByRole('banner').getByRole('button', { name: 'Stop timer' }).click();
+		const sheet = page.getByRole('dialog', { name: 'Save tracked time' });
+		await expect(sheet.getByRole('textbox', { name: 'Duration' })).toBeEnabled();
+		await sheet.getByRole('textbox', { name: 'Duration' }).fill(SEEDED_DURATION);
+		await sheet.getByRole('button', { name: 'Save entry' }).click();
+		await expect(sheet).toBeHidden();
+		await expect(page.getByRole('article').first()).toContainText(SEEDED_DURATION);
+	}
+
+	test('continues the entry it was started from, on its own day', async ({ page }, testInfo) => {
+		await seedEntryOnToday(page);
+
+		const entry = page.getByRole('article').first();
 		await continueTimerOn(entry, page, testInfo.project.name);
 
-		// Still here, still three rows, and the first one is the one running.
-		await expect(page).toHaveURL(`/day/${SEEDED_DATE}`);
-		await expect(page.getByRole('article')).toHaveCount(3);
+		// Still one row, and it is the one running.
+		await expect(page.getByRole('article')).toHaveCount(1);
 		await expect(entry.getByText('Tracking')).toBeVisible();
-		await expect(entry).toContainText(NOTED_ENTRY_NOTE);
 		// Counting up from what it already holds, not from zero.
+		await expect(entry).toContainText(SEEDED_DURATION);
+	});
+
+	/**
+	 * A clock runs now, so there is nothing sensible for it to do on a row from another day - the
+	 * timer attaches to that entry and would count into it. The play button is simply not there.
+	 */
+	test('offers no way to continue an entry from another day', async ({ page }, testInfo) => {
+		await page.goto(`/day/${SEEDED_DATE}`);
+		const entry = notedEntry(page);
 		await expect(entry).toContainText(NOTED_ENTRY_DURATION);
+
+		if (testInfo.project.name === 'mobile-chrome') {
+			await entry.getByRole('button', { name: 'Entry actions' }).click();
+			await expect(page.getByRole('menuitem', { name: 'Continue timer' })).toHaveAttribute('aria-disabled', 'true');
+
+			return;
+		}
+
+		await entry.hover();
+		await expect(page.getByRole('button', { name: 'Continue timer on this entry' })).toHaveCount(0);
 	});
 
 	/**
@@ -179,9 +216,9 @@ test.describe('timer (X-4)', () => {
 	 * about a timer the mock had already forgotten.
 	 */
 	test('will not continue a second entry while one is running', async ({ page }, testInfo) => {
-		await page.goto(`/day/${SEEDED_DATE}`);
-		await continueTimerOn(notedEntry(page), page, testInfo.project.name);
-		await expect(notedEntry(page).getByText('Tracking')).toBeVisible();
+		await seedEntryOnToday(page);
+		await continueTimerOn(page.getByRole('article').first(), page, testInfo.project.name);
+		await expect(page.getByRole('article').first().getByText('Tracking')).toBeVisible();
 
 		if (testInfo.project.name === 'mobile-chrome') {
 			// The item is still there on touch, and refuses.
