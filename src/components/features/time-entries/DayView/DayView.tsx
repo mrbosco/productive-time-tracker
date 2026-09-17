@@ -12,6 +12,8 @@ import { useDeleteTimeEntry } from '@/components/features/time-entries/useDelete
 import { useTimeEntries } from '@/components/features/time-entries/useTimeEntries';
 import { useWeekTotals } from '@/components/features/week/useWeekTotals';
 import { WeekStrip } from '@/components/features/week/WeekStrip/WeekStrip';
+import { useHotkeys } from '@/components/shared/useHotkeys';
+import { addDays, todayIso } from '@/lib/date';
 import type { Session } from '@/lib/storage';
 
 function PlusIcon() {
@@ -52,6 +54,71 @@ export function DayView({ session, date }: { session: Session; date: string }) {
 	const [toast, setToast] = useState<{ message: string; variant: 'success' | 'error' } | null>(null);
 
 	const hasEntries = entries !== undefined && entries.length > 0;
+
+	/** The card the arrow keys are standing on, and what `e` and `Delete` act on (X-2). */
+	const [focusedEntryId, setFocusedEntryId] = useState<string | null>(null);
+	const focusedEntry = entries?.find((entry) => entry.id === focusedEntryId) ?? null;
+
+	function goToDay(next: string) {
+		void navigate({ to: '/day/$date', params: { date: next } });
+	}
+
+	/**
+	 * Moves the chosen card by one, and clamps rather than wrapping: a list that jumps from the last
+	 * entry back to the first reads as a bug the first time it happens, and there are never enough
+	 * entries in a day for wrapping to save anyone a keystroke.
+	 *
+	 * With nothing chosen yet, `↓` starts at the top and `↑` at the bottom, which is what every
+	 * roving list does.
+	 */
+	function moveFocus(step: number) {
+		if (entries === undefined || entries.length === 0) return;
+
+		const current = entries.findIndex((entry) => entry.id === focusedEntryId);
+		const next =
+			current === -1 ? (step > 0 ? 0 : entries.length - 1) : Math.min(Math.max(current + step, 0), entries.length - 1);
+
+		setFocusedEntryId(entries[next].id);
+	}
+
+	/*
+	 * The day's own shortcuts (SPEC 10, X-2). `useHotkeys` drops every one of them while an input,
+	 * the rich-text editor, a dialog or an open menu has focus - which is also what keeps them quiet
+	 * on `/entries/new` and `/entries/$id/edit`, where this screen renders behind a modal.
+	 *
+	 * `Backspace` alongside `Delete` because a Mac keyboard has no Delete key to speak of, and both
+	 * mean the same thing in every list that takes them.
+	 */
+	useHotkeys({
+		n: () => {
+			void navigate({ to: '/entries/new', search: { date } });
+		},
+		ArrowLeft: () => {
+			goToDay(addDays(date, -1));
+		},
+		ArrowRight: () => {
+			goToDay(addDays(date, 1));
+		},
+		t: () => {
+			goToDay(todayIso());
+		},
+		ArrowUp: () => {
+			moveFocus(-1);
+		},
+		ArrowDown: () => {
+			moveFocus(1);
+		},
+		e: () => {
+			if (focusedEntry === null) return;
+			void navigate({ to: '/entries/$id/edit', params: { id: focusedEntry.id } });
+		},
+		Delete: () => {
+			if (focusedEntry !== null) setEntryPendingDelete(focusedEntry);
+		},
+		Backspace: () => {
+			if (focusedEntry !== null) setEntryPendingDelete(focusedEntry);
+		},
+	});
 
 	/**
 	 * Where focus goes once the card it was on is gone (guidebook 18).
@@ -144,6 +211,8 @@ export function DayView({ session, date }: { session: Session; date: string }) {
 								void refetch();
 							}}
 							onRequestDelete={setEntryPendingDelete}
+							focusedEntryId={focusedEntryId}
+							onFocusEntry={setFocusedEntryId}
 						/>
 					</div>
 

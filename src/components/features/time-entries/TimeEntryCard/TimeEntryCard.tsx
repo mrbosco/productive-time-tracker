@@ -23,26 +23,69 @@ function KebabIcon() {
 	);
 }
 
+interface TimeEntryCardProps {
+	entry: TimeEntry;
+	onRequestDelete: () => void;
+	/** The card the arrow keys are standing on (X-2). It pulls focus to itself when it becomes so. */
+	isFocused?: boolean;
+	/**
+	 * The list's single tab stop. Separate from `isFocused` because before any arrow key has been
+	 * pressed no card is chosen, and the list still has to be reachable by Tab.
+	 *
+	 * Defaults to true, which is what a card rendered on its own is: the roving part of a roving
+	 * tabindex belongs to the list, and a card outside one has nothing to rove against.
+	 */
+	isTabStop?: boolean;
+	/** The card took focus on its own - a click or a Tab - so the list can follow it. */
+	onTakeFocus?: () => void;
+}
+
 /**
  * One logged entry (R-6): duration, the description, and the service it was tracked against.
  *
  * The date is not repeated here. Every card on the screen is the same day, and that day is the
  * page's heading right above the list - printing it twenty times would be noise, not information.
  *
- * The card is focusable because X-2 moves between cards with the arrow keys; until then the focus
- * ring is the only thing that arrives, which is harmless and is what the design draws.
+ * The card is focusable, and is a tab stop only while it is the focused one: X-2 moves between
+ * cards with the arrow keys, and a roving tabindex is what keeps Tab from walking through twenty
+ * of them to reach whatever is below the list (guidebook 18).
  */
-export function TimeEntryCard({ entry, onRequestDelete }: { entry: TimeEntry; onRequestDelete: () => void }) {
+export function TimeEntryCard({
+	entry,
+	onRequestDelete,
+	isFocused = false,
+	isTabStop = true,
+	onTakeFocus,
+}: TimeEntryCardProps) {
+	const cardRef = useRef<HTMLElement>(null);
 	// `toPlainText` only to decide whether there is anything to show: a note that is all markup
 	// and no words - `<p></p>` - should read as no description rather than as an empty box. What
 	// is rendered is the markup itself (ADR-0010).
 	const hasNote = toPlainText(entry.note).trim() !== '';
 
+	/*
+	 * Focus follows the list's choice, because the arrow keys change which card is chosen and
+	 * nothing else would move the caret there. Focusing a card that already has it is a no-op, so
+	 * the click path - where `onTakeFocus` reports focus that has already landed - costs nothing.
+	 */
+	useEffect(() => {
+		if (isFocused) cardRef.current?.focus();
+	}, [isFocused]);
+
 	return (
-		// Not focusable yet. The design gives cards a focus ring because X-2 moves between them with
-		// the arrow keys; until that lands, `tabIndex={0}` would only add a tab stop to an element
-		// with nothing to activate. X-2 brings it back as a roving tabindex.
-		<article className="relative flex items-start gap-3 rounded-entry border border-line bg-surface p-4 md:gap-5 md:px-5 md:py-[18px]">
+		<article
+			ref={cardRef}
+			tabIndex={isTabStop ? 0 : -1}
+			// Narrowed to the card itself: focus events bubble, so without this, clicking the kebab
+			// would report the card as focused, the effect above would pull focus back out of the
+			// menu trigger, and the menu would never open.
+			onFocus={(event) => {
+				if (event.target === event.currentTarget) onTakeFocus?.();
+			}}
+			// No focus classes: `styles/index.css` draws one accent ring on `:focus-visible`
+			// everywhere, which is the ring the design brief asks cards to have.
+			className="relative flex items-start gap-3 rounded-entry border border-line bg-surface p-4 md:gap-5 md:px-5 md:py-[18px]"
+		>
 			{/*
 			 * Tabular numerals so a column of durations lines up on the digits rather than
 			 * shifting with each glyph width (design brief 2).

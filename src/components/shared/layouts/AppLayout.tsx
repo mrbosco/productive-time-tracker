@@ -10,6 +10,8 @@ import {
 } from '@/components/core/DropdownMenu';
 import { sessionQueryOptions, useLogout } from '@/components/features/auth/useSession';
 import { SettingsSheet } from '@/components/features/settings/SettingsSheet/SettingsSheet';
+import { ShortcutsSheet } from '@/components/shared/ShortcutsSheet/ShortcutsSheet';
+import { useHotkeys } from '@/components/shared/useHotkeys';
 import type { Session } from '@/lib/storage';
 
 /** "Ada Lovelace" -> "AL". One letter when there is only one word, empty when the name is. */
@@ -67,9 +69,21 @@ function TimerButton() {
 export function AppLayout({ session, children }: { session: Session; children: ReactNode }) {
 	const logout = useLogout();
 	const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+	const [isShortcutsOpen, setIsShortcutsOpen] = useState(false);
 	const { data: memberships } = useQuery(sessionQueryOptions(session));
 	const email = memberships?.find((membership) => membership.personId === session.personId)?.person?.email ?? null;
 	const initials = toInitials(session.personName);
+
+	/*
+	 * Registered here rather than on the day view because the sheet is reachable from every
+	 * authenticated route, which is where the button that opens it lives. Everything else X-2
+	 * binds acts on the day's list, and belongs to the screen that has one.
+	 */
+	useHotkeys({
+		'?': () => {
+			setIsShortcutsOpen(true);
+		},
+	});
 
 	return (
 		<div className="min-h-dvh">
@@ -80,13 +94,18 @@ export function AppLayout({ session, children }: { session: Session; children: R
 
 				<TimerButton />
 
-				{/* X-2's shortcut sheet. Desktop only, as the design has it. */}
+				{/*
+				 * Desktop only, as the design has it - a phone has no keyboard to teach. The `?` key
+				 * opens the same sheet at every width, which costs nothing and is the only way in on a
+				 * narrow window with a keyboard attached.
+				 */}
 				<button
 					type="button"
 					aria-label="Keyboard shortcuts"
-					disabled
-					title="The shortcuts sheet arrives with X-2"
-					className="duration-ui hidden size-10 flex-none place-items-center rounded-pill border border-line bg-surface text-meta font-medium text-muted transition-colors ease-ui hover:bg-subtle disabled:opacity-60 disabled:hover:bg-surface md:grid"
+					onClick={() => {
+						setIsShortcutsOpen(true);
+					}}
+					className="duration-ui hidden size-10 flex-none place-items-center rounded-pill border border-line bg-surface text-meta font-medium text-muted transition-colors ease-ui hover:bg-subtle md:grid"
 				>
 					?
 				</button>
@@ -129,6 +148,7 @@ export function AppLayout({ session, children }: { session: Session; children: R
 			{children}
 
 			<SettingsSheet session={session} open={isSettingsOpen} onOpenChange={setIsSettingsOpen} />
+			<ShortcutsSheet open={isShortcutsOpen} onOpenChange={setIsShortcutsOpen} />
 		</div>
 	);
 }

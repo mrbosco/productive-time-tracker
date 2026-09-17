@@ -59,6 +59,29 @@ describe('AppLayout', () => {
 		expect(await screen.findByRole('dialog', { name: 'Default service' })).toBeInTheDocument();
 	});
 
+	it('opens the shortcuts sheet from the app bar (X-2)', async () => {
+		const user = userEvent.setup();
+		await renderWithProviders(<AppLayout session={session}>content</AppLayout>, { session });
+
+		await user.click(screen.getByRole('button', { name: 'Keyboard shortcuts' }));
+
+		expect(await screen.findByRole('dialog', { name: 'Keyboard shortcuts' })).toBeInTheDocument();
+	});
+
+	/**
+	 * The button is desktop-only, as the design draws it, so the key is the only way in on a narrow
+	 * window - and it is registered here rather than on the day view because the sheet is reachable
+	 * from every authenticated route (X-2).
+	 */
+	it('opens the shortcuts sheet with the ? key on any route (X-2)', async () => {
+		const user = userEvent.setup();
+		await renderWithProviders(<AppLayout session={session}>content</AppLayout>, { session });
+
+		await user.keyboard('?');
+
+		expect(await screen.findByRole('dialog', { name: 'Keyboard shortcuts' })).toBeInTheDocument();
+	});
+
 	/**
 	 * X-4 owns starting one; the bar carries the control so it does not move when that lands, and
 	 * says it is not ready rather than taking focus and doing nothing.

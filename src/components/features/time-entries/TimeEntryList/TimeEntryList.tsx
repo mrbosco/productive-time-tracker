@@ -15,6 +15,12 @@ interface TimeEntryListProps {
 	date: string;
 	/** Asks the day view to confirm a delete (R-12). The dialog and the toast belong to the screen. */
 	onRequestDelete: (entry: TimeEntry) => void;
+	/**
+	 * The card the arrow keys are standing on (X-2), or `null` before they have been used. The day
+	 * view owns it because the keys are bound there and because `e` and `Delete` act on it.
+	 */
+	focusedEntryId?: string | null;
+	onFocusEntry?: (id: string) => void;
 }
 
 /** The card the empty and error states share, so the list never collapses to nothing. */
@@ -62,6 +68,8 @@ export function TimeEntryList({
 	onRetry,
 	date,
 	onRequestDelete,
+	focusedEntryId = null,
+	onFocusEntry,
 }: TimeEntryListProps) {
 	if (isPending) {
 		return (
@@ -133,12 +141,26 @@ export function TimeEntryList({
 		);
 	}
 
+	/*
+	 * A roving tabindex needs exactly one tab stop, and before any arrow key has been pressed there
+	 * is no chosen card - so the first one stands in. Without this the whole list is skipped by Tab
+	 * and there is no way in from the keyboard at all (guidebook 18).
+	 */
+	const tabStopId = focusedEntryId ?? entries[0]?.id;
+
 	return (
 		<ul className="flex flex-col gap-3">
 			{entries.map((entry) => (
 				<li key={entry.id}>
 					<TimeEntryCard
 						entry={entry}
+						// Only a card the day view has actually chosen pulls focus to itself; the
+						// stand-in above is a tab stop and nothing more.
+						isFocused={entry.id === focusedEntryId}
+						isTabStop={entry.id === tabStopId}
+						onTakeFocus={() => {
+							onFocusEntry?.(entry.id);
+						}}
 						onRequestDelete={() => {
 							onRequestDelete(entry);
 						}}

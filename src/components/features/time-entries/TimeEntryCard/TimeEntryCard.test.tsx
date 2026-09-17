@@ -188,11 +188,48 @@ describe('TimeEntryCard', () => {
 		expect(onRequestDelete).toHaveBeenCalledTimes(1);
 	});
 
-	/** X-2 brings the roving tabindex; until then the card has nothing to activate. */
-	it('is not a tab stop of its own', async () => {
-		await renderWithProviders(<TimeEntryCard onRequestDelete={noop} entry={buildEntry()} />);
+	/**
+	 * X-2's roving tabindex, from the card's side: the list nominates one tab stop and the rest are
+	 * reachable only by arrow key, so Tab does not walk through twenty cards to get past the list
+	 * (guidebook 18).
+	 */
+	it('is a tab stop only when the list says so (X-2)', async () => {
+		const { rerender } = await renderWithProviders(
+			<TimeEntryCard onRequestDelete={noop} entry={buildEntry()} isTabStop={false} />
+		);
 
-		expect(screen.getByRole('article')).not.toHaveAttribute('tabindex');
+		expect(screen.getByRole('article')).toHaveAttribute('tabindex', '-1');
+
+		rerender(<TimeEntryCard onRequestDelete={noop} entry={buildEntry()} isTabStop />);
+
+		expect(screen.getByRole('article')).toHaveAttribute('tabindex', '0');
+	});
+
+	/** The arrow keys choose a card, and nothing else would move the caret onto it (X-2). */
+	it('takes focus when it becomes the chosen card (X-2)', async () => {
+		const { rerender } = await renderWithProviders(<TimeEntryCard onRequestDelete={noop} entry={buildEntry()} />);
+
+		expect(screen.getByRole('article')).not.toHaveFocus();
+
+		rerender(<TimeEntryCard onRequestDelete={noop} entry={buildEntry()} isFocused />);
+
+		expect(screen.getByRole('article')).toHaveFocus();
+	});
+
+	/**
+	 * Focus events bubble. Without narrowing to the card itself, opening the menu would report the
+	 * card as focused, the card would pull focus back out of the trigger, and the menu would never
+	 * open - so this is asserted from the outside, by the menu still working.
+	 */
+	it('does not claim focus that landed on the menu trigger (X-2)', async () => {
+		const onTakeFocus = vi.fn();
+		const user = userEvent.setup();
+		await renderWithProviders(<TimeEntryCard onRequestDelete={noop} entry={buildEntry()} onTakeFocus={onTakeFocus} />);
+
+		await user.click(screen.getByRole('button', { name: 'Entry actions' }));
+
+		expect(await screen.findByRole('menuitem', { name: 'Edit' })).toBeInTheDocument();
+		expect(onTakeFocus).not.toHaveBeenCalled();
 	});
 
 	it('offers no More on a note that fits', async () => {
