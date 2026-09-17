@@ -45,6 +45,7 @@ function renderTimer() {
 				</button>
 				<span>{timer.stopped === null ? 'no stop' : `stopped ${timer.stopped.entryId}`}</span>
 				<span>{timer.needsService ? 'needs service' : 'has service'}</span>
+				<span>{timer.error ?? 'no error'}</span>
 			</div>
 		);
 	}
@@ -185,6 +186,52 @@ describe('useTimer, through its provider', () => {
 		await waitFor(() => {
 			expect(window.localStorage.getItem(TIMER_STORAGE_KEY)).toBeNull();
 		});
+	});
+
+	/**
+	 * SPEC 4.2: a failure is reported where the user is standing. These three rejected into nothing
+	 * before - `mutateAsync` throws, the context calls them as `void start()`, and `void` is exactly
+	 * what stops `no-floating-promises` from noticing.
+	 */
+	it('says so when a timer will not start (SPEC 4.2)', async () => {
+		server.use(http.post('*/timers', () => new HttpResponse(null, { status: 500 })));
+		const user = userEvent.setup();
+		await renderTimer();
+		await screen.findByText('idle');
+
+		await user.click(screen.getByRole('button', { name: 'start' }));
+
+		expect(await screen.findByText('Could not start the timer. Try again.')).toBeInTheDocument();
+		expect(screen.getByText('idle')).toBeInTheDocument();
+	});
+
+	it('says so when an entry will not continue (SPEC 4.2)', async () => {
+		server.use(http.post('*/timers', () => new HttpResponse(null, { status: 422 })));
+		const user = userEvent.setup();
+		await renderTimer();
+		await screen.findByText('idle');
+
+		await user.click(screen.getByRole('button', { name: 'continue' }));
+
+		expect(await screen.findByText('Could not continue this entry. Try again.')).toBeInTheDocument();
+	});
+
+	/** A 409 is "already stopped" and is not a failure; anything else is, and has to say so. */
+	it('says so when a timer will not stop (SPEC 4.2)', async () => {
+		const user = userEvent.setup();
+		await renderTimer();
+		await screen.findByText('idle');
+		await user.click(screen.getByRole('button', { name: 'start' }));
+		await waitFor(() => {
+			expect(screen.getByText(/^running /)).toBeInTheDocument();
+		});
+
+		server.use(http.put('*/timers/:id/stop', () => new HttpResponse(null, { status: 500 })));
+		await user.click(screen.getByRole('button', { name: 'stop' }));
+
+		expect(await screen.findByText('Could not stop the timer. Try again.')).toBeInTheDocument();
+		// Still running, because it is: nothing was stopped and nothing pretends otherwise.
+		expect(screen.getByText(/^running /)).toBeInTheDocument();
 	});
 
 	/** A-1: a timer is logged against the default service, and there is nowhere else to choose one. */
