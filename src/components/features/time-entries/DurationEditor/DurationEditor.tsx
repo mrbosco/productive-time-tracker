@@ -31,6 +31,7 @@ export function DurationEditor({
 	onSave,
 	isRevealed,
 	isTracking = false,
+	isEditing,
 	onEditingChange,
 }: {
 	minutes: number;
@@ -40,13 +41,19 @@ export function DurationEditor({
 	isRevealed?: string;
 	/** A moving number has nothing stable to type over, so the field never opens on one. */
 	isTracking?: boolean;
-	/** The row hides its play button while the field is open, as the design draws it. */
-	onEditingChange?: (isEditing: boolean) => void;
+	/**
+	 * Open is the row's to decide, not the field's: the design's `Enter` opens this from the focused
+	 * row, and the row hides its play button while it is open. What has been typed stays here.
+	 */
+	isEditing: boolean;
+	onEditingChange: (isEditing: boolean) => void;
 }) {
-	const [draft, setDraft] = useState<string | null>(null);
-	const open = (value: string | null) => {
-		setDraft(value);
-		onEditingChange?.(value !== null);
+	/** What has been typed. Null means nothing yet, and the stored duration is what is shown. */
+	const [typed, setTyped] = useState<string | null>(null);
+	const draft = typed ?? formatDuration(minutes);
+	const close = () => {
+		setTyped(null);
+		onEditingChange(false);
 	};
 	const [isSaving, setIsSaving] = useState(false);
 	/*
@@ -56,14 +63,12 @@ export function DurationEditor({
 	const isCommitting = useRef(false);
 
 	async function write() {
-		if (draft === null) return;
-
 		const current = readDuration(draft);
 		// Never saves an unparseable value and never silently rounds one: an invalid draft stays
 		// open with its message, because closing it would throw away what was typed.
 		if ('error' in current) return;
 		if (current.minutes === minutes) {
-			open(null);
+			close();
 
 			return;
 		}
@@ -71,14 +76,17 @@ export function DurationEditor({
 		setIsSaving(true);
 		try {
 			await onSave(current.minutes);
-			open(null);
+			close();
+		} catch {
+			// Left open holding what was typed: the screen has raised the toast, and the only other
+			// way back to this number would be to type it again.
 		} finally {
 			setIsSaving(false);
 		}
 	}
 
 	async function commit() {
-		if (draft === null || isCommitting.current) return;
+		if (!isEditing || isCommitting.current) return;
 		isCommitting.current = true;
 		try {
 			await write();
@@ -87,14 +95,14 @@ export function DurationEditor({
 		}
 	}
 
-	if (draft === null) {
+	if (!isEditing) {
 		return (
 			<button
 				type="button"
 				disabled={isTracking}
 				aria-label={`Edit logged time, ${formatDuration(minutes)}`}
 				onClick={() => {
-					open(formatDuration(minutes));
+					onEditingChange(true);
 				}}
 				className={cn(
 					'duration-ui flex h-10 flex-none items-center gap-[7px] rounded-pill px-3 text-duration leading-none font-medium tabular-nums transition-colors ease-ui',
@@ -132,7 +140,7 @@ export function DurationEditor({
 					event.target.select();
 				}}
 				onChange={(event) => {
-					setDraft(event.target.value);
+					setTyped(event.target.value);
 				}}
 				onBlur={() => void commit()}
 				onKeyDown={(event) => {
@@ -145,7 +153,7 @@ export function DurationEditor({
 						event.preventDefault();
 						event.stopPropagation();
 						isCommitting.current = true;
-						open(null);
+						close();
 						isCommitting.current = false;
 					}
 				}}
@@ -184,7 +192,7 @@ export function DurationEditor({
 							// commit and close the editor before the chip's click ever landed.
 							onMouseDown={(event) => {
 								event.preventDefault();
-								setDraft(formatDuration(Math.max(0, (parsed ?? minutes) + nudge)));
+								setTyped(formatDuration(Math.max(0, (parsed ?? minutes) + nudge)));
 							}}
 							className="duration-ui h-[30px] flex-none rounded-pill bg-subtle px-2.5 text-caption font-medium tabular-nums transition-colors ease-ui hover:bg-selection hover:text-accent-dark"
 						>

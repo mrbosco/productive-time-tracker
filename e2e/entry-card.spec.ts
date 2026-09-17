@@ -135,3 +135,40 @@ test('refuses what the entry form refuses, and Escape restores', async ({ page }
 	await page.keyboard.press('Escape');
 	await expect(card.getByRole('button', { name: 'Edit logged time, 5h' })).toBeVisible();
 });
+
+/**
+ * The two keys `Card Actions.dc.html` puts on a focused row, and the Undo it puts on the toast
+ * instead of a confirm dialog. Desktop only, for the same reason the field is.
+ */
+test('opens the field with Enter on the focused row, and Undo puts the number back', async ({ page }, testInfo) => {
+	test.skip(testInfo.project.name === 'mobile-chrome', 'touch keeps both actions in the kebab');
+	await page.goto(`/day/${SEEDED_DATE}`);
+
+	const card = page.getByRole('article').filter({ hasText: 'Probavam' });
+	await card.focus();
+	await page.keyboard.press('Enter');
+
+	const field = page.getByRole('textbox', { name: 'Duration' });
+	await expect(field).toBeFocused();
+	await field.fill('2h');
+	await page.keyboard.press('Enter');
+	await expect(card.getByRole('button', { name: 'Edit logged time, 2h' })).toBeVisible();
+
+	await page.getByRole('button', { name: 'Undo' }).click();
+	await expect(card.getByRole('button', { name: 'Edit logged time, 5h' })).toBeVisible();
+});
+
+test('continues the timer on the focused row with p, and says which day it lands on', async ({ page }, testInfo) => {
+	test.skip(testInfo.project.name === 'mobile-chrome', 'touch keeps both actions in the kebab');
+	await page.goto(`/day/${SEEDED_DATE}`);
+
+	const card = page.getByRole('article').filter({ hasText: 'Probavam' });
+	await card.focus();
+	await page.keyboard.press('p');
+
+	await expect(card).toContainText('Tracking');
+	// The entry is not today's, and the timer attaches to it rather than making a new one, so the
+	// day it is counting onto is worth saying.
+	// Not `getByRole('status')`: the app bar's live pill is one too, and it says `Timer running`.
+	await expect(page.getByText('Timer running on Tue 15 Sep')).toBeVisible();
+});

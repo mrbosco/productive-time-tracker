@@ -19,7 +19,8 @@ import { useWeekTotals } from '@/components/features/week/useWeekTotals';
 import { useExpectedHours } from '@/components/features/week/useExpectedHours';
 import { WeekStrip } from '@/components/features/week/WeekStrip/WeekStrip';
 import { useHotkeys } from '@/components/shared/useHotkeys';
-import { addDays, todayIso } from '@/lib/date';
+import { addDays, formatDayShort, todayIso } from '@/lib/date';
+import { formatDuration } from '@/lib/duration';
 import type { Session } from '@/lib/storage';
 
 function PlusIcon() {
@@ -62,7 +63,11 @@ export function DayView({ session, date }: { session: Session; date: string }) {
 	 * two would have to overlap inside one 2.6 s window to collide, which takes opening a menu and
 	 * confirming a dialog in it.
 	 */
-	const [toast, setToast] = useState<{ message: string; variant: 'success' | 'error' } | null>(null);
+	const [toast, setToast] = useState<{
+		message: string;
+		variant: 'success' | 'error';
+		action?: { label: string; onAction: () => void };
+	} | null>(null);
 
 	/*
 	 * A start, a continue or a stop that failed. The pill has nowhere of its own to say so - it is
@@ -136,6 +141,15 @@ export function DayView({ session, date }: { session: Session; date: string }) {
 					e: () => {
 						void navigate({ to: '/entries/$id/edit', params: { id: focusedEntry.id } });
 					},
+					/*
+					 * `Card Actions.dc.html`'s key for the play button, bound only while a row is
+					 * focused and only while there is no timer to collide with - the same condition
+					 * the button itself is drawn under. `Enter`, the other key that page lists, opens
+					 * the duration field and lives on the card: only the row knows it has one.
+					 */
+					p: () => {
+						if (timer.running === null) continueTimerOn(focusedEntry);
+					},
 					Delete: () => {
 						setEntryPendingDelete(focusedEntry);
 					},
@@ -196,6 +210,8 @@ export function DayView({ session, date }: { session: Session; date: string }) {
 	 * what was typed if the write fails.
 	 */
 	async function saveDuration(entry: TimeEntry, minutes: number) {
+		const previousMinutes = entry.minutes;
+
 		try {
 			await updateEntry.mutateAsync({
 				id: entry.id,
@@ -203,10 +219,55 @@ export function DayView({ session, date }: { session: Session; date: string }) {
 				date: entry.date,
 				changes: { minutes },
 			});
-			setToast({ message: 'Entry saved', variant: 'success' });
+			/*
+			 * Undo rather than a confirm, which is the design's call and the reason the field is
+			 * safe to use without one: a dialog on every fifteen-minute correction would cost more
+			 * than the trip to the edit screen it replaces. The toast stays 8s when it carries one.
+			 */
+			setToast({
+				message: 'Entry saved',
+				variant: 'success',
+				action: {
+					label: 'Undo',
+					onAction: () => {
+						void restoreDuration(entry, previousMinutes);
+					},
+				},
+			});
 		} catch {
 			setToast({ message: 'Could not save the duration.', variant: 'error' });
 			throw new Error('save failed');
+		}
+	}
+
+	/**
+	 * Starting a timer on an entry that already exists, from the row's play button or from `p`.
+	 *
+	 * One function for both, because the line of copy belongs to the act rather than to the control:
+	 * the design assumed play made a new entry today, and the API attaches the timer to the entry
+	 * itself (SPEC 11, finding 4), so the minutes land on that entry's own date. When that is not
+	 * the day being looked at, the toast says which day it is.
+	 */
+	function continueTimerOn(entry: TimeEntry) {
+		timer.continueEntry(entry.id, entry.minutes);
+
+		if (entry.date !== todayIso()) {
+			setToast({ message: `Timer running on ${formatDayShort(entry.date)}`, variant: 'success' });
+		}
+	}
+
+	/** The way back from an inline correction. No Undo of its own, or there would be no way out. */
+	async function restoreDuration(entry: TimeEntry, minutes: number) {
+		try {
+			await updateEntry.mutateAsync({
+				id: entry.id,
+				previousDate: entry.date,
+				date: entry.date,
+				changes: { minutes },
+			});
+			setToast({ message: `Restored to ${formatDuration(minutes)}`, variant: 'success' });
+		} catch {
+			setToast({ message: 'Could not undo that change.', variant: 'error' });
 		}
 	}
 
@@ -344,13 +405,7 @@ export function DayView({ session, date }: { session: Session; date: string }) {
 							 */
 							onSaveDuration={saveDuration}
 							onShowTimerLogs={setEntryShowingLogs}
-							onContinueTimer={
-								timer.running === null
-									? (entry) => {
-											timer.continueEntry(entry.id, entry.minutes);
-										}
-									: undefined
-							}
+							onContinueTimer={timer.running === null ? continueTimerOn : undefined}
 							/*
 							 * The row a timer is running against says so, and carries a stop of its
 							 * own: the app bar's pill can be scrolled a long way from it on a full
@@ -401,6 +456,7 @@ export function DayView({ session, date }: { session: Session; date: string }) {
 			{toast !== null && (
 				<Toast
 					variant={toast.variant}
+					action={toast.action}
 					onDismiss={() => {
 						setToast(null);
 					}}

@@ -27,6 +27,9 @@ import { cn } from '@/lib/utils';
  */
 const REVEALED = 'opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100';
 
+/** How long the row says so after an inline correction lands (`Card Actions.dc.html`). */
+const SAVED_MARKER_MS = 2600;
+
 function PlayIcon() {
 	return (
 		<svg width="14" height="14" viewBox="0 0 20 20" aria-hidden="true">
@@ -101,6 +104,12 @@ export function TimeEntryCard({
 	// The play button gives way to its own reserved space while the field is open, so the row does
 	// not offer to start a timer on a number somebody is halfway through changing.
 	const [isEditingDuration, setIsEditingDuration] = useState(false);
+	/*
+	 * The quiet marker the design puts on the meta line for 2.6s after a correction. The toast says
+	 * the same thing at the corner of the screen; this says it on the row that changed, which is
+	 * where the eye already is when the field closes.
+	 */
+	const [hasJustSaved, setHasJustSaved] = useState(false);
 	const trackedSeconds = useElapsedSeconds(trackingSince);
 	const isTracking = trackingSince !== null;
 	/*
@@ -124,6 +133,18 @@ export function TimeEntryCard({
 		if (isFocused) cardRef.current?.focus();
 	}, [isFocused]);
 
+	useEffect(() => {
+		if (!hasJustSaved) return;
+
+		const marker = setTimeout(() => {
+			setHasJustSaved(false);
+		}, SAVED_MARKER_MS);
+
+		return () => {
+			clearTimeout(marker);
+		};
+	}, [hasJustSaved]);
+
 	return (
 		<article
 			ref={cardRef}
@@ -133,6 +154,19 @@ export function TimeEntryCard({
 			// menu trigger, and the menu would never open.
 			onFocus={(event) => {
 				if (event.target === event.currentTarget) onTakeFocus?.();
+			}}
+			/*
+			 * `Enter` opens the duration field on the focused row, which is the one key in the
+			 * design's table that cannot live with the others in the day's `useHotkeys`: it is this
+			 * row's field that opens, and only the row knows it has one. Narrowed to the row itself
+			 * so an Enter inside the field, the menu or the `More` toggle is not this one.
+			 */
+			onKeyDown={(event) => {
+				if (event.target !== event.currentTarget) return;
+				if (event.key !== 'Enter' || !hasHover || onSaveDuration === undefined || isTracking) return;
+
+				event.preventDefault();
+				setIsEditingDuration(true);
 			}}
 			// No focus classes: `styles/index.css` draws one accent ring on `:focus-visible`
 			// everywhere, which is the ring the design brief asks cards to have.
@@ -191,6 +225,15 @@ export function TimeEntryCard({
 							</span>
 						</>
 					)}
+					{hasJustSaved && (
+						<>
+							<span aria-hidden="true" className="hidden h-[11px] w-px bg-line md:block" />
+							{/* Not announced: the screen's toast already says it once, politely. */}
+							<span aria-hidden="true" className="text-micro font-medium text-accent-dark">
+								Saved
+							</span>
+						</>
+					)}
 					{/*
 					 * Productive's own draft flag, and read from nothing else (A-8). It is
 					 * independent of the duration: the recorded zero-minute entry is `draft:
@@ -218,7 +261,11 @@ export function TimeEntryCard({
 				<DurationEditor
 					minutes={minutes}
 					isTracking={isTracking}
-					onSave={onSaveDuration}
+					onSave={async (next) => {
+						await onSaveDuration(next);
+						setHasJustSaved(true);
+					}}
+					isEditing={isEditingDuration}
 					onEditingChange={setIsEditingDuration}
 					isRevealed={REVEALED}
 				/>
