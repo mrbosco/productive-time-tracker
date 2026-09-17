@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { type ReactNode, useState } from 'react';
+import { lazy, type ReactNode, Suspense, useState } from 'react';
 import logoUrl from '@/assets/logo-productive.svg';
 import {
 	DropdownMenu,
@@ -10,7 +10,6 @@ import {
 } from '@/components/core/DropdownMenu';
 import { sessionQueryOptions, useLogout } from '@/components/features/auth/useSession';
 import { SettingsSheet } from '@/components/features/settings/SettingsSheet/SettingsSheet';
-import { StopTimerSheet } from '@/components/features/timer/StopTimerSheet/StopTimerSheet';
 import { TimerControl } from '@/components/features/timer/TimerControl/TimerControl';
 import { TimerProvider, useTimerContext } from '@/components/features/timer/TimerProvider';
 import type { ActivityMonitorConfig } from '@/components/features/timer/useActivityMonitor';
@@ -27,6 +26,18 @@ export function toInitials(name: string): string {
 		.map((word) => word.charAt(0).toUpperCase())
 		.join('');
 }
+
+/**
+ * Loaded when a timer stops, never before.
+ *
+ * The sheet writes rich text, so importing it here would put TipTap - 395 kB, ADR-0010's measured
+ * cost - on the critical path of every authenticated route, the day view included. The ADR checked
+ * that by grepping the built assets and this was caught the same way: `_authenticated` had picked
+ * up the chunk statically. Nothing needs it until a timer has something to save.
+ */
+const StopTimerSheet = lazy(async () => ({
+	default: (await import('@/components/features/timer/StopTimerSheet/StopTimerSheet')).StopTimerSheet,
+}));
 
 function CaretIcon() {
 	return (
@@ -175,7 +186,11 @@ function AppChrome({ session, children }: { session: Session; children: ReactNod
 				}}
 			/>
 			<ShortcutsSheet open={isShortcutsOpen} onOpenChange={setIsShortcutsOpen} />
-			<StopTimerSheet session={session} stopped={timer.stopped} onClose={timer.dismissStopped} />
+			{timer.stopped !== null && (
+				<Suspense>
+					<StopTimerSheet session={session} stopped={timer.stopped} onClose={timer.dismissStopped} />
+				</Suspense>
+			)}
 		</div>
 	);
 }
