@@ -5,6 +5,11 @@ import type { Session } from '@/lib/storage';
 
 interface TimerContextValue {
 	running: RunningTimer | null;
+	/**
+	 * This timer was started in this session rather than found already running after a reload, so
+	 * the control plays its arrival. A timer that was simply there should not announce itself.
+	 */
+	justStarted: boolean;
 	/** A start or a stop is in flight, so neither control should be pressed twice. */
 	isBusy: boolean;
 	/** Starts on the default service (A-1), optionally seeding the entry's note (X-3's Continue). */
@@ -36,6 +41,7 @@ export function TimerProvider({ session, children }: { session: Session; childre
 	const { service } = useDefaultService(session);
 	const [stopped, setStopped] = useState<StoppedTimer | null>(null);
 	const [needsService, setNeedsService] = useState(false);
+	const [justStarted, setJustStarted] = useState(false);
 
 	async function start(note?: string | null) {
 		/*
@@ -50,6 +56,7 @@ export function TimerProvider({ session, children }: { session: Session; childre
 		}
 
 		await timer.start({ serviceId: service.id, note });
+		setJustStarted(true);
 	}
 
 	async function stop() {
@@ -60,11 +67,13 @@ export function TimerProvider({ session, children }: { session: Session; childre
 		 * but not yet its entry. The timer is stopped either way, and the entry is left on the day
 		 * to be edited there, which is better than refusing to stop it.
 		 */
+		setJustStarted(false);
 		setStopped(await timer.stop(timer.running));
 	}
 
 	const value: TimerContextValue = {
 		running: timer.running,
+		justStarted,
 		isBusy: timer.isStarting || timer.isStopping,
 		start: (note) => {
 			void start(note);

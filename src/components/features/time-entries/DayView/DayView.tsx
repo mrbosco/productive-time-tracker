@@ -254,9 +254,36 @@ export function DayView({ session, date }: { session: Session; date: string }) {
 							 * context itself, so a card stays renderable on its own - the same reason
 							 * `onRequestDelete` is a prop.
 							 */
-							onContinueTimer={(entry) => {
-								timer.start(entry.note);
-							}}
+							/*
+							 * One timer at a time: with one running there is nothing to continue, and
+							 * an item that silently started a second one would be worse than a
+							 * disabled one. `TimeEntryCard` greys it out when this is absent.
+							 */
+							onContinueTimer={
+								timer.running === null
+									? (entry) => {
+											timer.start(entry.note);
+											/*
+											 * A timer's entry is always dated today (SPEC 11), so
+											 * continuing an entry from another day logs the new time
+											 * *there*, not here - and staying put would leave the
+											 * screen looking as though nothing had happened, which is
+											 * exactly what it looked like. Navigating is what makes
+											 * the tracking row visible, and matches X-3's Duplicate,
+											 * which lands on today for the same reason.
+											 */
+											if (date !== todayIso()) goToDay(todayIso());
+										}
+									: undefined
+							}
+							/*
+							 * The row a timer is running against says so, and carries a stop of its
+							 * own: the app bar's pill can be scrolled a long way from it on a full
+							 * day (`Timer.dc.html`). Both drive the same timer.
+							 */
+							trackingEntryId={timer.running?.entryId ?? null}
+							trackingSince={timer.running?.startedAt ?? null}
+							onStopTimer={timer.stop}
 						/>
 					</div>
 

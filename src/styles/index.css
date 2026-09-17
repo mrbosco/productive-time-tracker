@@ -74,10 +74,84 @@
 
 	/* Motion. The spinner inside a submitting button, and the two entrances the design gives
 	   overlays: a dialog fades, a sheet or toast rises. `TimeTracker.dc.html` names them
-	   `tt-spin`, `tt-in` and `tt-up`. Nothing else in the design moves. */
+	   `tt-spin`, `tt-in` and `tt-up`. */
 	--animate-spinner: spinner 0.7s linear infinite;
 	--animate-overlay-in: overlay-in 0.12s var(--ease-ui);
 	--animate-sheet-up: sheet-up 0.18s var(--ease-ui);
+
+	/* The running timer (X-4), from `Timer.dc.html`.
+
+	   `breathe` is the whole point of the set: a hard blink reads as an alert, and a 2.4s
+	   scale-and-fade reads as alive, which is what a running timer is. The other three are the
+	   entrance the design asks for - "starting is a transition, not a swap" - staggered so the
+	   information settles before the control that acts on it. `halo` fires once, on start. */
+	--animate-timer-dot-breathe: timer-dot-breathe 2.4s ease-in-out infinite;
+	/* Arrival then state, in one declaration: the dot scales in and *then* takes up the loop, so
+	   nothing has to time a class swap to hand over between them. */
+	--animate-timer-dot-arrive: timer-dot-in 0.34s var(--ease-ui) both, timer-dot-breathe 2.4s ease-in-out 0.34s infinite;
+	--animate-timer-halo: timer-halo 0.7s ease-out 0.2s both;
+	--animate-timer-digits-in: timer-digits-in 0.3s var(--ease-ui) 0.1s both;
+	--animate-timer-stop-in: timer-stop-in 0.26s var(--ease-ui) 0.18s both;
+
+	@keyframes timer-dot-breathe {
+		0%,
+		100% {
+			transform: scale(1);
+			opacity: 1;
+		}
+		50% {
+			transform: scale(0.72);
+			opacity: 0.55;
+		}
+	}
+
+	@keyframes timer-dot-in {
+		0% {
+			transform: scale(0);
+			opacity: 0;
+		}
+		60% {
+			transform: scale(1.25);
+		}
+		100% {
+			transform: scale(1);
+			opacity: 1;
+		}
+	}
+
+	@keyframes timer-halo {
+		0% {
+			transform: scale(1);
+			opacity: 0.5;
+		}
+		70%,
+		100% {
+			transform: scale(2.6);
+			opacity: 0;
+		}
+	}
+
+	@keyframes timer-digits-in {
+		0% {
+			opacity: 0;
+			transform: translateY(7px);
+		}
+		100% {
+			opacity: 1;
+			transform: translateY(0);
+		}
+	}
+
+	@keyframes timer-stop-in {
+		0% {
+			opacity: 0;
+			transform: scale(0.6);
+		}
+		100% {
+			opacity: 1;
+			transform: scale(1);
+		}
+	}
 
 	@keyframes spinner {
 		to {
@@ -185,5 +259,33 @@
 	 */
 	h1[tabindex='-1']:focus-visible {
 		@apply outline-none;
+	}
+}
+
+/* ---------------------------------------------------------------------------
+   Reduced motion.
+
+   `Timer.dc.html`: "every animation here collapses to a 140ms colour fade and the dot holds
+   steady at full opacity - the timer is still legible without any movement." Written as a
+   blanket rule rather than per-component, because the only moving things in this app are the
+   timer, the spinner and the two overlay entrances, and none of them carries meaning that the
+   movement is the only way to read.
+
+   The dot is the one that needs saying out loud: `animation: none` on a keyframe that ends at
+   0.55 opacity would leave it faded, so it is pinned back to full.
+   --------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+	*,
+	*::before,
+	*::after {
+		animation-duration: 0.14s !important;
+		animation-iteration-count: 1 !important;
+		transition-duration: 0.14s !important;
+	}
+
+	[data-timer-dot] {
+		animation: none !important;
+		opacity: 1 !important;
+		transform: none !important;
 	}
 }

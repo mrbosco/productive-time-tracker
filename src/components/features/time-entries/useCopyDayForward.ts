@@ -34,9 +34,11 @@ export function useCopyDayForward(session: Session) {
 
 	return useMutation({
 		mutationFn: async ({ from, to }: { from: string; to: string }): Promise<CopyDayResult> => {
-			// `fetchQuery`, not `ensureQueryData`: the source day may be on screen and stale, and a
-			// copy should be of what is there now rather than of what was cached an hour ago.
-			const source = await queryClient.fetchQuery(timeEntriesQueryOptions(session, from));
+			// `fetchQuery` with `staleTime: 0`, not `ensureQueryData`: a copy should be of what is on
+			// the source day now. Without the override this inherits the client's 30s staleness and
+			// copies whatever was last read, which is the same default that kept the timer pill
+			// from ever starting.
+			const source = await queryClient.fetchQuery({ ...timeEntriesQueryOptions(session, from), staleTime: 0 });
 
 			let copied = 0;
 			let failed = 0;

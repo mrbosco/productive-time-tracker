@@ -16,5 +16,10 @@ rather than adding a second one, and `Discard` removes it. A timer stopped insid
 does come back as `0h`, since whole minutes are all that is stored, which is why the duration is
 editable there.
 
-An entry's menu gains `Continue timer`: it starts a fresh timer carrying that entry's description,
-so the running row already says what it is for.
+The row a timer is running against says so: an indigo edge, a `Tracking` label beside a breathing
+dot, a duration that counts up live, and a stop control of its own — the app bar can be scrolled a
+long way from it on a full day, and both stop the same timer.
+
+An entry's menu gains `Continue timer`: it starts a fresh timer carrying that entry's description
+and takes you to today, which is where the new time is logged. Only one timer runs at a time, so
+the item is greyed out while one is going.

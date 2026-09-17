@@ -1,6 +1,7 @@
 import { http, HttpResponse } from 'msw';
 import { describe, expect, it } from 'vitest';
 import { renderWithProviders, screen, testSession, userEvent, waitFor } from '@/__tests__/test-utils';
+import { AppLayout } from '@/components/shared/layouts/AppLayout';
 import { addDays, todayIso } from '@/lib/date';
 import { SEEDED_DATE } from '@/mocks/handlers';
 import { server } from '@/mocks/node';
@@ -282,6 +283,29 @@ describe('DayView', () => {
 		await copyYesterday(user);
 
 		expect(await screen.findByRole('alert')).toHaveTextContent("Could not read yesterday's entries.");
+	});
+
+	/**
+	 * X-4, assembled: starting a timer puts its entry on today, and that row is the one that says a
+	 * timer is on it. Today rather than the recorded day, because that is where a timer's entry
+	 * lands (SPEC 11, finding 1).
+	 */
+	it('marks the row a timer is running against (X-4)', async () => {
+		const user = userEvent.setup();
+		// Inside the app bar, because that is where a timer is started from and the two are one
+		// screen: the pill and the row it marks read the same timer.
+		await renderWithProviders(
+			<AppLayout session={testSession}>
+				<DayView session={testSession} date={todayIso()} />
+			</AppLayout>,
+			{ session: testSession, initialEntry: `/day/${todayIso()}` }
+		);
+		await screen.findByText('Nothing logged for this day yet.');
+
+		await user.click(await screen.findByRole('button', { name: 'Start timer' }));
+
+		expect(await screen.findByText('Tracking')).toBeInTheDocument();
+		expect(screen.getAllByRole('button', { name: 'Stop timer' }).length).toBeGreaterThan(0);
 	});
 
 	/** A-10, from the outside: the dialog is the confirmation, so declining has to delete nothing. */

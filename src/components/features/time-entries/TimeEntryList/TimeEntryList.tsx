@@ -26,6 +26,10 @@ interface TimeEntryListProps {
 	isCopying?: boolean;
 	/** X-4: starts a timer seeded with that entry's description. */
 	onContinueTimer?: (entry: TimeEntry) => void;
+	/** The entry a timer is running against, and when it started (X-4). */
+	trackingEntryId?: string | null;
+	trackingSince?: string | null;
+	onStopTimer?: () => void;
 }
 
 /** The card the empty and error states share, so the list never collapses to nothing. */
@@ -78,6 +82,9 @@ export function TimeEntryList({
 	onCopyFromYesterday,
 	isCopying = false,
 	onContinueTimer,
+	trackingEntryId = null,
+	trackingSince = null,
+	onStopTimer,
 }: TimeEntryListProps) {
 	if (isPending) {
 		return (
@@ -180,6 +187,8 @@ export function TimeEntryList({
 										onContinueTimer(entry);
 									}
 						}
+						trackingSince={entry.id === trackingEntryId ? trackingSince : null}
+						onStopTimer={onStopTimer}
 					/>
 				</li>
 			))}

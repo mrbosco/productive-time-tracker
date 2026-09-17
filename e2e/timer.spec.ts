@@ -24,6 +24,10 @@ async function signIn(page: Page) {
 	});
 }
 
+/** The recorded day, for continuing an entry that already has time on it. */
+const SEEDED_DATE = '2026-09-15';
+const FIRST_ENTRY_NOTE = 'Probavam';
+
 /** Whatever day the suite runs on, which is where a timer's entry lands. */
 async function gotoToday(page: Page) {
 	await page.goto('/');
@@ -106,6 +110,53 @@ test.describe('timer (X-4)', () => {
 
 		await expect(sheet).toBeHidden();
 		await expect(page.getByText('Nothing logged for this day yet.')).toBeVisible();
+	});
+
+	/**
+	 * X-4 after review: the app bar was the only sign a timer was running, and on a full day the
+	 * row it belongs to can be scrolled far from it (`Timer.dc.html`). The row says so itself, and
+	 * carries a stop of its own - both drive the one timer.
+	 */
+	test('marks the row it is running against, and stops from there', async ({ page }) => {
+		await gotoToday(page);
+		await page.getByRole('button', { name: 'Start timer' }).click();
+
+		const tracking = page.getByRole('article').first();
+		await expect(tracking.getByText('Tracking')).toBeVisible();
+
+		await tracking.getByRole('button', { name: 'Stop timer' }).click();
+
+		await expect(page.getByRole('dialog', { name: 'Save tracked time' })).toBeVisible();
+	});
+
+	/**
+	 * A timer's entry is always dated today (SPEC 11), so continuing an entry from another day logs
+	 * the new time there. Staying put left the screen looking as though nothing had happened.
+	 */
+	test('continues an entry onto today, carrying its description', async ({ page }) => {
+		await page.goto(`/day/${SEEDED_DATE}`);
+
+		await page.getByRole('article').first().getByRole('button', { name: 'Entry actions' }).click();
+		await page.getByRole('menuitem', { name: 'Continue timer' }).click();
+
+		await expect(page).toHaveURL(/\/day\/\d{4}-\d{2}-\d{2}$/);
+		await expect(page).not.toHaveURL(`/day/${SEEDED_DATE}`);
+
+		const tracking = page.getByRole('article').first();
+		await expect(tracking.getByText('Tracking')).toBeVisible();
+		await expect(tracking).toContainText(FIRST_ENTRY_NOTE);
+	});
+
+	/** One timer at a time: starting a second silently would be the worst of the three behaviours. */
+	test('will not continue a second entry while one is running', async ({ page }) => {
+		await gotoToday(page);
+		await page.getByRole('button', { name: 'Start timer' }).click();
+		await expect(page.getByRole('article').first().getByText('Tracking')).toBeVisible();
+
+		await page.goto(`/day/${SEEDED_DATE}`);
+		await page.getByRole('article').first().getByRole('button', { name: 'Entry actions' }).click();
+
+		await expect(page.getByRole('menuitem', { name: 'Continue timer' })).toHaveAttribute('aria-disabled', 'true');
 	});
 
 	/** X-2 lists `s`; this is the timer it stops, and it works from any route. */

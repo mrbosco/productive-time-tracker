@@ -126,8 +126,14 @@ export function useTimer(session: Session) {
 			 * Refetched rather than read off the create response, because the create response does
 			 * not contain it: `time_entry` comes back un-included, and this is the only call that
 			 * asks for it. Nothing can be stopped usefully until the entry it belongs to is known.
+			 *
+			 * `staleTime: 0` is load-bearing, and its absence was a real bug: the app's client sets
+			 * `staleTime: 30_000`, so `fetchQuery` answered from the cache - which still held the
+			 * `null` read on mount - and the pill stayed on `Start timer` until the page was
+			 * reloaded. A fetch asking "what is true now" has to say so rather than inherit a
+			 * default meant for a day list that changes rarely.
 			 */
-			const running = await queryClient.fetchQuery(timerQueryOptions(session));
+			const running = await queryClient.fetchQuery({ ...timerQueryOptions(session), staleTime: 0 });
 
 			/*
 			 * X-3's `Continue timer`, in one PATCH: the entry the timer just created is written with

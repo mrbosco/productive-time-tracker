@@ -255,6 +255,60 @@ describe('TimeEntryCard', () => {
 		expect(onTakeFocus).not.toHaveBeenCalled();
 	});
 
+	/**
+	 * X-4, `Timer.dc.html`: the app bar is the only sign a timer is running, and on a full day the
+	 * row it belongs to can be scrolled far away from it. The tracking row says so itself.
+	 */
+	it('says when a timer is running against it (X-4)', async () => {
+		const startedAt = new Date(Date.now() - 180_000).toISOString();
+		await renderWithProviders(
+			<TimeEntryCard onRequestDelete={noop} entry={buildEntry()} trackingSince={startedAt} onStopTimer={noop} />
+		);
+
+		expect(screen.getByText('Tracking')).toBeInTheDocument();
+		expect(screen.getAllByRole('button', { name: 'Stop timer' }).length).toBeGreaterThan(0);
+	});
+
+	/**
+	 * The entry's real total, not the timer's: what is stored plus what is running. An entry that
+	 * already had minutes would otherwise look like it had lost them while being tracked.
+	 */
+	it('counts the running time on top of what the entry already holds (X-4)', async () => {
+		const startedAt = new Date(Date.now() - 180_000).toISOString();
+		await renderWithProviders(
+			<TimeEntryCard onRequestDelete={noop} entry={buildEntry()} trackingSince={startedAt} onStopTimer={noop} />
+		);
+
+		// 1h 30m logged, three minutes running.
+		expect(screen.getByText('1h 33m')).toBeInTheDocument();
+	});
+
+	it('shows only what is stored when no timer is running on it', async () => {
+		await renderWithProviders(<TimeEntryCard onRequestDelete={noop} entry={buildEntry()} />);
+
+		expect(screen.getByText('1h 30m')).toBeInTheDocument();
+		expect(screen.queryByText('Tracking')).not.toBeInTheDocument();
+		expect(screen.queryByRole('button', { name: 'Stop timer' })).not.toBeInTheDocument();
+	});
+
+	/** One timer at a time, so the entry already carrying it cannot be asked to start another. */
+	it('cannot be continued while it is already being tracked (X-4)', async () => {
+		const user = userEvent.setup();
+		await renderWithProviders(
+			<TimeEntryCard
+				onRequestDelete={noop}
+				entry={buildEntry()}
+				trackingSince={new Date().toISOString()}
+				onStopTimer={noop}
+				onContinueTimer={noop}
+			/>
+		);
+
+		await user.click(screen.getByRole('button', { name: 'Entry actions' }));
+
+		expect(await screen.findByRole('menuitem', { name: 'Continue timer' })).toHaveAttribute('aria-disabled', 'true');
+	});
+
 	it('offers no More on a note that fits', async () => {
 		await renderWithProviders(<TimeEntryCard onRequestDelete={noop} entry={buildEntry({ note: 'Short.' })} />);
 

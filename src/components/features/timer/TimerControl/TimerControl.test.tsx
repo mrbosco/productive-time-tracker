@@ -22,15 +22,33 @@ describe('TimerControl', () => {
 		expect(onStart).toHaveBeenCalledTimes(1);
 	});
 
-	/**
-	 * The elapsed clock is in the accessible name rather than beside it: "Stop timer" alone would
-	 * not say what is running, and a screen reader would never reach the number (guidebook 18).
-	 */
-	it('shows the elapsed time and says it out loud (X-4)', async () => {
+	it('shows the elapsed time (X-4)', async () => {
 		await renderWithProviders(<TimerControl running={running} isBusy={false} onStart={noop} onStop={noop} />);
 
-		expect(screen.getByRole('button', { name: 'Stop timer, 0:42 elapsed' })).toBeInTheDocument();
 		expect(screen.getByText('0:42')).toBeInTheDocument();
+	});
+
+	/**
+	 * `Timer.dc.html`'s build note: the stop button's name is fixed and the running state is
+	 * announced once. A name carrying the clock would be re-announced every second, which turns a
+	 * timer into a screen reader talking over whatever the user is doing.
+	 */
+	it('keeps the ticking clock out of the accessible name (X-4)', async () => {
+		await renderWithProviders(<TimerControl running={running} isBusy={false} onStart={noop} onStop={noop} />);
+
+		expect(screen.getByRole('button', { name: 'Stop timer' })).toBeInTheDocument();
+		expect(screen.getByRole('status')).toHaveTextContent('Timer running');
+	});
+
+	/**
+	 * The design's central point here: status on the left, action on the right, and only the action
+	 * pressable. The pill used to be one big button with two flat glyphs in it, so neither read as
+	 * the control and the whole thing was clickable by accident.
+	 */
+	it('offers exactly one pressable thing while running (X-4)', async () => {
+		await renderWithProviders(<TimerControl running={running} isBusy={false} onStart={noop} onStop={noop} />);
+
+		expect(screen.getAllByRole('button')).toHaveLength(1);
 	});
 
 	it('stops one when asked', async () => {

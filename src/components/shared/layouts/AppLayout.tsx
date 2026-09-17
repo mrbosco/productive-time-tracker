@@ -90,6 +90,7 @@ function AppChrome({ session, children }: { session: Session; children: ReactNod
 
 				<TimerControl
 					running={timer.running}
+					justStarted={timer.justStarted}
 					isBusy={timer.isBusy}
 					onStart={() => {
 						timer.start();
