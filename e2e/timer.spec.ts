@@ -58,7 +58,7 @@ test.describe('timer (X-4)', () => {
 
 		await page.getByRole('button', { name: 'Start timer' }).click();
 
-		await expect(page.getByRole('button', { name: /^Stop timer/ })).toBeVisible();
+		await expect(page.getByRole('banner').getByRole('button', { name: 'Stop timer' })).toBeVisible();
 		await expect(page.getByRole('article').filter({ hasText: '0h' })).toBeVisible();
 	});
 
@@ -70,11 +70,11 @@ test.describe('timer (X-4)', () => {
 	test('is still running after a reload', async ({ page }) => {
 		await gotoToday(page);
 		await page.getByRole('button', { name: 'Start timer' }).click();
-		await expect(page.getByRole('button', { name: /^Stop timer/ })).toBeVisible();
+		await expect(page.getByRole('banner').getByRole('button', { name: 'Stop timer' })).toBeVisible();
 
 		await page.reload();
 
-		await expect(page.getByRole('button', { name: /^Stop timer/ })).toBeVisible();
+		await expect(page.getByRole('banner').getByRole('button', { name: 'Stop timer' })).toBeVisible();
 	});
 
 	/**
@@ -86,7 +86,7 @@ test.describe('timer (X-4)', () => {
 		await page.getByRole('button', { name: 'Start timer' }).click();
 		await expect(page.getByRole('article')).toHaveCount(1);
 
-		await page.getByRole('button', { name: /^Stop timer/ }).click();
+		await page.getByRole('banner').getByRole('button', { name: 'Stop timer' }).click();
 
 		const sheet = page.getByRole('dialog', { name: 'Save tracked time' });
 		await expect(sheet).toBeVisible();
@@ -110,7 +110,7 @@ test.describe('timer (X-4)', () => {
 		await page.getByRole('button', { name: 'Start timer' }).click();
 		await expect(page.getByRole('article')).toHaveCount(1);
 
-		await page.getByRole('button', { name: /^Stop timer/ }).click();
+		await page.getByRole('banner').getByRole('button', { name: 'Stop timer' }).click();
 		const sheet = page.getByRole('dialog', { name: 'Save tracked time' });
 		await expect(sheet.getByRole('textbox', { name: 'Duration' })).toBeEnabled();
 		await sheet.getByRole('button', { name: 'Discard' }).click();
@@ -158,14 +158,21 @@ test.describe('timer (X-4)', () => {
 		await expect(entry).toContainText(NOTED_ENTRY_DURATION);
 	});
 
-	/** One timer at a time: starting a second silently would be the worst of the three behaviours. */
+	/**
+	 * One timer at a time: starting a second silently would be the worst of the three behaviours.
+	 *
+	 * Both halves on one day, deliberately. The MSW worker's memory of a running timer lives in the
+	 * page, so a `page.goto` between them would reload it away and the second half would be asking
+	 * about a timer the mock had already forgotten.
+	 */
 	test('will not continue a second entry while one is running', async ({ page }) => {
-		await gotoToday(page);
-		await page.getByRole('button', { name: 'Start timer' }).click();
-		await expect(page.getByRole('article').first().getByText('Tracking')).toBeVisible();
-
 		await page.goto(`/day/${SEEDED_DATE}`);
 		await notedEntry(page).getByRole('button', { name: 'Entry actions' }).click();
+		await page.getByRole('menuitem', { name: 'Continue timer' }).click();
+		await expect(notedEntry(page).getByText('Tracking')).toBeVisible();
+
+		// A different row on the same day, which now has nothing to offer.
+		await page.getByRole('article').first().getByRole('button', { name: 'Entry actions' }).click();
 
 		await expect(page.getByRole('menuitem', { name: 'Continue timer' })).toHaveAttribute('aria-disabled', 'true');
 	});
@@ -174,7 +181,7 @@ test.describe('timer (X-4)', () => {
 	test('stops the timer with the s key', async ({ page }) => {
 		await gotoToday(page);
 		await page.getByRole('button', { name: 'Start timer' }).click();
-		await expect(page.getByRole('button', { name: /^Stop timer/ })).toBeVisible();
+		await expect(page.getByRole('banner').getByRole('button', { name: 'Stop timer' })).toBeVisible();
 
 		await page.keyboard.press('s');
 
@@ -185,7 +192,7 @@ test.describe('timer (X-4)', () => {
 	test('forgets the timer on logout', async ({ page }) => {
 		await gotoToday(page);
 		await page.getByRole('button', { name: 'Start timer' }).click();
-		await expect(page.getByRole('button', { name: /^Stop timer/ })).toBeVisible();
+		await expect(page.getByRole('banner').getByRole('button', { name: 'Stop timer' })).toBeVisible();
 
 		await page.getByRole('button', { name: 'Account menu' }).click();
 		await page.getByRole('menuitem', { name: 'Log out' }).click();

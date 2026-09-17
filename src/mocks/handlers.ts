@@ -71,6 +71,66 @@ let deletedIds = new Set<string>();
 let runningTimer: { id: string; startedAt: string; entryId: string } | null = null;
 let nextTimerId = 0;
 
+/**
+ * Everything above, kept across a page reload.
+ *
+ * Module state lives in the page, so `page.reload()` forgets all of it - which made the mock a
+ * worse stand-in than a server in exactly the place it mattered: X-4 persists a running timer so a
+ * refresh finds it still going, and against a mock that forgot, the only honest outcome was the
+ * feature appearing not to work. `sessionStorage` is per browser context, so Playwright still gets
+ * a clean slate per test and Vitest clears it in the same `afterEach` that calls `resetMockData`.
+ */
+const STATE_KEY = 'tracktive.mock';
+
+function persist(): void {
+	try {
+		window.sessionStorage.setItem(
+			STATE_KEY,
+			JSON.stringify({
+				createdEntries,
+				nextCreatedId,
+				editedAttributes: [...editedAttributes],
+				deletedIds: [...deletedIds],
+				runningTimer,
+				nextTimerId,
+			})
+		);
+	} catch {
+		// No storage is the state every run starts in anyway.
+	}
+}
+
+function restore(): void {
+	let raw: string | null;
+	try {
+		raw = window.sessionStorage.getItem(STATE_KEY);
+	} catch {
+		return;
+	}
+	if (raw === null) return;
+
+	try {
+		const state = JSON.parse(raw) as {
+			createdEntries: typeof createdEntries;
+			nextCreatedId: number;
+			editedAttributes: [string, Record<string, unknown>][];
+			deletedIds: string[];
+			runningTimer: typeof runningTimer;
+			nextTimerId: number;
+		};
+		createdEntries = state.createdEntries;
+		nextCreatedId = state.nextCreatedId;
+		editedAttributes = new Map(state.editedAttributes);
+		deletedIds = new Set(state.deletedIds);
+		runningTimer = state.runningTimer;
+		nextTimerId = state.nextTimerId;
+	} catch {
+		// Anything unreadable is treated as a fresh run, which is what it may as well be.
+	}
+}
+
+restore();
+
 export function resetMockData(): void {
 	createdEntries = [];
 	editedAttributes = new Map();
@@ -78,6 +138,12 @@ export function resetMockData(): void {
 	nextCreatedId = 0;
 	runningTimer = null;
 	nextTimerId = 0;
+
+	try {
+		window.sessionStorage.removeItem(STATE_KEY);
+	} catch {
+		// Nothing was stored in the first place.
+	}
 }
 
 /** A recorded entry as it stands after any edits this run has made to it. */
@@ -202,6 +268,7 @@ export const handlers: RequestHandler[] = [
 		nextCreatedId += 1;
 		const id = `9000000${String(nextCreatedId)}`;
 		createdEntries.push(toCreatedEntry(body, id));
+		persist();
 
 		return HttpResponse.json(withAttributes(timeEntryCreate, body, id), { status: 201 });
 	}),
@@ -213,12 +280,14 @@ export const handlers: RequestHandler[] = [
 		// Merged, not replaced: `updateTimeEntry` sends a sparse body, so a second edit that touches
 		// only the duration must not undo the first one's date.
 		editedAttributes.set(id, { ...editedAttributes.get(id), ...(body.data?.attributes ?? {}) });
+		persist();
 
 		return HttpResponse.json(withAttributes(timeEntryUpdate, body, id));
 	}),
 
 	http.delete('*/time_entries/:id', ({ params }) => {
 		deletedIds.add(String(params.id));
+		persist();
 
 		// 204 with no body and no `Content-Type` - `time-entry-delete.txt`, api-client rule 14.
 		return new HttpResponse(null, { status: 204 });
@@ -292,6 +361,7 @@ export const handlers: RequestHandler[] = [
 		}
 
 		runningTimer = { id: `1433564${String(nextTimerId)}`, startedAt, entryId };
+		persist();
 
 		return HttpResponse.json(
 			{
@@ -333,6 +403,7 @@ export const handlers: RequestHandler[] = [
 		const totalTime = logged + elapsed;
 		editedAttributes.set(runningTimer.entryId, { ...editedAttributes.get(runningTimer.entryId), time: totalTime });
 		runningTimer = null;
+		persist();
 
 		return HttpResponse.json({
 			...timerStop,

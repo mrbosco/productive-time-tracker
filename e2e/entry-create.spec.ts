@@ -199,7 +199,8 @@ test.describe('adding a time entry', () => {
 
 		// And the day renders it as a list too, rather than flattening it back to lines.
 		await expect(page).toHaveURL(new RegExp(`/day/${SEEDED_DATE}$`));
-		await expect(page.getByRole('article').last().locator('ul li')).toHaveCount(2);
+		// First, not last: A-7 puts the newest entry at the top.
+		await expect(page.getByRole('article').first().locator('ul li')).toHaveCount(2);
 	});
 
 	test('bolds the selection with the usual shortcut', async ({ page }) => {

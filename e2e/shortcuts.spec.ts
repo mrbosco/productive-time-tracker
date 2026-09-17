@@ -33,6 +33,10 @@ test.describe('keyboard shortcuts (X-2)', () => {
 
 	test('opens the shortcuts sheet with ? and closes it with Escape', async ({ page }) => {
 		await page.goto(`/day/${SEEDED_DATE}`);
+		// The listener goes on at mount, so pressing a key at a page that has not rendered yet is a
+		// key pressed at nothing. Every other test here waits for the list; this one has no list to
+		// wait for, so it waits for the bar.
+		await expect(page.getByRole('button', { name: 'Start timer' })).toBeVisible();
 
 		await page.keyboard.press('?');
 

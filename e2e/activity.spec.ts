@@ -30,7 +30,7 @@ async function startTimerWithControlledClock(page: Page) {
 	await expect(page).toHaveURL(/\/day\/\d{4}-\d{2}-\d{2}$/);
 
 	await page.getByRole('button', { name: 'Start timer' }).click();
-	await expect(page.getByRole('button', { name: /^Stop timer/ })).toBeVisible();
+	await expect(page.getByRole('banner').getByRole('button', { name: 'Stop timer' })).toBeVisible();
 }
 
 test.describe('activity awareness (X-5)', () => {
@@ -53,7 +53,7 @@ test.describe('activity awareness (X-5)', () => {
 
 		await expect(page.getByText(/we have not seen activity/)).toBeVisible();
 		// A choice, not an action: the timer is still running and nothing has been written.
-		await expect(page.getByRole('button', { name: /^Stop timer/ })).toBeVisible();
+		await expect(page.getByRole('banner').getByRole('button', { name: 'Stop timer' })).toBeVisible();
 	});
 
 	/**
@@ -73,7 +73,7 @@ test.describe('activity awareness (X-5)', () => {
 		await keepRunning.click();
 
 		await expect(page.getByText(/we have not seen activity/)).toBeHidden();
-		await expect(page.getByRole('button', { name: /^Stop timer/ })).toBeVisible();
+		await expect(page.getByRole('banner').getByRole('button', { name: 'Stop timer' })).toBeVisible();
 	});
 
 	/** SPEC 10: the subtraction is client-side and lands in the sheet, still correctable. */
