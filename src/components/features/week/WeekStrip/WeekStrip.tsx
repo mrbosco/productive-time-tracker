@@ -1,5 +1,8 @@
 import { Link } from '@tanstack/react-router';
 import { useEffect, useRef } from 'react';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/core/Tooltip';
+import { useHasHover } from '@/components/shared/useHasHover';
+import { type AvailabilityPeriod, expectedMinutesOn } from '@/lib/availability';
 import {
 	dayOfMonth,
 	formatDayShort,
@@ -21,31 +24,120 @@ interface WeekStripProps {
 	/** The week could not be read. Cells show no total rather than a zero they cannot stand behind. */
 	isError?: boolean;
 	today?: string;
+	/**
+	 * The person's working hours (UI-6). Empty until the membership query lands, and for an account
+	 * that has never set any - in which case the strip says nothing about what was expected rather
+	 * than claiming nothing was.
+	 */
+	availability?: AvailabilityPeriod[];
 }
 
 /**
- * How a cell reads when nothing is logged on it (design brief 3.2, X-1): a past workday shows a
- * muted dash because the absence is worth noticing, while a weekend or a day that has not happened
- * yet shows `0h`, because there is nothing to notice.
+ * How a cell reads when nothing is logged on it (UI-5).
+ *
+ * `0h` is a gap - work was expected on this day and none of it is here - and an em dash means
+ * there was nothing to expect. Which way round that is matters: this **reverses X-1**, where the
+ * dash marked a past workday and `0h` covered weekends and the future. That made the two cells
+ * that mean opposite things look identical on a Saturday, and it is the complaint UI-5 opens with.
  */
-function formatCellTotal(iso: string, minutes: number, today: string): string {
+function formatCellTotal(minutes: number, isNonWorking: boolean): string {
 	if (minutes > 0) return formatDuration(minutes);
-	// `>=`, so today is not called out for being empty at nine in the morning. SPEC 10's dash is
-	// for a *past* workday, which today is not yet.
-	if (iso >= today || isWeekend(iso)) return '0h';
 
-	return '—';
+	return isNonWorking ? '—' : '0h';
 }
 
 /**
  * What a cell is called when it is read out rather than looked at. The visible text is split
  * between a mobile and a desktop label and reads as "M 14 6h 15m" either way, which is not a name;
  * this is, and it lets both visible labels be hidden from assistive technology.
+ *
+ * The hatch and the dashed border say "non-working" to someone looking at the strip, so the name
+ * has to say it too - a state drawn only in the fill is a state a screen reader cannot report
+ * (guidebook 18).
  */
-function describeCell(iso: string, minutes: number, isError: boolean): string {
+function describeCell(
+	iso: string,
+	minutes: number,
+	isNonWorking: boolean,
+	isError: boolean,
+	expected: number | null
+): string {
 	if (isError) return `${formatDayShort(iso)}, total unavailable`;
 
-	return `${formatDayShort(iso)}, ${minutes > 0 ? `${formatDuration(minutes)} logged` : 'nothing logged'}`;
+	const logged =
+		minutes > 0 ? `${formatDuration(minutes)} logged` : isNonWorking ? 'no work expected' : 'nothing logged';
+	// The hover panel is a pointer convenience; the same numbers belong in the name, or a touch
+	// screen and a screen reader never get them at all (guidebook 18).
+	const against = expected === null || expected === 0 ? '' : ` of ${formatDuration(expected)} expected`;
+
+	return `${formatDayShort(iso)}, ${logged}${against}`;
+}
+
+/**
+ * The week's own total. Not a link and not focusable: there is no `/day/week` to go to, and UI-5's
+ * whole point is that it should stop looking like an eighth day.
+ */
+function WeekTotalPanel({
+	total,
+	expected,
+	isError,
+	hasHover,
+}: {
+	total: number;
+	expected: number | null;
+	isError: boolean;
+	hasHover: boolean;
+}) {
+	const name =
+		expected === null || expected === 0
+			? `Weekly total, ${formatDuration(total)}`
+			: `Weekly total, ${formatDuration(total)} of ${formatDuration(expected)} expected`;
+
+	const panel = (
+		<div
+			aria-label={isError ? 'Week total unavailable' : name}
+			className="flex h-[92px] w-[108px] flex-none flex-col items-center justify-center gap-0.5 rounded-input bg-selection/65 px-2 md:h-[124px] md:w-auto md:items-start md:px-4"
+		>
+			<span aria-hidden="true" className="text-title font-semibold tracking-tight text-accent-dark tabular-nums">
+				{isError ? '·' : formatDuration(total)}
+			</span>
+			<span aria-hidden="true" className="text-micro font-medium whitespace-nowrap text-muted">
+				Weekly total
+			</span>
+		</div>
+	);
+
+	if (!hasHover || expected === null || isError) return panel;
+
+	return (
+		<Tooltip>
+			<TooltipTrigger asChild>{panel}</TooltipTrigger>
+			<TooltipContent side="bottom" align="end" className="min-w-[232px]">
+				<ExpectedRows expected={expected} worked={total} />
+			</TooltipContent>
+		</Tooltip>
+	);
+}
+
+/** Expected, worked, and what is left of the first after the second (UI-6). */
+function ExpectedRows({ expected, worked }: { expected: number; worked: number }) {
+	const rows = [
+		{ label: 'Expected work time', value: expected },
+		{ label: 'Worked time', value: worked },
+		// Clamped: an overrun is not negative hours left, it is none.
+		{ label: 'Work hours left', value: Math.max(0, expected - worked) },
+	];
+
+	return (
+		<dl className="flex flex-col gap-1.5">
+			{rows.map((row) => (
+				<div key={row.label} className="flex items-baseline gap-3.5">
+					<dt className="flex-1 text-label text-on-accent/60">{row.label}</dt>
+					<dd className="text-label font-bold tabular-nums">{formatDuration(row.value)}</dd>
+				</div>
+			))}
+		</dl>
+	);
 }
 
 function CellSkeleton({ className }: { className?: string }) {
@@ -59,9 +151,23 @@ function CellSkeleton({ className }: { className?: string }) {
  * desktop, the eighth being the week's own total. Totals are hidden while loading rather than
  * showing stale numbers.
  */
-export function WeekStrip({ date, weekTotals, isPending, isError = false, today = todayIso() }: WeekStripProps) {
+export function WeekStrip({
+	date,
+	weekTotals,
+	isPending,
+	isError = false,
+	today = todayIso(),
+	availability = [],
+}: WeekStripProps) {
 	const days = weekDays(date);
 	const weekTotal = days.reduce((sum, day) => sum + (weekTotals?.[day] ?? 0), 0);
+	const expectedOn = (day: string) => expectedMinutesOn(availability, day);
+	const weekExpected = days.reduce<number | null>((sum, day) => {
+		const expected = expectedOn(day);
+
+		return expected === null ? sum : (sum ?? 0) + expected;
+	}, null);
+	const hasHover = useHasHover();
 	const stripRef = useRef<HTMLElement>(null);
 	const selectedRef = useRef<HTMLAnchorElement>(null);
 
@@ -90,11 +196,11 @@ export function WeekStrip({ date, weekTotals, isPending, isError = false, today 
 
 	if (isPending) {
 		return (
-			<div className="flex gap-2 overflow-hidden md:grid md:grid-cols-8 md:gap-3">
+			<div className="flex gap-2 overflow-hidden md:grid md:grid-cols-8 md:gap-1 md:rounded-entry md:border md:border-line md:bg-surface md:p-2">
 				{days.map((day) => (
-					<CellSkeleton key={day} className="h-[68px] w-14 flex-none md:h-22 md:w-auto" />
+					<CellSkeleton key={day} className="h-[92px] w-16 flex-none md:h-[124px] md:w-auto" />
 				))}
-				<CellSkeleton className="h-[68px] w-[78px] flex-none md:h-22 md:w-auto" />
+				<CellSkeleton className="h-[92px] w-[108px] flex-none md:h-[124px] md:w-auto" />
 			</div>
 		);
 	}
@@ -106,54 +212,122 @@ export function WeekStrip({ date, weekTotals, isPending, isError = false, today 
 		<nav
 			ref={stripRef}
 			aria-label="Week"
-			className="-mx-4 flex [scrollbar-width:none] gap-2 overflow-x-auto px-4 md:mx-0 md:grid md:grid-cols-8 md:gap-3 md:overflow-visible md:px-0"
+			className="-mx-4 flex [scrollbar-width:none] gap-2 overflow-x-auto px-4 md:mx-0 md:grid md:grid-cols-8 md:gap-1 md:overflow-visible md:rounded-entry md:border md:border-line md:bg-surface md:p-2"
 		>
 			{days.map((day) => {
 				const isSelected = day === date;
 				const minutes = weekTotals?.[day] ?? 0;
+				const expected = expectedOn(day);
+				// The person's own working hours where they are known (UI-6), which catches a
+				// four-day week that a weekend test cannot. The weekend is the fallback for an
+				// account that has never set any.
+				const isNonWorking = expected === null ? isWeekend(day) : expected === 0;
 
-				return (
+				const cell = (
 					<Link
 						key={day}
 						ref={isSelected ? selectedRef : undefined}
 						to="/day/$date"
 						params={{ date: day }}
-						aria-label={describeCell(day, minutes, isError)}
+						aria-label={describeCell(day, minutes, isNonWorking, isError, expected)}
 						// `aria-current="page"` is set by the router itself on the active link, so
 						// the selected cell is marked without this component tracking it.
-						className="duration-ui relative flex h-[68px] w-14 flex-none flex-col items-center gap-[3px] overflow-hidden rounded-input border border-line bg-surface pt-2 transition-colors ease-ui hover:bg-subtle md:h-22 md:w-auto md:items-start md:gap-1.5 md:px-3.5 md:pt-3"
+						className={cn(
+							'duration-ui relative flex h-[92px] w-16 flex-none flex-col items-center gap-1 overflow-hidden rounded-input border bg-surface pt-2.5 leading-[1.2] whitespace-nowrap transition-colors ease-ui hover:bg-subtle md:h-[124px] md:w-auto md:items-start md:gap-2 md:px-4 md:pt-3',
+							isNonWorking
+								? 'border-dashed border-line hatched md:border-transparent'
+								: 'border-line md:border-transparent',
+							// The token's own name for itself is "selected day" - the strip had been
+							// carrying the whole selection on a 3px underline, which is the one thing
+							// on a cell that a neighbouring cell's border can be mistaken for.
+							isSelected && 'border-accent bg-accent text-white shadow-fab hover:bg-accent md:border-accent'
+						)}
 					>
-						<span aria-hidden="true" className="text-micro font-medium text-muted md:hidden">
+						<span
+							aria-hidden="true"
+							className={cn('text-micro font-medium md:hidden', isSelected ? 'text-white/80' : 'text-muted')}
+						>
 							{formatWeekdayInitial(day)}
 						</span>
-						<span aria-hidden="true" className="hidden text-caption font-medium text-muted md:block">
-							{formatWeekdayAndDay(day)}
+						<span
+							aria-hidden="true"
+							className={cn('hidden text-caption font-medium md:block', isSelected ? 'text-white/80' : 'text-muted')}
+						>
+							{formatWeekdayAndDay(day).split(' ')[0]}
 						</span>
-						<span aria-hidden="true" className="text-list font-medium tabular-nums md:hidden">
+						<span
+							aria-hidden="true"
+							className={cn(
+								'text-title font-semibold tracking-tight tabular-nums md:text-[28px]',
+								isNonWorking && !isSelected && 'text-muted'
+							)}
+						>
 							{dayOfMonth(day)}
 						</span>
 						<span
 							aria-hidden="true"
-							className="text-micro font-medium text-muted tabular-nums md:text-list md:text-ink"
+							className={cn(
+								'text-micro font-medium tabular-nums md:text-caption',
+								isSelected ? 'text-white/80' : 'text-muted'
+							)}
 						>
-							{isError ? '·' : formatCellTotal(day, minutes, today)}
+							{isError ? '·' : formatCellTotal(minutes, isNonWorking)}
 						</span>
 
 						{day === today && (
-							<span className="absolute top-1.5 right-1.5 size-[5px] rounded-pill bg-accent md:top-3 md:right-3 md:size-1.5" />
+							<span
+								className={cn(
+									'absolute top-1.5 right-1.5 size-[5px] rounded-pill md:top-3 md:right-3 md:size-1.5',
+									isSelected ? 'bg-white' : 'bg-accent'
+								)}
+							/>
 						)}
-						{isSelected && <span className="absolute inset-x-0 bottom-0 h-[3px] bg-accent" />}
+						{!isError && expected !== null && expected > 0 && (
+							<span
+								aria-hidden="true"
+								className={cn(
+									'absolute inset-x-4 bottom-3 hidden h-[3px] overflow-hidden rounded-pill md:block',
+									isSelected ? 'bg-white/20' : 'bg-subtle'
+								)}
+							>
+								<span
+									className={cn(
+										'block h-full rounded-pill transition-[width] duration-500',
+										isSelected ? 'bg-white' : 'bg-accent/60'
+									)}
+									style={{ width: `${Math.min(100, (minutes / expected) * 100)}%` }}
+								/>
+							</span>
+						)}
 					</Link>
+				);
+
+				/*
+				 * The panel is a pointer affordance and nothing more: a cell is a link, so on a
+				 * touch screen its one gesture is already spoken for by navigating to that day.
+				 * What it would have said is in the cell's accessible name either way.
+				 */
+				if (!hasHover || expected === null || isError) return cell;
+
+				return (
+					<Tooltip key={day}>
+						<TooltipTrigger asChild>{cell}</TooltipTrigger>
+						<TooltipContent side="bottom" className="min-w-[232px]">
+							<ExpectedRows expected={expected} worked={minutes} />
+						</TooltipContent>
+					</Tooltip>
 				);
 			})}
 
-			{/* Tinted on mobile to set it apart in a scrolling row; on desktop the grid already does that. */}
-			<div className="flex h-[68px] w-[78px] flex-none flex-col items-start justify-center gap-1 rounded-input border border-line bg-subtle px-2 md:h-22 md:w-auto md:justify-start md:bg-surface md:px-3.5 md:pt-3">
-				<span className="text-micro font-medium whitespace-nowrap text-muted md:text-caption">Week</span>
-				<span className="text-list font-medium tabular-nums">
-					{isError ? <span aria-label="Week total unavailable">·</span> : formatDuration(weekTotal)}
-				</span>
-			</div>
+			{/*
+			 * A panel, not a card (UI-5): no border, no hover, no href and no tab stop, because it is
+			 * the only thing in this row that is not a day and cannot be navigated to. The equals sign
+			 * is what says "this is the sum of those" without a word for it.
+			 *
+			 * UI-6's numbers reach it by hover and by name, never by focus - giving it a tab stop to
+			 * make the panel keyboard-reachable is the thing UI-5 took away.
+			 */}
+			<WeekTotalPanel total={weekTotal} expected={weekExpected} isError={isError} hasHover={hasHover} />
 		</nav>
 	);
 }

@@ -1,3 +1,4 @@
+import { Clock3, PencilLine } from 'lucide-react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useBlocker, useNavigate } from '@tanstack/react-router';
 import { useEffect, useId, useState } from 'react';
@@ -62,7 +63,12 @@ interface TimeEntryFormProps {
 	 * Values a new entry starts from without being an edit of anything (X-3's `Duplicate`). Ignored
 	 * while `entry` is present: an edit already has values, and its own are the right ones.
 	 */
-	prefill?: { minutes: number; note: string | null } | null;
+	/**
+	 * Values to open on without them counting as edits. X-3's duplicate brings both; UI-3's `Log
+	 * time` brings only the description, and a null duration leaves that field empty rather than
+	 * seeding it with a `0h` nobody typed.
+	 */
+	prefill?: { minutes: number | null; note: string | null } | null;
 	maxNoteLength?: number;
 }
 
@@ -143,7 +149,7 @@ export function TimeEntryForm({ session, date, entry, prefill, maxNoteLength = M
 	const source = entry ?? prefill ?? undefined;
 	const seed = {
 		date: dayDate,
-		duration: source === undefined ? '' : formatDuration(source.minutes),
+		duration: source?.minutes == null ? '' : formatDuration(source.minutes),
 		from: '',
 		to: '',
 		note: source?.note ?? '',
@@ -361,7 +367,7 @@ export function TimeEntryForm({ session, date, entry, prefill, maxNoteLength = M
 				 * marks it `aria-hidden` at both widths.
 				 */}
 				<DialogContent
-					className="inset-0 flex h-dvh w-full flex-col overflow-hidden md:inset-auto md:top-1/2 md:left-1/2 md:h-auto md:max-h-[calc(100%-64px)] md:w-[min(560px,calc(100%-64px))] md:-translate-x-1/2 md:-translate-y-1/2 md:overflow-y-auto md:rounded-panel md:p-7 md:shadow-dialog"
+					className="inset-0 flex h-dvh w-full flex-col overflow-hidden md:inset-auto md:top-1/2 md:left-1/2 md:h-auto md:max-h-[calc(100%-64px)] md:w-[min(600px,calc(100%-64px))] md:-translate-x-1/2 md:-translate-y-1/2 md:overflow-y-auto md:rounded-panel md:shadow-dialog"
 					aria-describedby={undefined}
 				>
 					<form
@@ -369,7 +375,7 @@ export function TimeEntryForm({ session, date, entry, prefill, maxNoteLength = M
 						onSubmit={(event) => {
 							void handleSubmit(submit)(event);
 						}}
-						className="flex min-h-0 flex-1 flex-col md:gap-[22px]"
+						className="flex min-h-0 flex-1 flex-col"
 					>
 						{/*
 						 * One header that restyles across the breakpoint rather than two hidden by CSS:
@@ -377,12 +383,12 @@ export function TimeEntryForm({ session, date, entry, prefill, maxNoteLength = M
 						 * Only the glyphs swap - both are decorative, so the button keeps one
 						 * accessible name at every width.
 						 */}
-						<div className="flex h-14 flex-none items-center gap-1 border-b border-line bg-surface px-2 md:h-auto md:flex-row-reverse md:justify-between md:border-0 md:p-0">
+						<div className="flex h-14 flex-none items-center gap-1 border-b border-line bg-surface px-2 md:h-auto md:flex-row-reverse md:justify-between md:bg-canvas/65 md:px-6 md:py-5">
 							<button
 								type="button"
 								onClick={close}
 								aria-label="Close"
-								className="duration-ui grid size-11 flex-none place-items-center rounded-pill text-muted transition-colors ease-ui hover:bg-subtle md:size-10"
+								className="duration-ui grid size-11 flex-none place-items-center rounded-control text-muted transition-colors ease-ui hover:bg-subtle md:size-9"
 							>
 								<svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true" className="md:hidden">
 									<path d="M12.6 3.4 6 10l6.6 6.6 1.7-1.7L9.4 10l4.9-4.9-1.7-1.7Z" fill="currentColor" />
@@ -394,12 +400,25 @@ export function TimeEntryForm({ session, date, entry, prefill, maxNoteLength = M
 									/>
 								</svg>
 							</button>
-							<DialogTitle className="text-base font-medium tracking-[-.01em] md:text-title md:font-bold md:tracking-[-.02em]">
-								{isEditing ? 'Edit entry' : 'New entry'}
-							</DialogTitle>
+							<div className="flex items-center gap-3.5">
+								<span
+									aria-hidden="true"
+									className="hidden size-11 items-center justify-center rounded-[13px] border border-accent/10 bg-selection text-accent md:flex"
+								>
+									{isEditing ? <PencilLine size={20} /> : <Clock3 size={22} strokeWidth={1.6} />}
+								</span>
+								<div>
+									<DialogTitle className="text-base font-medium tracking-[-.01em] md:text-title md:font-semibold md:tracking-[-.025em]">
+										{isEditing ? 'Edit entry' : 'New entry'}
+									</DialogTitle>
+									<p className="mt-1 hidden text-label text-muted md:block">
+										{isEditing ? 'Keep the details of your work up to date.' : 'Add the time and details of your work.'}
+									</p>
+								</div>
+							</div>
 						</div>
 
-						<div className="flex min-h-0 flex-1 flex-col gap-[22px] overflow-y-auto px-4 pt-6 pb-32 md:overflow-visible md:p-0 md:pb-0">
+						<div className="flex min-h-0 flex-1 flex-col gap-[22px] overflow-y-auto px-4 pt-6 pb-32 md:overflow-visible md:px-6 md:py-6">
 							{/*
 							 * Date and Duration share a row on desktop and stack on mobile. In range
 							 * mode they stack at every width, as the design draws it: two time inputs
@@ -627,7 +646,7 @@ export function TimeEntryForm({ session, date, entry, prefill, maxNoteLength = M
 							 * selected than the line that was just clicked - a control that appears to
 							 * change this entry and does not.
 							 */}
-							<div className="flex flex-wrap items-baseline gap-1.5 text-label leading-[1.5] text-muted">
+							<div className="flex flex-col items-start gap-1.5 rounded-control border border-line/70 bg-canvas/70 px-3.5 py-3 text-label leading-[1.5] text-muted">
 								<span>Logging as {session.personName} · Service:</span>
 								{entry === undefined ? (
 									<button
@@ -635,7 +654,7 @@ export function TimeEntryForm({ session, date, entry, prefill, maxNoteLength = M
 										onClick={() => {
 											setIsSettingsOpen(true);
 										}}
-										className="font-medium text-accent underline underline-offset-[3px]"
+										className="text-left font-medium text-accent underline-offset-[3px] hover:underline"
 									>
 										{label ?? (isServicePending ? 'Loading…' : 'Choose a service')}
 									</button>
@@ -677,7 +696,7 @@ export function TimeEntryForm({ session, date, entry, prefill, maxNoteLength = M
 						 * The same two buttons at both widths: a sticky bar over the scrolling fields
 						 * on mobile, a right-aligned row at the end of the dialog on desktop.
 						 */}
-						<div className="absolute inset-x-0 bottom-0 flex flex-none gap-3 border-t border-line bg-surface px-4 pt-3 pb-6 md:static md:justify-end md:border-0 md:p-0 md:pt-0.5">
+						<div className="absolute inset-x-0 bottom-0 flex flex-none gap-3 border-t border-line bg-surface px-4 pt-3 pb-6 md:static md:justify-end md:bg-canvas/65 md:px-6 md:py-4">
 							<Button
 								type="button"
 								variant="outline"
@@ -694,7 +713,7 @@ export function TimeEntryForm({ session, date, entry, prefill, maxNoteLength = M
 							<Button
 								type="submit"
 								disabled={isSubmitting || (!isEditing && service === null)}
-								className="flex-1 md:h-11 md:flex-none md:px-6"
+								className="flex-1 shadow-control md:h-11 md:flex-none md:px-6"
 							>
 								{isSubmitting && (
 									<span className="size-4 animate-spinner rounded-pill border-2 border-white/35 border-t-white" />

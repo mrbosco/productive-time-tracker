@@ -1,24 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { renderWithProviders, screen, testSession, userEvent, waitFor } from '@/__tests__/test-utils';
+import { renderWithProviders, screen, testSession, userEvent, waitFor, within } from '@/__tests__/test-utils';
 import { SESSION_STORAGE_KEY } from '@/lib/storage';
-import { AppLayout, toInitials } from './AppLayout';
+import { AppLayout } from './AppLayout';
 
 const session = testSession;
-
-describe('toInitials', () => {
-	it('takes the first and last word', () => {
-		expect(toInitials('Ada Lovelace')).toBe('AL');
-		expect(toInitials('Ada Byron King Lovelace')).toBe('AL');
-	});
-
-	it('takes one letter from a single name', () => {
-		expect(toInitials('Ada')).toBe('A');
-	});
-
-	it('returns nothing for an empty name', () => {
-		expect(toInitials('')).toBe('');
-	});
-});
 
 describe('AppLayout', () => {
 	it('shows the account menu as the person initials', async () => {
@@ -33,7 +18,52 @@ describe('AppLayout', () => {
 
 		await user.click(screen.getByRole('button', { name: 'Account menu' }));
 
-		expect(await screen.findByText('Ada Lovelace')).toBeInTheDocument();
+		// Inside the menu, not just anywhere: the trigger names the person too on a wide screen, so
+		// an unscoped query would pass on the bar alone and never open the menu at all.
+		expect(await within(await screen.findByRole('menu')).findByText('Ada Lovelace')).toBeInTheDocument();
+	});
+
+	/**
+	 * UI-8: which organization is being logged into, visible before anything is logged. Both the
+	 * name and the ID, because the ID is what was typed at login and the name is what it means.
+	 */
+	it('names the organization and its ID in the account menu', async () => {
+		const user = userEvent.setup();
+		await renderWithProviders(<AppLayout session={session}>content</AppLayout>, { session });
+
+		await user.click(screen.getByRole('button', { name: 'Account menu' }));
+
+		expect(await screen.findByText('Example Organization · org 999999')).toBeInTheDocument();
+	});
+
+	/**
+	 * The badge on the avatar is the answer while the menu is shut. The recorded organization has a
+	 * logo and the recorded person does not, so this covers both halves of the fallback at once -
+	 * and the button keeps its own name either way, because both are decoration over the menu.
+	 */
+	it('wears the organization logo on the avatar, without naming it twice', async () => {
+		await renderWithProviders(<AppLayout session={session}>content</AppLayout>, { session });
+
+		const trigger = await screen.findByRole('button', { name: 'Account menu' });
+		await waitFor(() => {
+			expect(within(trigger).getByRole('presentation')).toHaveAttribute('src', 'https://example.com/avatar.png');
+		});
+		// The person has no avatar of their own in the recording, so their initials stand in.
+		expect(trigger).toHaveTextContent('AL');
+	});
+
+	/**
+	 * A membership the app cannot find is not a reason to draw a badge with no letters in it. The
+	 * ID was typed at login and is always known, so the menu falls back to naming that alone.
+	 */
+	it('still names the organization ID when the membership is not among the ones returned', async () => {
+		const user = userEvent.setup();
+		const unknown = { ...session, organizationId: '1234' };
+		await renderWithProviders(<AppLayout session={unknown}>content</AppLayout>, { session: unknown });
+
+		await user.click(screen.getByRole('button', { name: 'Account menu' }));
+
+		expect(await screen.findByText('Organization 1234')).toBeInTheDocument();
 	});
 
 	/**

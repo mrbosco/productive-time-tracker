@@ -20,7 +20,7 @@ function dayKey(date: string) {
 }
 
 function weekKey(monday: string) {
-	return ['week-totals', testSession.personId, monday];
+	return ['week-entries', testSession.personId, monday];
 }
 
 describe('useUpdateTimeEntry', () => {

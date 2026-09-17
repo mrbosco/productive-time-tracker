@@ -1,3 +1,5 @@
+import { Clock3 } from 'lucide-react';
+import { expectedMinutesOn } from '@/lib/availability';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { useRef, useState } from 'react';
 import type { TimeEntry } from '@/api/types';
@@ -10,13 +12,17 @@ import { ServiceTotals } from '@/components/features/time-entries/ServiceTotals/
 import { TimeEntryList } from '@/components/features/time-entries/TimeEntryList/TimeEntryList';
 import { useCopyDayForward } from '@/components/features/time-entries/useCopyDayForward';
 import { useDeleteTimeEntry } from '@/components/features/time-entries/useDeleteTimeEntry';
+import { useUpdateTimeEntry } from '@/components/features/time-entries/useUpdateTimeEntry';
+import { TimerLogsDialog } from '@/components/features/timer/TimerLogsDialog/TimerLogsDialog';
 import { useTimeEntries } from '@/components/features/time-entries/useTimeEntries';
 import { ActivityBanner } from '@/components/features/timer/ActivityBanner/ActivityBanner';
 import { useTimerContext } from '@/components/features/timer/TimerProvider';
 import { useWeekTotals } from '@/components/features/week/useWeekTotals';
+import { useExpectedHours } from '@/components/features/week/useExpectedHours';
 import { WeekStrip } from '@/components/features/week/WeekStrip/WeekStrip';
 import { useHotkeys } from '@/components/shared/useHotkeys';
 import { addDays, todayIso } from '@/lib/date';
+import { formatDuration } from '@/lib/duration';
 import type { Session } from '@/lib/storage';
 
 function PlusIcon() {
@@ -43,12 +49,21 @@ export function DayView({ session, date }: { session: Session; date: string }) {
 	const navigate = useNavigate();
 	const { data: entries, isPending, isFetching, refetch } = useTimeEntries(session, date);
 	const { data: weekTotals, isPending: isWeekPending, isError: isWeekError } = useWeekTotals(session, date);
+	const availability = useExpectedHours(session);
 	const deleteEntry = useDeleteTimeEntry(session);
+	const updateEntry = useUpdateTimeEntry(session);
 	const copyDay = useCopyDayForward(session);
 	const timer = useTimerContext();
+	/*
+	 * Continuing an entry is a today-only action. The timer attaches to the entry rather than making
+	 * a new one (SPEC 11, finding 4), so playing yesterday's row would start a clock counting into
+	 * yesterday - and the one thing a running timer is is now. One at a time, as X-4 set.
+	 */
+	const canContinue = timer.running === null && date === todayIso();
 
 	/** The entry the confirm dialog is asking about, and the only thing that opens it (R-12). */
 	const [entryPendingDelete, setEntryPendingDelete] = useState<TimeEntry | null>(null);
+	const [entryShowingLogs, setEntryShowingLogs] = useState<TimeEntry | null>(null);
 	/**
 	 * Raised here rather than handed over in history state, because a delete does not navigate: the
 	 * design keeps it on the day behind the dialog (design brief 5). The route's own toast, which
@@ -56,7 +71,11 @@ export function DayView({ session, date }: { session: Session; date: string }) {
 	 * two would have to overlap inside one 2.6 s window to collide, which takes opening a menu and
 	 * confirming a dialog in it.
 	 */
-	const [toast, setToast] = useState<{ message: string; variant: 'success' | 'error' } | null>(null);
+	const [toast, setToast] = useState<{
+		message: string;
+		variant: 'success' | 'error';
+		action?: { label: string; onAction: () => void };
+	} | null>(null);
 
 	/*
 	 * A start, a continue or a stop that failed. The pill has nowhere of its own to say so - it is
@@ -130,6 +149,15 @@ export function DayView({ session, date }: { session: Session; date: string }) {
 					e: () => {
 						void navigate({ to: '/entries/$id/edit', params: { id: focusedEntry.id } });
 					},
+					/*
+					 * `Card Actions.dc.html`'s key for the play button, bound only while a row is
+					 * focused and only while there is no timer to collide with - the same condition
+					 * the button itself is drawn under. `Enter`, the other key that page lists, opens
+					 * the duration field and lives on the card: only the row knows it has one.
+					 */
+					p: () => {
+						if (canContinue) continueTimerOn(focusedEntry);
+					},
 					Delete: () => {
 						setEntryPendingDelete(focusedEntry);
 					},
@@ -181,6 +209,64 @@ export function DayView({ session, date }: { session: Session; date: string }) {
 		}
 	}
 
+	/**
+	 * UI-4's inline correction. Here rather than on the card for the same reason delete is: the
+	 * toast belongs to the screen, and the card should not hold a mutation of its own.
+	 *
+	 * The date never changes, so `useUpdateTimeEntry` gets the same date twice and invalidates one
+	 * day and one week rather than two of each. It is awaited so the editor stays open and keeps
+	 * what was typed if the write fails.
+	 */
+	async function saveDuration(entry: TimeEntry, minutes: number) {
+		const previousMinutes = entry.minutes;
+
+		try {
+			await updateEntry.mutateAsync({
+				id: entry.id,
+				previousDate: entry.date,
+				date: entry.date,
+				changes: { minutes },
+			});
+			/*
+			 * Undo rather than a confirm, which is the design's call and the reason the field is
+			 * safe to use without one: a dialog on every fifteen-minute correction would cost more
+			 * than the trip to the edit screen it replaces. The toast stays 8s when it carries one.
+			 */
+			setToast({
+				message: 'Entry saved',
+				variant: 'success',
+				action: {
+					label: 'Undo',
+					onAction: () => {
+						void restoreDuration(entry, previousMinutes);
+					},
+				},
+			});
+		} catch {
+			setToast({ message: 'Could not save the duration.', variant: 'error' });
+			throw new Error('save failed');
+		}
+	}
+
+	function continueTimerOn(entry: TimeEntry) {
+		timer.continueEntry(entry.id, entry.minutes);
+	}
+
+	/** The way back from an inline correction. No Undo of its own, or there would be no way out. */
+	async function restoreDuration(entry: TimeEntry, minutes: number) {
+		try {
+			await updateEntry.mutateAsync({
+				id: entry.id,
+				previousDate: entry.date,
+				date: entry.date,
+				changes: { minutes },
+			});
+			setToast({ message: `Restored to ${formatDuration(minutes)}`, variant: 'success' });
+		} catch {
+			setToast({ message: 'Could not undo that change.', variant: 'error' });
+		}
+	}
+
 	async function confirmDelete(entry: TimeEntry) {
 		// Closed first: the row is already gone from the cache by the time the request is sent
 		// (SPEC 4.2), so leaving the dialog up to spin would be asking the user to wait for
@@ -206,15 +292,20 @@ export function DayView({ session, date }: { session: Session; date: string }) {
 			 * `pb-24` on mobile: the Add entry FAB is `fixed` at the bottom right, so without room
 			 * reserved for it the last card of a scrolling day sits under an opaque 56px circle (N-4).
 			 */}
-			<main className="mx-4 flex flex-col gap-3 pt-3.5 pb-24 md:mx-12 md:gap-5 md:pt-7 md:pb-14">
-				<div className="flex items-center gap-4">
-					<DateNavigator
-						date={date}
-						onSelect={(next) => {
-							void navigate({ to: '/day/$date', params: { date: next } });
-						}}
-					/>
-
+			<main className="mx-auto flex w-full max-w-[1376px] flex-col gap-4 px-4 pt-4 pb-24 md:gap-7 md:px-8 md:pt-9 md:pb-14 xl:px-12">
+				<div className="flex items-center justify-between gap-4">
+					<div className="min-w-0 flex-1">
+						<p className="mb-2 flex items-center gap-2 text-meta font-medium text-muted">
+							<Clock3 size={16} aria-hidden="true" />
+							Time tracking
+						</p>
+						<DateNavigator
+							date={date}
+							onSelect={(next) => {
+								void navigate({ to: '/day/$date', params: { date: next } });
+							}}
+						/>
+					</div>
 					{/*
 					 * One element that restyles across the breakpoint - a bottom-right FAB on mobile,
 					 * a header button on desktop - rather than two with `hidden md:flex`, which is CSS
@@ -228,23 +319,43 @@ export function DayView({ session, date }: { session: Session; date: string }) {
 						ref={addEntryRef}
 						to="/entries/new"
 						search={{ date }}
-						className="duration-ui fixed right-4 bottom-7 z-10 inline-flex size-14 items-center justify-center gap-2 rounded-pill bg-accent text-on-accent shadow-fab transition-colors ease-ui hover:bg-accent-dark md:static md:ml-auto md:h-11 md:w-auto md:px-5 md:shadow-none"
+						className="duration-ui fixed right-4 bottom-7 z-10 inline-flex size-14 items-center justify-center gap-2 rounded-pill bg-accent text-on-accent shadow-fab transition-colors ease-ui hover:bg-accent-dark md:static md:ml-auto md:h-12 md:w-auto md:rounded-control md:px-5 md:shadow-fab"
 					>
 						<PlusIcon />
 						<span className="sr-only md:not-sr-only md:text-meta md:font-medium">Add entry</span>
 					</Link>
 				</div>
 
-				<WeekStrip date={date} weekTotals={weekTotals} isPending={isWeekPending} isError={isWeekError} />
+				<WeekStrip
+					date={date}
+					weekTotals={weekTotals}
+					isPending={isWeekPending}
+					isError={isWeekError}
+					availability={availability}
+				/>
 
-				<div className="grid items-start gap-3 md:grid-cols-[minmax(0,1fr)_340px] md:gap-8">
-					<div className="flex flex-col gap-3 md:gap-3.5">
+				<div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_320px] lg:gap-6">
+					<div className="flex min-w-0 flex-col gap-5">
 						{/*
 						 * Only once there is something to summarise. `0h logged · 0 entries` would be
 						 * a lie while the day is loading or failing, and on a genuinely empty day it
 						 * only restates the sentence in the empty state below it.
 						 */}
-						{hasEntries && <DaySummary entries={entries} />}
+						{/*
+						 * A placeholder of the same height while the day loads, so the summary does
+						 * not push everything under it down the moment it arrives. Starting a timer
+						 * fires two invalidations in a row, and a line that appears between them is
+						 * what made the page look like it was assembling itself in pieces.
+						 */}
+						{isPending ? (
+							<span aria-hidden="true" className="h-5 w-40 animate-pulse rounded-[5px] bg-subtle" />
+						) : (
+							hasEntries && (
+								<div key={date} className="animate-day-in">
+									<DaySummary entries={entries} />
+								</div>
+							)
+						)}
 
 						{/*
 						 * X-5, above the list where the design puts it. Rendered here rather than in
@@ -260,7 +371,12 @@ export function DayView({ session, date }: { session: Session; date: string }) {
 						)}
 
 						{/* P-1, drawn but inert. Absent while loading or failing, as the design has it. */}
-						{entries !== undefined && <QuickAddInput date={date} />}
+						{/*
+						 * Always mounted. It used to wait for the day, which meant the row someone had
+						 * just typed into vanished while the entry they created was being fetched back
+						 * - the jumpiest thing on the screen, and on the one control they were using.
+						 */}
+						<QuickAddInput date={date} />
 
 						<TimeEntryList
 							entries={entries}
@@ -292,13 +408,9 @@ export function DayView({ session, date }: { session: Session; date: string }) {
 							 * finding 4), so the row that was clicked is the row that starts counting
 							 * - on whatever day it is on. Nothing navigates, and nothing is copied.
 							 */
-							onContinueTimer={
-								timer.running === null
-									? (entry) => {
-											timer.continueEntry(entry.id, entry.minutes);
-										}
-									: undefined
-							}
+							onSaveDuration={saveDuration}
+							onShowTimerLogs={setEntryShowingLogs}
+							onContinueTimer={canContinue ? continueTimerOn : undefined}
 							/*
 							 * The row a timer is running against says so, and carries a stop of its
 							 * own: the app bar's pill can be scrolled a long way from it on a full
@@ -310,9 +422,14 @@ export function DayView({ session, date }: { session: Session; date: string }) {
 						/>
 					</div>
 
-					{hasEntries && (
-						<div className="hidden md:block">
-							<ServiceTotals entries={entries} weekTotals={weekTotals} isWeekError={isWeekError} />
+					{entries !== undefined && (
+						<div key={date} className="hidden animate-day-in lg:block">
+							<ServiceTotals
+								entries={entries}
+								weekTotals={weekTotals}
+								isWeekError={isWeekError}
+								expectedMinutes={expectedMinutesOn(availability, date)}
+							/>
 						</div>
 					)}
 				</div>
@@ -323,6 +440,13 @@ export function DayView({ session, date }: { session: Session; date: string }) {
 			 * the values it was opened with for as long as it is on screen: a background refetch
 			 * that removed the row would otherwise leave a question about nothing.
 			 */}
+			<TimerLogsDialog
+				session={session}
+				entry={entryShowingLogs}
+				onOpenChange={(open) => {
+					if (!open) setEntryShowingLogs(null);
+				}}
+			/>
 			<TimeEntryDeleteDialog
 				entry={entryPendingDelete}
 				onOpenChange={(next) => {
@@ -342,6 +466,7 @@ export function DayView({ session, date }: { session: Session; date: string }) {
 			{toast !== null && (
 				<Toast
 					variant={toast.variant}
+					action={toast.action}
 					onDismiss={() => {
 						setToast(null);
 					}}

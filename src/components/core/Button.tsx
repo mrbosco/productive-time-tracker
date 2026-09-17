@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils';
 /**
  * shadcn's Button, restyled to the design tokens (guidebook 16: copied in, edited here).
  *
- * Every button in the design is a pill. Sizes carry the design's tap targets: `default` is 52px
+ * Buttons use a compact corner radius. Sizes carry the design's tap targets: `default` is 52px
  * on mobile and 48px from `md` up, and icon buttons stay 44 x 44 even where the glyph is 18px,
  * because a 44px target is the floor on touch (design README §1).
  *
@@ -16,7 +16,7 @@ import { cn } from '@/lib/utils';
  */
 const buttonVariants = cva(
 	cn(
-		'inline-flex shrink-0 items-center justify-center gap-2 rounded-pill font-medium whitespace-nowrap',
+		'inline-flex shrink-0 items-center justify-center gap-2 rounded-control font-medium whitespace-nowrap',
 		// Not `transition-colors`: that list includes `outline-color`, so the focus ring
 		// would fade in from the text colour instead of appearing.
 		'transition-[color,background-color,border-color] duration-(--duration-ui) ease-(--ease-ui)',

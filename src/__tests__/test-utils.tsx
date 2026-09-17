@@ -8,6 +8,7 @@ import {
 } from '@tanstack/react-router';
 import { render, type RenderOptions, renderHook, type RenderHookOptions } from '@testing-library/react';
 import type { ReactElement, ReactNode } from 'react';
+import type { Service } from '@/api/types';
 import { SessionProvider } from '@/components/features/auth/useSession';
 import { TimerProvider } from '@/components/features/timer/TimerProvider';
 import { type Session, writeSession } from '@/lib/storage';
@@ -58,6 +59,29 @@ function createTestRouter(ui: ReactElement, initialEntry: string) {
 }
 
 /** The session the fixtures describe: Ada Lovelace, person 1448639, organization 999999. */
+/**
+ * A service with every level above it unset, so a test names only the ones it is about.
+ *
+ * Here rather than per file (testing.md rule 1): a service now carries five levels of hierarchy for
+ * UI-1 and UI-2, and seven test files were each spelling all of them out to set one.
+ */
+export function buildService(overrides: Partial<Service> = {}): Service {
+	return {
+		id: '16887825',
+		name: 'Administrative work',
+		dealName: null,
+		dealId: null,
+		projectName: null,
+		companyName: null,
+		companyId: null,
+		companyAvatarUrl: null,
+		clientName: null,
+		clientId: null,
+		sectionName: null,
+		...overrides,
+	};
+}
+
 export const testSession: Session = {
 	token: 'test-token',
 	organizationId: '999999',

@@ -3,8 +3,8 @@ import { useState } from 'react';
 import { describe, expect, it } from 'vitest';
 import services from '../../../../../docs/api/samples/services.json';
 import { renderWithProviders, screen, testSession, userEvent, waitFor } from '@/__tests__/test-utils';
-import { server } from '@/mocks/node';
 import { readSession } from '@/lib/storage';
+import { server } from '@/mocks/node';
 import { SettingsSheet } from './SettingsSheet';
 
 /** Controlled by its caller in the app, so the test supplies the same control. */
@@ -19,14 +19,6 @@ function renderSheet() {
 }
 
 describe('SettingsSheet', () => {
-	it('lists the services as Company · Project · Service (A-1)', async () => {
-		await renderSheet();
-
-		const select = await screen.findByRole('combobox', { name: 'Default service' });
-
-		expect(select).toHaveDisplayValue('Example Agency · Administration · Acquiring new clients');
-	});
-
 	it('says what the choice is for', async () => {
 		await renderSheet();
 
@@ -37,31 +29,31 @@ describe('SettingsSheet', () => {
 		const user = userEvent.setup();
 		await renderSheet();
 
-		const select = await screen.findByRole('combobox', { name: 'Default service' });
-		await user.selectOptions(select, screen.getByRole('option', { name: /Administrative work/ }));
+		await user.click(await screen.findByRole('button', { name: /Administrative work/ }));
 
 		await waitFor(() => {
 			expect(readSession()?.defaultServiceId).toBeDefined();
 		});
-		expect(readSession()?.defaultServiceId).not.toBe('');
 	});
 
-	it('closes once a service is chosen, having nothing left to confirm', async () => {
+	/** UI's searchable list, which is the whole reason the native select went. */
+	it('filters the list as you type, across company, project and service', async () => {
 		const user = userEvent.setup();
 		await renderSheet();
 
-		const select = await screen.findByRole('combobox', { name: 'Default service' });
-		await user.selectOptions(select, screen.getByRole('option', { name: /Administrative work/ }));
+		await user.type(await screen.findByRole('combobox', { name: 'Search services' }), 'administrative');
 
-		await waitFor(() => {
-			expect(screen.queryByRole('dialog', { name: 'Default service' })).not.toBeInTheDocument();
-		});
+		expect(await screen.findByRole('button', { name: /Administrative work/ })).toBeInTheDocument();
+		expect(screen.queryByRole('button', { name: /Project management/ })).not.toBeInTheDocument();
 	});
 
-	it('says it is loading before the list arrives', async () => {
+	it('says so rather than showing an empty list when nothing matches', async () => {
+		const user = userEvent.setup();
 		await renderSheet();
 
-		expect(screen.getByText('Loading services…')).toBeInTheDocument();
+		await user.type(await screen.findByRole('combobox', { name: 'Search services' }), 'zzzz');
+
+		expect(await screen.findByText(/No service matches/)).toBeInTheDocument();
 	});
 
 	/**
@@ -72,17 +64,17 @@ describe('SettingsSheet', () => {
 		server.use(http.get('*/services', () => new HttpResponse(null, { status: 500 })));
 		await renderSheet();
 
-		expect(await screen.findByRole('alert')).toHaveTextContent('Could not load the service list');
-		expect(screen.queryByText(/has no services/)).not.toBeInTheDocument();
+		expect(await screen.findByRole('alert')).toHaveTextContent('Could not load services.');
+		expect(screen.queryByText(/No services are assigned/)).not.toBeInTheDocument();
 	});
 
-	it('explains an organization that tracks nothing, rather than showing an empty select', async () => {
+	it('explains an organization that tracks nothing, rather than showing an empty list', async () => {
 		// The recorded envelope with no rows in it: an empty collection is a state the endpoint
 		// can be in, and reusing the real shape keeps the parser on the same path.
 		server.use(http.get('*/services', () => HttpResponse.json({ ...services, data: [], included: [] })));
 		await renderSheet();
 
-		expect(await screen.findByText(/no services with time tracking enabled/)).toBeInTheDocument();
-		expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
+		expect(await screen.findByText(/No services are assigned to you/)).toBeInTheDocument();
+		expect(screen.queryByRole('combobox', { name: 'Search services' })).not.toBeInTheDocument();
 	});
 });

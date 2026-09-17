@@ -26,7 +26,7 @@ describe('useDefaultService', () => {
 			expect(result.current.isPending).toBe(false);
 		});
 		expect(result.current.service?.name).toBe('Acquiring new clients');
-		expect(result.current.label).toBe('Example Agency · Administration · Acquiring new clients');
+		expect(result.current.label).toBe('Example Companie · Internal project [SAMPLE] · Acquiring new clients');
 	});
 
 	it('prefers the service the person chose', async () => {

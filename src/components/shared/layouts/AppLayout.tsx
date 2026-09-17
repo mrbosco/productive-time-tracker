@@ -1,6 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
+import { useNavigate, useRouterState } from '@tanstack/react-router';
 import { lazy, type ReactNode, Suspense, useState } from 'react';
+import { findMembershipForOrganization } from '@/api/organization-memberships';
 import logoUrl from '@/assets/logo-productive.svg';
+import { Avatar } from '@/components/core/Avatar';
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -14,18 +17,10 @@ import { TimerControl } from '@/components/features/timer/TimerControl/TimerCont
 import { TimerProvider, useTimerContext } from '@/components/features/timer/TimerProvider';
 import type { ActivityMonitorConfig } from '@/components/features/timer/useActivityMonitor';
 import { ShortcutsSheet } from '@/components/shared/ShortcutsSheet/ShortcutsSheet';
+import { ViewSwitch } from '@/components/features/week/ViewSwitch/ViewSwitch';
 import { useHotkeys } from '@/components/shared/useHotkeys';
+import { isIsoDate, startOfWeek, todayIso } from '@/lib/date';
 import type { Session } from '@/lib/storage';
-
-/** "Ada Lovelace" -> "AL". One letter when there is only one word, empty when the name is. */
-export function toInitials(name: string): string {
-	const words = name.split(' ').filter(Boolean);
-
-	return [words.at(0), words.length > 1 ? words.at(-1) : undefined]
-		.filter((word) => word !== undefined)
-		.map((word) => word.charAt(0).toUpperCase())
-		.join('');
-}
 
 /**
  * Loaded when a timer stops, never before.
@@ -83,8 +78,29 @@ function AppChrome({ session, children }: { session: Session; children: ReactNod
 	const [isShortcutsOpen, setIsShortcutsOpen] = useState(false);
 	const { data: memberships } = useQuery(sessionQueryOptions(session));
 	const timer = useTimerContext();
-	const email = memberships?.find((membership) => membership.personId === session.personId)?.person?.email ?? null;
-	const initials = toInitials(session.personName);
+	const navigate = useNavigate();
+	/*
+	 * The date the switch carries across, read off whichever route is showing. A week route names
+	 * its Monday, which is a real day, so switching back lands somewhere sensible either way.
+	 */
+	const viewDate = useRouterState({
+		select: (state) => {
+			const [, , date] = state.location.pathname.split('/');
+
+			return date !== undefined && isIsoDate(date) ? date : todayIso();
+		},
+	});
+	/*
+	 * The membership login matched on, which carries the email and the organization alike. Keyed on
+	 * the organization rather than on the person (UI-8): a token with memberships in two
+	 * organizations has a different person record in each, so the person is what varies and the
+	 * organization is what was actually chosen at login.
+	 */
+	const membership = findMembershipForOrganization(memberships ?? [], session.organizationId);
+	const email = membership?.person?.email ?? null;
+	const personAvatarUrl = membership?.person?.avatarUrl ?? null;
+	const organizationName = membership?.organizationName ?? null;
+	const organizationAvatarUrl = membership?.organizationAvatarUrl ?? null;
 
 	/*
 	 * Registered here rather than on the day view because the sheet is reachable from every
@@ -95,6 +111,14 @@ function AppChrome({ session, children }: { session: Session; children: ReactNod
 		'?': () => {
 			setIsShortcutsOpen(true);
 		},
+		// UI-7's two views. Here rather than on either screen, because the point of them is getting
+		// to the other one.
+		w: () => {
+			void navigate({ to: '/week/$date', params: { date: startOfWeek(viewDate) } });
+		},
+		d: () => {
+			void navigate({ to: '/day/$date', params: { date: viewDate } });
+		},
 		// X-4's, and global for the same reason: the bar carries the timer on every route, so the
 		// key that stops it has to work on every route too.
 		s: () => {
@@ -104,10 +128,13 @@ function AppChrome({ session, children }: { session: Session; children: ReactNod
 
 	return (
 		<div className="min-h-dvh">
-			<header className="flex h-14 items-center gap-2 border-b border-line bg-surface pr-2 pl-4 md:h-16 md:gap-3 md:px-12">
+			<header className="flex h-14 items-center gap-2 border-b border-line bg-surface pr-2 pl-4 md:h-20 md:gap-4 md:px-8 xl:px-[max(48px,calc((100%-1280px)/2))]">
 				<img src={logoUrl} alt="Productive" className="hidden h-6 md:block" />
 				<span aria-hidden="true" className="mx-1 hidden h-5 w-px bg-line md:block" />
-				<span className="flex-1 text-list font-medium tracking-[-.01em]">Time Tracker</span>
+				{/* Between the product name and the timer - the one place both views share (UI-7). */}
+				<ViewSwitch date={viewDate} />
+				<span className="flex-1 text-list font-medium tracking-[-.01em] md:hidden">Time Tracker</span>
+				<span className="hidden flex-1 md:block" />
 
 				<TimerControl
 					running={timer.running}
@@ -130,33 +157,86 @@ function AppChrome({ session, children }: { session: Session; children: ReactNod
 					onClick={() => {
 						setIsShortcutsOpen(true);
 					}}
-					className="duration-ui hidden size-10 flex-none place-items-center rounded-pill border border-line bg-surface text-meta font-medium text-muted transition-colors ease-ui hover:bg-subtle md:grid"
+					className="duration-ui hidden size-10 flex-none place-items-center rounded-control text-meta font-medium text-muted transition-colors ease-ui hover:bg-subtle hover:text-ink md:grid"
 				>
 					?
 				</button>
 
 				<DropdownMenu>
 					<DropdownMenuTrigger
-						// The initials are decoration over the name in the menu, so the button
-						// gets the accessible name instead of leaving a screen reader to read
-						// out two letters.
+						// The avatar and the badge are decoration over the name and the organization
+						// in the menu, so the button gets the accessible name instead of leaving a
+						// screen reader to read out four letters.
 						aria-label="Account menu"
-						className="flex h-11 flex-none items-center gap-2 rounded-pill px-1 md:h-10"
+						// 44px tall on a phone for the tap target the brief asks for, 40 on desktop so
+						// it sits on the same line as the timer pill and the `?`, which are both 40 in
+						// the approved bar. The avatar inside grew from 32 to 40 - UI-8 wants it the
+						// largest thing in the bar, and 40 is as large as it goes without breaking that
+						// row.
+						className="flex h-11 flex-none items-center gap-2 rounded-control px-1 md:h-12 md:pl-3"
 					>
-						<span className="grid size-8 place-items-center rounded-pill bg-selection text-caption font-medium text-accent-dark">
-							{initials}
+						<span className="relative size-10 flex-none">
+							<Avatar
+								name={session.personName}
+								src={personAvatarUrl}
+								className="size-10 rounded-pill"
+								fallbackClassName="bg-selection text-caption font-medium text-accent-dark"
+							/>
+							{/*
+							 * Which organization this is, before anything is logged into it. The ring
+							 * is the bar's own background rather than a border colour, so the badge
+							 * reads as sitting on top of the avatar instead of being cut out of it.
+							 */}
+							{organizationName !== null && (
+								<Avatar
+									name={organizationName}
+									src={organizationAvatarUrl}
+									className="absolute -right-[3px] -bottom-[3px] size-[18px] rounded-[6px] border-2 border-surface"
+									fallbackClassName="bg-accent-dark text-[8px] font-bold text-on-accent"
+								/>
+							)}
 						</span>
+						<span className="hidden max-w-36 truncate text-label font-medium xl:block">{session.personName}</span>
 						<span className="hidden md:block">
 							<CaretIcon />
 						</span>
 					</DropdownMenuTrigger>
 
 					<DropdownMenuContent align="end" className="w-[246px]">
-						<div className="px-3 pt-2.5 pb-3">
-							<p className="text-meta font-medium">{session.personName}</p>
-							{email !== null && <p className="mt-[3px] text-caption text-muted">{email}</p>}
+						<div className="flex items-center gap-2.5 px-3 pt-2.5 pb-3">
+							<Avatar
+								name={session.personName}
+								src={personAvatarUrl}
+								className="size-9 flex-none rounded-[10px]"
+								fallbackClassName="bg-selection text-caption font-medium text-accent-dark"
+							/>
+							<div className="min-w-0">
+								<p className="truncate text-meta font-medium">{session.personName}</p>
+								{email !== null && <p className="mt-[3px] truncate text-caption text-muted">{email}</p>}
+							</div>
 						</div>
 						<DropdownMenuSeparator />
+						{/*
+						 * The organization and the ID that was typed at login, so the answer to "which
+						 * one am I in?" is on the same menu as logging out of it. Not a menu item: it
+						 * does nothing, and an entry that takes focus and then does nothing is worse
+						 * than one that plainly cannot be chosen (guidebook 18).
+						 */}
+						<div className="flex items-center gap-2.5 px-3 py-2">
+							{organizationName !== null && (
+								<Avatar
+									name={organizationName}
+									src={organizationAvatarUrl}
+									className="size-6 flex-none rounded-[6px]"
+									fallbackClassName="bg-accent-dark text-[9px] font-bold text-on-accent"
+								/>
+							)}
+							<span className="truncate text-label font-medium">
+								{organizationName === null
+									? `Organization ${session.organizationId}`
+									: `${organizationName} · org ${session.organizationId}`}
+							</span>
+						</div>
 						{/* A-1: the service every new entry and timer is logged against. */}
 						<DropdownMenuItem
 							onSelect={() => {

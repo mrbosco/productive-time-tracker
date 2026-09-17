@@ -14,6 +14,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
 import { Route as AuthenticatedDayDateRouteImport } from './routes/_authenticated/day.$date'
 import { Route as AuthenticatedEntriesNewRouteImport } from './routes/_authenticated/entries.new'
+import { Route as AuthenticatedWeekDateRouteImport } from './routes/_authenticated/week.$date'
 import { Route as AuthenticatedEntriesIdEditRouteImport } from './routes/_authenticated/entries.$id.edit'
 
 const AuthenticatedRoute = AuthenticatedRouteImport.update({
@@ -40,6 +41,11 @@ const AuthenticatedEntriesNewRoute = AuthenticatedEntriesNewRouteImport.update({
   path: '/entries/new',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedWeekDateRoute = AuthenticatedWeekDateRouteImport.update({
+  id: '/week/$date',
+  path: '/week/$date',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
 const AuthenticatedEntriesIdEditRoute =
   AuthenticatedEntriesIdEditRouteImport.update({
     id: '/entries/$id/edit',
@@ -52,6 +58,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/day/$date': typeof AuthenticatedDayDateRoute
   '/entries/new': typeof AuthenticatedEntriesNewRoute
+  '/week/$date': typeof AuthenticatedWeekDateRoute
   '/entries/$id/edit': typeof AuthenticatedEntriesIdEditRoute
 }
 export interface FileRoutesByTo {
@@ -59,6 +66,7 @@ export interface FileRoutesByTo {
   '/': typeof AuthenticatedIndexRoute
   '/day/$date': typeof AuthenticatedDayDateRoute
   '/entries/new': typeof AuthenticatedEntriesNewRoute
+  '/week/$date': typeof AuthenticatedWeekDateRoute
   '/entries/$id/edit': typeof AuthenticatedEntriesIdEditRoute
 }
 export interface FileRoutesById {
@@ -68,14 +76,26 @@ export interface FileRoutesById {
   '/_authenticated/': typeof AuthenticatedIndexRoute
   '/_authenticated/day/$date': typeof AuthenticatedDayDateRoute
   '/_authenticated/entries/new': typeof AuthenticatedEntriesNewRoute
+  '/_authenticated/week/$date': typeof AuthenticatedWeekDateRoute
   '/_authenticated/entries/$id/edit': typeof AuthenticatedEntriesIdEditRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    '/' | '/login' | '/day/$date' | '/entries/new' | '/entries/$id/edit'
+    | '/'
+    | '/login'
+    | '/day/$date'
+    | '/entries/new'
+    | '/week/$date'
+    | '/entries/$id/edit'
   fileRoutesByTo: FileRoutesByTo
-  to: '/login' | '/' | '/day/$date' | '/entries/new' | '/entries/$id/edit'
+  to:
+    | '/login'
+    | '/'
+    | '/day/$date'
+    | '/entries/new'
+    | '/week/$date'
+    | '/entries/$id/edit'
   id:
     | '__root__'
     | '/_authenticated'
@@ -83,6 +103,7 @@ export interface FileRouteTypes {
     | '/_authenticated/'
     | '/_authenticated/day/$date'
     | '/_authenticated/entries/new'
+    | '/_authenticated/week/$date'
     | '/_authenticated/entries/$id/edit'
   fileRoutesById: FileRoutesById
 }
@@ -128,6 +149,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedEntriesNewRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/week/$date': {
+      id: '/_authenticated/week/$date'
+      path: '/week/$date'
+      fullPath: '/week/$date'
+      preLoaderRoute: typeof AuthenticatedWeekDateRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/entries/$id/edit': {
       id: '/_authenticated/entries/$id/edit'
       path: '/entries/$id/edit'
@@ -142,6 +170,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
   AuthenticatedDayDateRoute: typeof AuthenticatedDayDateRoute
   AuthenticatedEntriesNewRoute: typeof AuthenticatedEntriesNewRoute
+  AuthenticatedWeekDateRoute: typeof AuthenticatedWeekDateRoute
   AuthenticatedEntriesIdEditRoute: typeof AuthenticatedEntriesIdEditRoute
 }
 
@@ -149,6 +178,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
   AuthenticatedDayDateRoute: AuthenticatedDayDateRoute,
   AuthenticatedEntriesNewRoute: AuthenticatedEntriesNewRoute,
+  AuthenticatedWeekDateRoute: AuthenticatedWeekDateRoute,
   AuthenticatedEntriesIdEditRoute: AuthenticatedEntriesIdEditRoute,
 }
 

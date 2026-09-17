@@ -9,15 +9,45 @@ export interface Person {
 	firstName: string;
 	lastName: string;
 	email: string | null;
+	/** Uploaded in Productive, and null for anyone who has not. Initials are the fallback. */
+	avatarUrl: string | null;
+	/**
+	 * Expected working hours, as the JSON **string** the API stores it as. Read with
+	 * `lib/availability.ts`; null when the request did not ask for it.
+	 */
+	availabilities: string | null;
 }
 
+/**
+ * The five levels a service sits under, flattened (UI-1, UI-2). Productive nests them
+ * `service -> deal -> project -> company`, with the section hanging off the service and a second
+ * company off the deal; `Service Context.dc.html` works out which of them belong on a card.
+ *
+ * Every one of these is null when the request that produced the service did not ask for it, which
+ * is never the same thing as "the record has none" (api-client rule 10). `/services` asks for the
+ * deal and its company only - the default-service selector labels rows, it does not draw them.
+ */
 export interface Service {
 	id: string;
 	name: string;
-	/** The deal is Productive's "project". Names repeat, so this alone does not identify a service. */
+	/** Productive's Deal: the commercial agreement. Names repeat, so this alone identifies nothing. */
 	dealName: string | null;
 	dealId: string | null;
+	/** Productive's Project: the name people say out loud, and what the card's meta line leads with. */
+	projectName: string | null;
+	/** The company whose work this is - the project's, or the deal's when there is no project. */
 	companyName: string | null;
+	companyId: string | null;
+	/** Its logo. Null when the company has none, which is the initials case rather than an error. */
+	companyAvatarUrl: string | null;
+	/**
+	 * The company being billed, which is the same organisation almost always. It diverges on
+	 * subcontracted work - an agency booked through a partner - and that is the only time it is
+	 * worth a line of its own.
+	 */
+	clientName: string | null;
+	clientId: string | null;
+	sectionName: string | null;
 }
 
 export interface OrganizationMembership {
@@ -32,6 +62,14 @@ export interface OrganizationMembership {
 	 */
 	organizationId: string | null;
 	organizationName: string | null;
+	/**
+	 * The organization's logo, which hangs off its **company**, not off the organization itself -
+	 * Productive's own client reaches it as `include=organization.company` and renders that
+	 * company's `avatar_url` (`organization-memberships-avatars.json`).
+	 */
+	organizationAvatarUrl: string | null;
+	/** That company's ID, which is how the picker knows which group is the user's own. */
+	organizationCompanyId: string | null;
 }
 
 export interface TimeEntry {

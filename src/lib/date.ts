@@ -138,3 +138,18 @@ export function formatWeekdayInitial(iso: string): string {
 export function dayOfMonth(iso: string): number {
 	return parseIsoDate(iso).getDate();
 }
+
+/**
+ * The clock time of an instant, `HH:mm`, in whatever zone the browser is in (UI-9).
+ *
+ * The only place this app reads a timestamp as a time of day rather than as a calendar date - a
+ * timer run started and stopped at a moment, which is exactly what A-6 says an entry's `date` is
+ * not.
+ */
+const TIME_OF_DAY = new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
+
+export function formatTimeOfDay(instant: string): string {
+	const parsed = new Date(instant);
+
+	return Number.isNaN(parsed.getTime()) ? '' : TIME_OF_DAY.format(parsed);
+}

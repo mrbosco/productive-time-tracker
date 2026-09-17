@@ -1,6 +1,8 @@
 import { Link } from '@tanstack/react-router';
 import { useEffect, useId, useRef, useState } from 'react';
 import type { TimeEntry } from '@/api/types';
+import { Avatar } from '@/components/core/Avatar';
+import { DurationEditor } from '@/components/features/time-entries/DurationEditor/DurationEditor';
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -13,8 +15,28 @@ import { StopTimerButton, TimerDot } from '@/components/features/timer/TimerCont
 import { useElapsedSeconds } from '@/components/features/timer/useTimer';
 import { formatDuration } from '@/lib/duration';
 import { Note } from '@/components/features/time-entries/Note/Note';
+import { ServiceContext } from '@/components/features/time-entries/ServiceContext/ServiceContext';
 import { toPlainText } from '@/lib/note';
+import { useHasHover } from '@/components/shared/useHasHover';
 import { cn } from '@/lib/utils';
+
+/**
+ * Revealed by hovering the card on a pointer, and always there on a touch screen, where hover is
+ * not something that exists and a control nobody can reveal is a control nobody has (UI-4).
+ * `focus-within` so the keyboard reaches them without a pointer.
+ */
+const REVEALED = 'opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100';
+
+/** How long the row says so after an inline correction lands (`Card Actions.dc.html`). */
+const SAVED_MARKER_MS = 2600;
+
+function PlayIcon() {
+	return (
+		<svg width="14" height="14" viewBox="0 0 20 20" aria-hidden="true">
+			<path d="M6 3.6 16 10 6 16.4V3.6Z" fill="currentColor" />
+		</svg>
+	);
+}
 
 function KebabIcon() {
 	return (
@@ -41,8 +63,12 @@ interface TimeEntryCardProps {
 	isTabStop?: boolean;
 	/** The card took focus on its own - a click or a Tab - so the list can follow it. */
 	onTakeFocus?: () => void;
-	/** Starts a timer on this entry (X-4). Absent greys the item out - one timer at a time. */
+	/** Starts a timer on this entry (X-4, UI-4). Absent hides the play button - one at a time. */
 	onContinueTimer?: () => void;
+	/** Writes a corrected duration (UI-4). Absent leaves the duration as plain text. */
+	onSaveDuration?: (minutes: number) => Promise<void>;
+	/** Opens UI-9's read-only account of how this entry's minutes were arrived at. */
+	onShowTimerLogs?: () => void;
 	/**
 	 * A timer is running against this entry (X-4). The card says so and carries a stop control of
 	 * its own, because the app bar can be scrolled a long way from the row it belongs to.
@@ -68,10 +94,22 @@ export function TimeEntryCard({
 	isTabStop = true,
 	onTakeFocus,
 	onContinueTimer,
+	onSaveDuration,
+	onShowTimerLogs,
 	trackingSince = null,
 	onStopTimer,
 }: TimeEntryCardProps) {
 	const cardRef = useRef<HTMLElement>(null);
+	const hasHover = useHasHover();
+	// The play button gives way to its own reserved space while the field is open, so the row does
+	// not offer to start a timer on a number somebody is halfway through changing.
+	const [isEditingDuration, setIsEditingDuration] = useState(false);
+	/*
+	 * The quiet marker the design puts on the meta line for 2.6s after a correction. The toast says
+	 * the same thing at the corner of the screen; this says it on the row that changed, which is
+	 * where the eye already is when the field closes.
+	 */
+	const [hasJustSaved, setHasJustSaved] = useState(false);
 	const trackedSeconds = useElapsedSeconds(trackingSince);
 	const isTracking = trackingSince !== null;
 	/*
@@ -95,6 +133,18 @@ export function TimeEntryCard({
 		if (isFocused) cardRef.current?.focus();
 	}, [isFocused]);
 
+	useEffect(() => {
+		if (!hasJustSaved) return;
+
+		const marker = setTimeout(() => {
+			setHasJustSaved(false);
+		}, SAVED_MARKER_MS);
+
+		return () => {
+			clearTimeout(marker);
+		};
+	}, [hasJustSaved]);
+
 	return (
 		<article
 			ref={cardRef}
@@ -105,65 +155,128 @@ export function TimeEntryCard({
 			onFocus={(event) => {
 				if (event.target === event.currentTarget) onTakeFocus?.();
 			}}
+			/*
+			 * `Enter` opens the duration field on the focused row, which is the one key in the
+			 * design's table that cannot live with the others in the day's `useHotkeys`: it is this
+			 * row's field that opens, and only the row knows it has one. Narrowed to the row itself
+			 * so an Enter inside the field, the menu or the `More` toggle is not this one.
+			 */
+			onKeyDown={(event) => {
+				if (event.target !== event.currentTarget) return;
+				if (event.key !== 'Enter' || !hasHover || onSaveDuration === undefined || isTracking) return;
+
+				event.preventDefault();
+				setIsEditingDuration(true);
+			}}
 			// No focus classes: `styles/index.css` draws one accent ring on `:focus-visible`
 			// everywhere, which is the ring the design brief asks cards to have.
 			className={cn(
-				'relative flex items-start gap-3 overflow-hidden rounded-entry border bg-surface p-4 md:gap-5 md:px-5 md:py-[18px]',
-				isTracking ? 'border-accent' : 'border-line'
+				'duration-ui group relative flex min-h-[76px] flex-wrap items-start gap-3.5 rounded-input border bg-surface p-3 transition-colors md:flex-nowrap md:items-center md:gap-4 md:px-4 md:py-6',
+				isTracking ? 'border-transparent bg-selection/65' : 'border-transparent hover:bg-canvas/80'
 			)}
 		>
-			{/* The indigo edge the design gives a tracking row, so it is findable down a long day. */}
-			{isTracking && <span aria-hidden="true" className="absolute inset-y-0 left-0 w-1 bg-accent" />}
+			{isTracking && (
+				<span aria-hidden="true" className="absolute top-5 bottom-5 left-0 w-[3px] rounded-pill bg-accent/65" />
+			)}
 			{/*
-			 * Tabular numerals so a column of durations lines up on the digits rather than
-			 * shifting with each glyph width (design brief 2).
+			 * The company the service is billed to, which is what the row used to lead with in
+			 * Productive's own UI and what UI-1 puts back. Its logo when there is one, its initials
+			 * when there is not, and a building when the service has no company at all - which is
+			 * the state an entry on a since-archived deal lands in, not a rendering fault.
 			 */}
-			<p
-				className={cn(
-					'min-w-[70px] flex-none text-duration leading-[120%] font-medium tracking-[-.01em] tabular-nums md:min-w-[84px]',
-					// The reserved 70px is for a column of durations lining up; a tracking row has a stop
-					// control to fit beside the note instead, and on a 390px screen that column is the
-					// space it needs (N-4). The desktop row keeps its alignment.
-					isTracking && 'min-w-0 pl-1 text-accent-dark md:min-w-[84px]'
+			<Avatar
+				name={entry.service?.companyName ?? ''}
+				src={entry.service?.companyAvatarUrl}
+				// `start`, not `edges`: an organisation is named by its first two words and the rest
+				// is usually a legal suffix, so "Vela Studio Group" is VS rather than VG.
+				initialsFrom="start"
+				// Contained and padded rather than cropped - a brand mark filled to the edges of a
+				// square is a brand mark with its corners cut off.
+				className="size-11 flex-none rounded-[13px] object-contain p-2"
+				fallbackClassName={cn(
+					'text-micro font-bold tracking-[.02em]',
+					entry.service?.companyName === null || entry.service?.companyName === undefined
+						? 'border border-line bg-subtle text-muted'
+						: 'bg-selection text-accent-dark'
 				)}
-			>
-				{formatDuration(minutes)}
-			</p>
+			/>
 
-			<div className="flex min-w-0 flex-1 flex-col gap-1.5">
-				{hasNote ? (
-					<ClampedNote note={entry.note ?? ''} />
-				) : (
-					<p className="text-list text-muted italic">No description</p>
-				)}
-
-				<p className="flex flex-wrap items-center gap-2 text-caption font-medium text-muted">
+			<div className="order-last flex min-w-0 flex-1 basis-full flex-col gap-1.5 md:order-none md:basis-auto">
+				<div className="flex flex-wrap items-center gap-2">
+					{/* `project · service`, and everything behind the project name (UI-2). */}
+					<ServiceContext service={entry.service} />
 					{/*
-					 * On the meta line at both widths rather than above the note, which is where the
-					 * design puts it on desktop - it keeps the row the same height whether or not a
-					 * timer is running on it, so the list does not jump when one starts.
+					 * After the service rather than before it, which is where `Card Actions.dc.html`
+					 * puts it: the meta line reads left to right as what this is, then what it is
+					 * doing. On the meta line at all widths so the row does not change height when a
+					 * timer starts on it.
 					 */}
 					{isTracking && (
 						<>
-							<span className="flex items-center gap-1.5 text-micro font-bold tracking-[.06em] text-accent uppercase">
-								Tracking
-								<TimerDot className="size-[7px]" />
-							</span>
-							{/* Desktop only: the meta line wraps on a phone, which would leave the rule
-							    dangling at the end of a line with nothing after it. */}
 							<span aria-hidden="true" className="hidden h-[11px] w-px bg-line md:block" />
+							<span className="flex items-center gap-1.5 rounded-pill bg-surface/80 px-2.5 py-1 text-micro font-medium text-accent-dark">
+								<TimerDot className="size-[6px]" />
+								Tracking
+							</span>
 						</>
 					)}
-					<span>{entry.service?.name ?? 'Unknown service'}</span>
+					{hasJustSaved && (
+						<>
+							<span aria-hidden="true" className="hidden h-[11px] w-px bg-line md:block" />
+							{/* Not announced: the screen's toast already says it once, politely. */}
+							<span aria-hidden="true" className="text-micro font-medium text-accent-dark">
+								Saved
+							</span>
+						</>
+					)}
 					{/*
 					 * Productive's own draft flag, and read from nothing else (A-8). It is
 					 * independent of the duration: the recorded zero-minute entry is `draft:
 					 * false`, and a running timer is a zero-minute entry too, so deriving the
 					 * label from `minutes === 0` would mislabel both.
 					 */}
-					{entry.draft && <span>Draft</span>}
-				</p>
+					{entry.draft && <span className="text-caption font-medium text-muted">Draft</span>}
+				</div>
+				{hasNote ? <ClampedNote note={entry.note ?? ''} /> : <p className="text-label text-muted">No description</p>}
 			</div>
+
+			{/*
+			 * Tabular numerals so a column of durations lines up on the digits rather than shifting
+			 * with each glyph width (design brief 2). It sits at the trailing edge now: the leading
+			 * slot is the company's, and the space this leaves is what UI-4's play button goes in.
+			 *
+			 * No reserved width any more. A right-aligned column lines up on its own edge, which is
+			 * what the 70px was buying when the column was on the left.
+			 */}
+			{/*
+			 * Editable in place on a pointer only (`Card Actions.dc.html`): a 112px field and a chip
+			 * row do not fit beside a 15px note at 390, and there is no hover to reveal a pencil, so
+			 * touch keeps `Edit` in the kebab instead.
+			 */}
+			{/*
+			 * Before the duration rather than after it, which is where `Card Actions.dc.html` draws
+			 * it. Its width is reserved whether or not it is painted - otherwise the list twitches
+			 * as the pointer runs down it - and on the trailing side that reservation is a visible
+			 * hole between the number and the kebab. On the leading side it is absorbed by the gap
+			 * the note column already leaves.
+			 */}
+			{hasHover &&
+				(isTracking ? null : isEditingDuration || onContinueTimer === undefined ? (
+					<span aria-hidden="true" className="hidden size-9 flex-none md:block" />
+				) : (
+					<button
+						type="button"
+						aria-label="Continue timer on this entry"
+						title="Continue timer"
+						onClick={onContinueTimer}
+						className={cn(
+							'duration-ui ml-auto grid size-9 flex-none place-items-center rounded-control border border-line text-accent transition-colors ease-ui hover:border-transparent hover:bg-selection md:ml-0',
+							REVEALED
+						)}
+					>
+						<PlayIcon />
+					</button>
+				))}
 
 			{/*
 			 * The same control as the app bar's, so it is learned once - a square on mobile where
@@ -172,16 +285,40 @@ export function TimeEntryCard({
 			 * card can scroll out of sight.
 			 */}
 			{isTracking && onStopTimer !== undefined && (
-				<>
-					<StopTimerButton onStop={onStopTimer} className="md:hidden" />
-					<StopTimerButton onStop={onStopTimer} label="Stop" className="hidden md:flex" />
-				</>
+				<StopTimerButton
+					onStop={onStopTimer}
+					label="Stop"
+					className="ml-auto h-9 flex-none rounded-[10px] border border-accent/15 bg-surface text-accent-dark shadow-control transition-colors hover:scale-100 hover:bg-selection md:ml-0"
+				/>
+			)}
+
+			{hasHover && onSaveDuration !== undefined ? (
+				<DurationEditor
+					minutes={minutes}
+					isTracking={isTracking}
+					onSave={async (next) => {
+						await onSaveDuration(next);
+						setHasJustSaved(true);
+					}}
+					isEditing={isEditingDuration}
+					onEditingChange={setIsEditingDuration}
+					isRevealed={REVEALED}
+				/>
+			) : (
+				<p
+					className={cn(
+						'ml-auto flex-none pt-0.5 text-duration leading-[120%] font-medium tracking-[-.01em] tabular-nums md:ml-0 md:pt-0',
+						isTracking && 'text-accent-dark'
+					)}
+				>
+					{formatDuration(minutes)}
+				</p>
 			)}
 
 			<DropdownMenu>
 				<DropdownMenuTrigger
 					aria-label="Entry actions"
-					className="duration-ui -mt-2.5 -mr-2.5 grid size-11 flex-none place-items-center rounded-pill text-muted transition-colors ease-ui hover:bg-subtle hover:text-ink md:-mt-2 md:-mr-2"
+					className="duration-ui -mr-2.5 grid size-11 flex-none place-items-center rounded-control text-muted transition-colors ease-ui hover:bg-subtle hover:text-ink md:-mt-0 md:-mr-1 md:size-9"
 				>
 					<KebabIcon />
 				</DropdownMenuTrigger>
@@ -196,13 +333,11 @@ export function TimeEntryCard({
 				 * here to open it would drag the whole ProseMirror tree onto the screen SPEC 4.2
 				 * requires to render on one request.
 				 *
-				 * `Continue timer` starts a timer **on this entry** (X-4): `POST /timers` with a
-				 * `time_entry` relationship attaches to one that already exists rather than creating
-				 * another, and the stop adds the elapsed minutes to what it holds
-				 * (`docs/api/samples/timer-continue-entry-probe.txt`). So this row is the one that
-				 * starts counting, and no second row appears. Greyed out while a timer already runs,
-				 * here or anywhere: there is one timer, and starting a second silently would be the
-				 * worst of the three possible behaviours.
+				 * `Continue timer` has left this menu for a play button on the row itself (UI-4),
+				 * one tap instead of two. It still starts a timer **on this entry** (X-4): `POST
+				 * /timers` with a `time_entry` relationship attaches to one that already exists
+				 * rather than creating another, and the stop adds the elapsed minutes to what it
+				 * holds (`docs/api/samples/timer-continue-entry-probe.txt`).
 				 *
 				 * `Duplicate` lands on **today**, not on the day the source entry is from (X-3, Toggl's
 				 * continue pattern): copying yesterday's standup is almost always about logging today's,
@@ -222,14 +357,18 @@ export function TimeEntryCard({
 							Edit
 						</Link>
 					</DropdownMenuItem>
-					<DropdownMenuItem disabled={isTracking || onContinueTimer === undefined} onSelect={onContinueTimer}>
-						Continue timer
-					</DropdownMenuItem>
+					{!hasHover && (
+						<DropdownMenuItem disabled={isTracking || onContinueTimer === undefined} onSelect={onContinueTimer}>
+							Continue timer
+						</DropdownMenuItem>
+					)}
 					<DropdownMenuItem asChild>
 						<Link to="/entries/new" search={{ date: todayIso(), duplicate: entry.id }}>
 							Duplicate
 						</Link>
 					</DropdownMenuItem>
+					{/* Where `Continue timer` used to be, so the menu did not grow (UI-9). */}
+					{onShowTimerLogs !== undefined && <DropdownMenuItem onSelect={onShowTimerLogs}>Timer logs</DropdownMenuItem>}
 					<DropdownMenuSeparator />
 					<DropdownMenuItem variant="destructive" onSelect={onRequestDelete}>
 						Delete

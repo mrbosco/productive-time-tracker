@@ -82,7 +82,8 @@ test.describe('login and session', () => {
 
 		await page.getByRole('button', { name: 'Account menu' }).click();
 
-		await expect(page.getByText('Ada Lovelace')).toBeVisible();
+		// Inside the menu: the trigger names the person too on a wide screen.
+		await expect(page.getByRole('menu').getByText('Ada Lovelace')).toBeVisible();
 	});
 
 	test('moves focus to the heading of the screen it navigates to', async ({ page }) => {

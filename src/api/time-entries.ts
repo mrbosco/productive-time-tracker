@@ -57,7 +57,24 @@ function parseMutatedTimeEntry(document: JsonApiDocument): MutatedTimeEntry {
  * Sparse fieldsets take a day from 8.6 KB to 1.6 KB - a full time entry carries ~45 attributes
  * (costs, approval, invoicing, overtime) and this screen renders four of them.
  */
-const FIELDS = 'fields[time_entries]=date,time,note,created_at,draft,service&fields[services]=name';
+/**
+ * Widened for UI-1 and UI-2: a card leads with the company the work is for and names the project
+ * beside the service, and the context behind that name is the deal, the section and - when it is
+ * somebody else - the client. Productive nests all of it under the service, and `/time_entries`
+ * resolves the whole chain in the one request the day already makes
+ * (`time-entries-day-service-context.json`).
+ *
+ * `fields` governs relationships as well as attributes, so every step has to be named on the step
+ * above it - `deal` on the service, `project` and `company` on the deal - or the linkage vanishes
+ * and the walk stops at a name.
+ */
+const FIELDS =
+	'fields[time_entries]=date,time,note,created_at,draft,service' +
+	'&fields[services]=name,deal,section' +
+	'&fields[deals]=name,company,project' +
+	'&fields[projects]=name,company' +
+	'&fields[companies]=name,avatar_url' +
+	'&fields[sections]=name';
 
 function buildRangePath(personId: string, from: string, to: string, page: number): string {
 	const filters =
@@ -65,7 +82,7 @@ function buildRangePath(personId: string, from: string, to: string, page: number
 		`&filter[after]=${encodeURIComponent(from)}&filter[before]=${encodeURIComponent(to)}`;
 
 	return (
-		`/time_entries?${filters}&include=service&${FIELDS}` +
+		`/time_entries?${filters}&include=service.deal.company,service.deal.project.company,service.section&${FIELDS}` +
 		`&page[size]=${String(MAX_PAGE_SIZE)}&page[number]=${String(page)}`
 	);
 }
@@ -113,7 +130,7 @@ export async function listTimeEntriesInRange(
 export async function getTimeEntry(auth: Auth, id: string): Promise<TimeEntry> {
 	// `fields[time_entries]` is silently ignored on this endpoint, so the full record comes back
 	// regardless; asking for it anyway would only imply a narrowing that does not happen.
-	const path = `/time_entries/${encodeURIComponent(id)}?include=service`;
+	const path = `/time_entries/${encodeURIComponent(id)}?include=service.deal.company,service.deal.project.company,service.section`;
 
 	return parseTimeEntry(requireDocument(await request(auth, path)));
 }

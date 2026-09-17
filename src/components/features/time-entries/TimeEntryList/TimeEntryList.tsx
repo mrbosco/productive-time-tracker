@@ -1,9 +1,10 @@
+import { Clock3, Copy, Plus } from 'lucide-react';
 import { Link } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 import type { TimeEntry } from '@/api/types';
 import { Button } from '@/components/core/Button';
 import { TimeEntryCard } from '@/components/features/time-entries/TimeEntryCard/TimeEntryCard';
-import { EmptyDayIllustration, LoadFailedIllustration } from '@/components/shared/Illustration/Illustration';
+import { LoadFailedIllustration } from '@/components/shared/Illustration/Illustration';
 
 interface TimeEntryListProps {
 	entries: TimeEntry[] | undefined;
@@ -26,6 +27,10 @@ interface TimeEntryListProps {
 	isCopying?: boolean;
 	/** X-4: starts a timer on that entry, which the stop then adds to. */
 	onContinueTimer?: (entry: TimeEntry) => void;
+	/** Writes a corrected duration from the card (UI-4). The day view owns the write and the toast. */
+	onSaveDuration?: (entry: TimeEntry, minutes: number) => Promise<void>;
+	/** Opens UI-9's timer logs for one entry. */
+	onShowTimerLogs?: (entry: TimeEntry) => void;
 	/** The entry a timer is running against, and when it started (X-4). */
 	trackingEntryId?: string | null;
 	trackingSince?: string | null;
@@ -37,7 +42,7 @@ function ListState({ children, role }: { children: ReactNode; role?: 'alert' }) 
 	return (
 		<div
 			role={role}
-			className="flex flex-col items-center gap-4 rounded-entry border border-line bg-surface px-5 py-7 text-center"
+			className="flex animate-entry-in flex-col items-center gap-4 rounded-entry border border-line bg-surface px-5 py-10 text-center md:py-14"
 		>
 			{children}
 		</div>
@@ -46,13 +51,18 @@ function ListState({ children, role }: { children: ReactNode; role?: 'alert' }) 
 
 function CardSkeleton() {
 	return (
-		<div aria-hidden="true" className="flex animate-pulse gap-3.5 rounded-entry border border-line bg-surface p-4">
-			<div className="h-5 w-16 flex-none rounded-md bg-subtle" />
+		<div
+			aria-hidden="true"
+			className="relative flex min-h-22 gap-3.5 overflow-hidden rounded-entry border border-line bg-surface p-4 md:px-5 md:py-5"
+		>
+			<div className="size-10 flex-none rounded-control bg-subtle" />
 			<div className="flex flex-1 flex-col gap-2">
 				<div className="h-3.5 rounded-md bg-subtle" />
 				<div className="h-3.5 w-[70%] rounded-md bg-subtle" />
 				<div className="h-3 w-[45%] rounded-md bg-subtle" />
 			</div>
+			<div className="h-5 w-10 flex-none rounded-md bg-subtle" />
+			<span className="pointer-events-none absolute inset-0 animate-skeleton-sweep bg-linear-to-r from-transparent via-surface/70 to-transparent" />
 		</div>
 	);
 }
@@ -82,13 +92,15 @@ export function TimeEntryList({
 	onCopyFromYesterday,
 	isCopying = false,
 	onContinueTimer,
+	onSaveDuration,
+	onShowTimerLogs,
 	trackingEntryId = null,
 	trackingSince = null,
 	onStopTimer,
 }: TimeEntryListProps) {
 	if (isPending) {
 		return (
-			<div className="flex flex-col gap-3">
+			<div key={date} className="flex animate-day-in flex-col gap-2.5">
 				{/*
 				 * `role="status"` so the wait is announced: a screen-reader user gets silence
 				 * otherwise, because skeletons are decoration and carry no text.
@@ -119,7 +131,7 @@ export function TimeEntryList({
 	 */
 	if (entries === undefined) {
 		return (
-			<ListState role="alert">
+			<ListState key={date} role="alert">
 				<LoadFailedIllustration />
 				<p className="text-base leading-[140%]">Could not load entries.</p>
 				<Button variant="outline" disabled={isRetrying} onClick={onRetry}>
@@ -129,31 +141,47 @@ export function TimeEntryList({
 		);
 	}
 
-	// R-7: one sentence and the primary action, with the illustration beside them rather than
-	// instead of them.
 	if (entries.length === 0) {
 		return (
-			<ListState>
-				<EmptyDayIllustration />
-				<p className="text-base leading-[140%]">Nothing logged for this day yet.</p>
-				<Button asChild>
-					<Link to="/entries/new" search={{ date }}>
-						Add entry
-					</Link>
-				</Button>
-				{/*
-				 * X-3. Secondary to `Add entry` and styled as a link, because it is a shortcut for
-				 * a day that looks like the one before it rather than the way to fill a day in.
-				 */}
-				<button
-					type="button"
-					disabled={onCopyFromYesterday === undefined || isCopying}
-					onClick={onCopyFromYesterday}
-					className="rounded-input text-meta font-medium text-accent underline underline-offset-[3px] disabled:opacity-60"
+			<div
+				key={date}
+				className="flex animate-entry-in flex-col items-center rounded-entry border border-line bg-surface px-6 py-10 text-center shadow-card md:py-12"
+			>
+				<div
+					aria-hidden="true"
+					className="relative mb-5 grid size-14 place-items-center rounded-[17px] border border-accent/10 bg-selection text-accent"
 				>
-					{isCopying ? 'Copying...' : 'Copy from yesterday'}
-				</button>
-			</ListState>
+					<Clock3 size={27} strokeWidth={1.5} />
+					<span className="absolute -right-1.5 -bottom-1 grid size-6 place-items-center rounded-lg border-[3px] border-surface bg-accent text-white">
+						<Plus size={12} />
+					</span>
+				</div>
+				<h2 className="text-title font-semibold tracking-tight">Ready when you are</h2>
+				<p className="mt-2 max-w-80 text-meta leading-relaxed text-muted">Nothing logged for this day yet.</p>
+				<p className="max-w-80 text-meta leading-relaxed text-muted">Add an entry or copy yesterday's work.</p>
+				<div className="mt-6 flex flex-wrap justify-center gap-2.5">
+					<Button asChild size="sm">
+						<Link to="/entries/new" search={{ date }}>
+							<Plus size={16} aria-hidden="true" />
+							Add entry
+						</Link>
+					</Button>
+					<Button
+						type="button"
+						variant="outline"
+						size="sm"
+						disabled={onCopyFromYesterday === undefined || isCopying}
+						onClick={onCopyFromYesterday}
+					>
+						<Copy size={15} aria-hidden="true" />
+						{isCopying ? 'Copying...' : 'Copy from yesterday'}
+					</Button>
+				</div>
+				<p className="mt-5 hidden items-center gap-1.5 text-caption text-muted md:flex">
+					Press <kbd className="rounded border border-line bg-canvas px-1.5 py-0.5 font-sans text-[10px]">N</kbd> to add
+					an entry
+				</p>
+			</div>
 		);
 	}
 
@@ -165,9 +193,14 @@ export function TimeEntryList({
 	const tabStopId = focusedEntryId ?? entries[0]?.id;
 
 	return (
-		<ul className="flex flex-col gap-3">
-			{entries.map((entry) => (
-				<li key={entry.id}>
+		// Replay only on a different day or a newly inserted entry, never on timer ticks/refetches.
+		<ul key={date} className="flex flex-col rounded-entry border border-line bg-surface p-2 shadow-card">
+			{entries.map((entry, index) => (
+				<li
+					key={entry.id}
+					className="animate-entry-in border-b border-line/70 last:border-b-0"
+					style={{ animationDelay: `${Math.min(index, 4) * 40}ms` }}
+				>
 					<TimeEntryCard
 						entry={entry}
 						// Only a card the day view has actually chosen pulls focus to itself; the
@@ -185,6 +218,14 @@ export function TimeEntryList({
 								? undefined
 								: () => {
 										onContinueTimer(entry);
+									}
+						}
+						onSaveDuration={onSaveDuration === undefined ? undefined : (minutes) => onSaveDuration(entry, minutes)}
+						onShowTimerLogs={
+							onShowTimerLogs === undefined
+								? undefined
+								: () => {
+										onShowTimerLogs(entry);
 									}
 						}
 						trackingSince={entry.id === trackingEntryId ? trackingSince : null}

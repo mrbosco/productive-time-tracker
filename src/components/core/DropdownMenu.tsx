@@ -53,7 +53,9 @@ function DropdownMenuItem({
 			data-slot="dropdown-menu-item"
 			data-variant={variant}
 			className={cn(
-				'relative flex min-h-11 cursor-default items-center gap-3 rounded-input px-3 text-base outline-hidden select-none',
+				// No `cursor-default` here, which is what shadcn ships: a menu item is the most
+				// obviously clickable thing on the screen and was drawing an arrow.
+				'relative flex min-h-11 items-center gap-3 rounded-input px-3 text-base outline-hidden select-none',
 				'focus:bg-selection focus:text-accent-dark',
 				'data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
 				'data-[variant=destructive]:text-danger data-[variant=destructive]:focus:bg-danger-bg data-[variant=destructive]:focus:text-danger',

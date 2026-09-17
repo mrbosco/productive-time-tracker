@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { TimeEntry } from '@/api/types';
 import { todayIso } from '@/lib/date';
-import { renderWithProviders, screen, userEvent } from '@/__tests__/test-utils';
+import { buildService, renderWithProviders, screen, userEvent } from '@/__tests__/test-utils';
 import { TimeEntryCard } from './TimeEntryCard';
 
 function buildEntry(overrides: Partial<TimeEntry> = {}): TimeEntry {
@@ -12,7 +12,7 @@ function buildEntry(overrides: Partial<TimeEntry> = {}): TimeEntry {
 		note: 'Standup and time logging.',
 		draft: false,
 		serviceId: '16887825',
-		service: { id: '16887825', name: 'Administrative work', dealName: null, dealId: null, companyName: null },
+		service: buildService(),
 		createdAt: '2026-09-15T16:08:26.527+02:00',
 		...overrides,
 	};
@@ -28,6 +28,47 @@ describe('TimeEntryCard', () => {
 		expect(screen.getByText('1h 30m')).toBeInTheDocument();
 		expect(screen.getByText('Standup and time logging.')).toBeInTheDocument();
 		expect(screen.getByText('Administrative work')).toBeInTheDocument();
+	});
+
+	/**
+	 * UI-1: the row leads with the company the service is billed to, which is what Productive's own
+	 * time screen does and what this card had dropped.
+	 */
+	it('leads with the company logo when the company has one', async () => {
+		await renderWithProviders(
+			<TimeEntryCard
+				onRequestDelete={noop}
+				entry={buildEntry({
+					service: buildService({ companyName: 'Anoda', companyAvatarUrl: 'https://files.productive.io/anoda.png' }),
+				})}
+			/>
+		);
+
+		expect(screen.getByRole('presentation')).toHaveAttribute('src', 'https://files.productive.io/anoda.png');
+	});
+
+	it('falls back to the company initials when it has no logo', async () => {
+		await renderWithProviders(
+			<TimeEntryCard
+				onRequestDelete={noop}
+				entry={buildEntry({
+					service: buildService({ companyName: 'Anoda Studio', companyAvatarUrl: null }),
+				})}
+			/>
+		);
+
+		expect(screen.getByText('AS')).toBeInTheDocument();
+	});
+
+	/**
+	 * A service on an archived deal comes back with no company at all. The glyph that stands in for
+	 * one is `Avatar`'s own business and is tested there; what matters here is that the card does
+	 * not invent a picture or a pair of letters for a company it does not have.
+	 */
+	it('shows neither a logo nor initials when the service has no company', async () => {
+		await renderWithProviders(<TimeEntryCard onRequestDelete={noop} entry={buildEntry()} />);
+
+		expect(screen.queryByRole('presentation')).not.toBeInTheDocument();
 	});
 
 	/** A-8: Productive writes zero-minute entries, and a running timer is one until it stops. */
@@ -165,6 +206,10 @@ describe('TimeEntryCard', () => {
 	/**
 	 * X-4. A real continuation: the timer attaches to this entry, so this row is the one that starts
 	 * counting and the stop adds to what it already holds (SPEC 11, finding 4).
+	 */
+	/**
+	 * UI-4 moved this onto the row as a play button - but only where there is a pointer to reveal
+	 * it. `Card Actions.dc.html` keeps the kebab item on touch, which is the branch jsdom takes.
 	 */
 	it('asks for a timer to be continued on itself (X-4)', async () => {
 		const onContinueTimer = vi.fn();
@@ -313,5 +358,40 @@ describe('TimeEntryCard', () => {
 		await renderWithProviders(<TimeEntryCard onRequestDelete={noop} entry={buildEntry({ note: 'Short.' })} />);
 
 		expect(screen.queryByRole('button', { name: 'More' })).not.toBeInTheDocument();
+	});
+
+	it('cannot be continued while it is already being tracked (X-4)', async () => {
+		await renderWithProviders(
+			<TimeEntryCard
+				onRequestDelete={noop}
+				entry={buildEntry()}
+				trackingSince={new Date().toISOString()}
+				onStopTimer={noop}
+				onContinueTimer={noop}
+			/>
+		);
+
+		expect(screen.queryByRole('button', { name: 'Continue timer on this entry' })).not.toBeInTheDocument();
+	});
+
+	it('offers no More on a note that fits', async () => {
+		await renderWithProviders(<TimeEntryCard onRequestDelete={noop} entry={buildEntry({ note: 'Short.' })} />);
+
+		expect(screen.queryByRole('button', { name: 'More' })).not.toBeInTheDocument();
+	});
+
+	/**
+	 * Touch has no hover to reveal a pencil and no room for a 112px field beside the note, so the
+	 * duration stays plain text there and `Edit` in the kebab is the way in. The pointer's inline
+	 * editor is exercised in `e2e/entry-card.spec.ts`, which is the only place a hover exists.
+	 */
+	it('leaves the duration as plain text where there is no pointer', async () => {
+		const onSaveDuration = vi.fn().mockResolvedValue(undefined);
+		await renderWithProviders(
+			<TimeEntryCard onRequestDelete={noop} entry={buildEntry()} onSaveDuration={onSaveDuration} />
+		);
+
+		expect(screen.getByText('1h 30m')).toBeInTheDocument();
+		expect(screen.queryByRole('button', { name: /Edit logged time/ })).not.toBeInTheDocument();
 	});
 });

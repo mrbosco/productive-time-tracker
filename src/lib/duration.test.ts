@@ -126,21 +126,31 @@ describe('toMinutesOfDay', () => {
 
 describe('formatElapsed', () => {
 	it.each([
-		[0, '0:00'],
-		[9, '0:09'],
-		[42, '0:42'],
-		[60, '1:00'],
-		[725, '12:05'],
-		[3600, '1:00:00'],
-		[3750, '1:02:30'],
-		[36_000, '10:00:00'],
+		[0, '0s'],
+		[9, '9s'],
+		[42, '42s'],
+		[60, '1m 00s'],
+		[725, '12m 05s'],
+		[3600, '1h 0m 00s'],
+		[3750, '1h 2m 30s'],
+		[36_000, '10h 0m 00s'],
 	])('renders %i seconds as %s', (seconds, expected) => {
 		expect(formatElapsed(seconds)).toBe(expected);
 	});
 
 	/** A clock that ran backwards would be a stranger thing to show than one that reads zero. */
 	it.each([-1, Number.NaN, Number.POSITIVE_INFINITY])('renders %s as zero', (seconds) => {
-		expect(formatElapsed(seconds)).toBe('0:00');
+		expect(formatElapsed(seconds)).toBe('0s');
+	});
+
+	/**
+	 * The point of the units. `9:20` on a timer and `9h 20m` on the card beside it are the same six
+	 * glyphs meaning two wildly different amounts of time, and a screen showing both is a screen
+	 * asking a question it does not answer.
+	 */
+	it('cannot be read as hours and minutes', () => {
+		expect(formatElapsed(560)).toBe('9m 20s');
+		expect(formatDuration(560)).toBe('9h 20m');
 	});
 
 	/**
@@ -148,7 +158,7 @@ describe('formatElapsed', () => {
 	 * minutes, and `0h` for a timer forty seconds old hides the only sign it is running.
 	 */
 	it('shows seconds where formatDuration shows nothing', () => {
-		expect(formatElapsed(40)).toBe('0:40');
+		expect(formatElapsed(40)).toBe('40s');
 		expect(formatDuration(0)).toBe('0h');
 	});
 });

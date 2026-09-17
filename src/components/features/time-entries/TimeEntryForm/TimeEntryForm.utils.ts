@@ -44,6 +44,25 @@ function noteField(maxNoteLength: number) {
 }
 
 /**
+ * The duration field's rules, as one answer rather than four `ctx.addIssue` calls.
+ *
+ * Extracted so UI-4's inline editor on the card can reject exactly what this form rejects, with
+ * exactly the same four sentences. Two parsers would drift, and the messages are the design's.
+ */
+export function readDuration(input: string): { minutes: number } | { error: string } {
+	const value = input.trim();
+
+	if (value === '') return { error: 'Duration is required.' };
+
+	const minutes = parseDuration(value);
+	if (minutes === null) return { error: 'Enter a duration like 1h 30m, 1:30, 1.5h or 90.' };
+	if (minutes <= 0) return { error: 'Duration must be more than 0.' };
+	if (minutes > MAX_DURATION_MINUTES) return { error: 'Duration cannot be more than 24h.' };
+
+	return { minutes };
+}
+
+/**
  * Shared by the create route and the edit route - the assignment's two write surfaces reject the
  * same input for the same reasons, so the rules live in one place.
  *
@@ -115,36 +134,15 @@ export function timeEntrySchema(maxNoteLength: number = MAX_NOTE_LENGTH, mode: D
 	}
 
 	return z.object(fields).transform((values, ctx) => {
-		const value = values.duration.trim();
+		const read = readDuration(values.duration);
 
-		if (value === '') {
-			ctx.addIssue({ code: 'custom', path: ['duration'], message: 'Duration is required.' });
-
-			return z.NEVER;
-		}
-
-		const minutes = parseDuration(value);
-		if (minutes === null) {
-			ctx.addIssue({
-				code: 'custom',
-				path: ['duration'],
-				message: 'Enter a duration like 1h 30m, 1:30, 1.5h or 90.',
-			});
-
-			return z.NEVER;
-		}
-		if (minutes <= 0) {
-			ctx.addIssue({ code: 'custom', path: ['duration'], message: 'Duration must be more than 0.' });
-
-			return z.NEVER;
-		}
-		if (minutes > MAX_DURATION_MINUTES) {
-			ctx.addIssue({ code: 'custom', path: ['duration'], message: 'Duration cannot be more than 24h.' });
+		if ('error' in read) {
+			ctx.addIssue({ code: 'custom', path: ['duration'], message: read.error });
 
 			return z.NEVER;
 		}
 
-		return { date: values.date, duration: minutes, note: values.note };
+		return { date: values.date, duration: read.minutes, note: values.note };
 	});
 }
 

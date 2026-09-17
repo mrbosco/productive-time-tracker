@@ -12,6 +12,13 @@ const TOAST_DURATION_MS = 2600;
  */
 const ERROR_TOAST_DURATION_MS = 6000;
 
+/**
+ * Longer again when the toast carries an action, because the action is the point of it: an Undo
+ * that leaves before it can be reached is a confirmation with a button on it (`Card Actions.dc.html`,
+ * "Undo, not confirm").
+ */
+const ACTION_TOAST_DURATION_MS = 8000;
+
 function CheckIcon() {
 	return (
 		<svg width="18" height="18" viewBox="0 0 20 20" aria-hidden="true" className="flex-none text-success">
@@ -35,6 +42,8 @@ interface ToastProps {
 	onDismiss: () => void;
 	durationMs?: number;
 	variant?: 'success' | 'error';
+	/** One way back out of what just happened. Dismisses the toast after running. */
+	action?: { label: string; onAction: () => void };
 }
 
 /**
@@ -54,8 +63,14 @@ interface ToastProps {
  * announced politely. An error is `role="alert"`: it reports that what they asked for did not
  * happen, which is worth interrupting for.
  */
-export function Toast({ children, onDismiss, durationMs, variant = 'success' }: ToastProps) {
-	const delay = durationMs ?? (variant === 'error' ? ERROR_TOAST_DURATION_MS : TOAST_DURATION_MS);
+export function Toast({ children, onDismiss, durationMs, variant = 'success', action }: ToastProps) {
+	const delay =
+		durationMs ??
+		(action !== undefined
+			? ACTION_TOAST_DURATION_MS
+			: variant === 'error'
+				? ERROR_TOAST_DURATION_MS
+				: TOAST_DURATION_MS);
 	/**
 	 * The timer is keyed on the message and the delay, never on `onDismiss`.
 	 *
@@ -88,9 +103,30 @@ export function Toast({ children, onDismiss, durationMs, variant = 'success' }: 
 				'md:inset-x-auto md:right-8 md:bottom-8 md:px-0'
 			)}
 		>
-			<div className="flex animate-sheet-up items-center gap-2.5 rounded-input border border-line bg-surface px-4 py-3 shadow-menu">
+			{/*
+			 * The wrapper ignores the pointer so a toast never swallows a click on what is behind
+			 * it; the card takes it back only when there is something in there to click.
+			 */}
+			<div
+				className={cn(
+					'flex animate-sheet-up items-center gap-2.5 rounded-input border border-line bg-surface px-4 py-3 shadow-menu',
+					action !== undefined && 'pointer-events-auto'
+				)}
+			>
 				{variant === 'success' ? <CheckIcon /> : <AlertIcon />}
 				<span className="text-meta font-medium">{children}</span>
+				{action !== undefined && (
+					<button
+						type="button"
+						onClick={() => {
+							action.onAction();
+							onDismiss();
+						}}
+						className="duration-ui -my-1 ml-1.5 rounded-pill px-2.5 py-1 text-meta font-medium text-accent transition-colors ease-ui hover:bg-selection"
+					>
+						{action.label}
+					</button>
+				)}
 			</div>
 		</div>
 	);

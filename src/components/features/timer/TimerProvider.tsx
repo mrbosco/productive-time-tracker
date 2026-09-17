@@ -1,4 +1,6 @@
 import { createContext, type ReactNode, useContext, useState } from 'react';
+import { useUpdateTimeEntry } from '@/components/features/time-entries/useUpdateTimeEntry';
+import { todayIso } from '@/lib/date';
 import { useDefaultService } from '@/components/features/settings/useDefaultService';
 import {
 	ACTIVITY_MONITOR,
@@ -19,7 +21,12 @@ interface TimerContextValue {
 	/** A start or a stop is in flight, so neither control should be pressed twice. */
 	isBusy: boolean;
 	/** Starts a fresh entry on today, against the default service (A-1). */
-	start: () => void;
+	/**
+	 * Starts against the default service. The note is UI-3's: a bare start creates its entry with
+	 * no description, so what was typed in the quick-add line is written onto it once the start
+	 * resolves and the entry has an ID.
+	 */
+	start: (note?: string) => void;
 	/**
 	 * Continues an entry that already exists: the timer attaches to it and the stop adds to what it
 	 * holds, so the row that was clicked is the one that counts up (X-4). `loggedMinutes` is what it
@@ -78,6 +85,7 @@ export function TimerProvider({
 	const { service } = useDefaultService(session);
 	const [stopped, setStopped] = useState<StoppedTimer | null>(null);
 	const [needsService, setNeedsService] = useState(false);
+	const describeEntry = useUpdateTimeEntry(session);
 	const [justStarted, setJustStarted] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	/*
@@ -111,7 +119,23 @@ export function TimerProvider({
 		}
 	}
 
-	async function start() {
+	/**
+	 * Starting while one already runs retires it rather than refusing (UI-3). Nothing is lost by
+	 * that: stopping writes the elapsed whole minutes onto the entry it was attached to, that entry
+	 * is a row on its own day, and UI-4 makes its duration correctable in place. Quietly, without
+	 * the stop sheet - somebody starting new work is not asking to review the last lot.
+	 */
+	async function start(note?: string) {
+		if (timer.running !== null) {
+			const previous = timer.running;
+			setJustStarted(false);
+			await run(
+				() => timer.stop({ timer: previous, discardMinutes: 0 }),
+				'Could not stop the running timer. Try again.',
+				() => undefined
+			);
+		}
+
 		/*
 		 * A timer is logged against the default service, the same one a new entry is (A-1). With
 		 * none resolved there is nothing to start it on, and the only place that can be changed is
@@ -124,7 +148,24 @@ export function TimerProvider({
 		}
 
 		await run(
-			() => timer.start({ serviceId: service.id }),
+			async () => {
+				const started = await timer.start({ serviceId: service.id });
+
+				/*
+				 * `POST /timers` takes relationships and nothing else, so there is no way to start
+				 * one that already carries a description - the entry it creates arrives blank and
+				 * the note is a second write. Not awaited into the start's own failure message: the
+				 * timer is running by this point, and saying it could not be started would be false.
+				 */
+				if (note !== undefined && note !== '' && started?.timeEntryId != null) {
+					const today = todayIso();
+					await describeEntry
+						.mutateAsync({ id: started.timeEntryId, previousDate: today, date: today, changes: { note } })
+						.catch(() => undefined);
+				}
+
+				return started;
+			},
 			'Could not start the timer. Try again.',
 			() => {
 				setJustStarted(true);
@@ -166,8 +207,8 @@ export function TimerProvider({
 		running: timer.running,
 		justStarted,
 		isBusy: timer.isStarting || timer.isStopping,
-		start: () => {
-			void start();
+		start: (note) => {
+			void start(note);
 		},
 		continueEntry: (entryId, loggedMinutes) => {
 			void continueEntry(entryId, loggedMinutes);

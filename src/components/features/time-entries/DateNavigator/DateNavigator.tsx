@@ -47,14 +47,14 @@ function CaretIcon() {
 export function DateNavigator({ date, onSelect, today = todayIso() }: DateNavigatorProps) {
 	const isToday = date === today;
 	const arrowClassName =
-		'flex size-11 flex-none place-items-center justify-center rounded-pill text-muted transition-colors duration-ui ease-ui hover:bg-subtle hover:text-ink md:border md:border-line md:bg-surface';
+		'flex size-11 flex-none place-items-center justify-center rounded-control text-muted transition-colors duration-ui ease-ui hover:bg-subtle hover:text-ink md:border md:border-line md:bg-surface';
 
 	return (
 		<div className="flex w-full items-center gap-1 md:w-auto md:gap-2">
 			<button
 				type="button"
 				aria-label="Previous day"
-				className={`${arrowClassName} md:order-1`}
+				className={`${arrowClassName} md:order-2`}
 				onClick={() => {
 					onSelect(addDays(date, -1));
 				}}
@@ -62,13 +62,15 @@ export function DateNavigator({ date, onSelect, today = todayIso() }: DateNaviga
 				<ChevronIcon direction="left" />
 			</button>
 
-			<h1 tabIndex={-1} className="flex min-w-0 flex-1 justify-center md:order-3 md:flex-none">
+			<h1 tabIndex={-1} className="flex min-w-0 flex-1 justify-center md:order-1 md:mr-4 md:flex-none">
 				<DatePicker value={date} onSelect={onSelect}>
 					<button
 						type="button"
-						className="duration-ui flex h-11 items-center gap-2 rounded-input px-1 text-base font-medium tracking-[-.01em] whitespace-nowrap transition-colors ease-ui hover:bg-subtle md:px-2 md:text-title md:font-bold md:tracking-tight"
+						className="duration-ui flex h-11 items-center gap-2 rounded-input px-1 text-base font-medium tracking-[-.01em] whitespace-nowrap transition-colors ease-ui hover:bg-subtle md:px-0 md:text-[30px] md:font-semibold md:tracking-[-.035em]"
 					>
-						{formatDayLabel(date, today)}
+						<span key={date} className="animate-day-in">
+							{formatDayLabel(date, today)}
+						</span>
 						<CaretIcon />
 					</button>
 				</DatePicker>
@@ -77,7 +79,7 @@ export function DateNavigator({ date, onSelect, today = todayIso() }: DateNaviga
 			<button
 				type="button"
 				aria-label="Next day"
-				className={`${arrowClassName} md:order-2`}
+				className={`${arrowClassName} md:order-3`}
 				onClick={() => {
 					onSelect(addDays(date, 1));
 				}}
@@ -92,7 +94,7 @@ export function DateNavigator({ date, onSelect, today = todayIso() }: DateNaviga
 			{!isToday && (
 				<button
 					type="button"
-					className="duration-ui h-9 flex-none rounded-pill border border-line bg-surface px-3.5 text-label font-medium transition-colors ease-ui hover:bg-subtle md:order-4"
+					className="duration-ui h-9 flex-none rounded-control border border-line bg-surface px-3.5 text-label font-medium transition-colors ease-ui hover:bg-subtle md:order-4"
 					onClick={() => {
 						onSelect(today);
 					}}

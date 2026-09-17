@@ -1,4 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import type { TimeEntry } from '@/api/types';
+import { weekQueryKey } from '@/components/features/week/useWeekEntries';
 import { updateTimeEntry } from '@/api/time-entries';
 import type { TimeEntryInput } from '@/api/types';
 import { toAuth } from '@/components/features/auth/useSession';
@@ -41,6 +43,34 @@ export function useUpdateTimeEntry(session: Session) {
 
 	return useMutation({
 		mutationFn: ({ id, changes }: UpdateTimeEntryInput) => updateTimeEntry(toAuth(session), id, changes),
+		/**
+		 * Optimistic on the duration alone (`Card Actions.dc.html`: "both must land on the same
+		 * optimistic-update path"). The inline field is a correction made where the number is
+		 * written, so the number has to move with it - waiting for a PATCH and a refetch reads as
+		 * the edit having been ignored, which is what it was reported as.
+		 *
+		 * Only when `minutes` is the one thing changing. A date move rewrites which day an entry is
+		 * on, which is more than a cache can honestly guess at.
+		 */
+		onMutate: ({ id, date, previousDate, changes }) => {
+			if (changes.minutes === undefined || date !== previousDate) return undefined;
+
+			const keys = [['time-entries', session.personId, date], [...weekQueryKey(session, date)]];
+			const previous = keys.map((key) => [key, queryClient.getQueryData<TimeEntry[]>(key)] as const);
+
+			for (const [key] of previous) {
+				queryClient.setQueryData<TimeEntry[]>(key, (entries) =>
+					entries?.map((entry) => (entry.id === id ? { ...entry, minutes: changes.minutes ?? entry.minutes } : entry))
+				);
+			}
+
+			return { previous };
+		},
+
+		onError: (_error, _input, context) => {
+			for (const [key, entries] of context?.previous ?? []) queryClient.setQueryData(key, entries);
+		},
+
 		onSuccess: (_entry, { id, previousDate, date }) => {
 			/*
 			 * Removed, not invalidated, and synchronously - nothing observes this key, because the
@@ -59,9 +89,7 @@ export function useUpdateTimeEntry(session: Session) {
 			// the edited entry rather than briefly showing the value that was just replaced.
 			return Promise.all([
 				...[...days].map((day) => queryClient.invalidateQueries({ queryKey: ['time-entries', session.personId, day] })),
-				...[...weeks].map((monday) =>
-					queryClient.invalidateQueries({ queryKey: ['week-totals', session.personId, monday] })
-				),
+				...[...weeks].map((monday) => queryClient.invalidateQueries({ queryKey: weekQueryKey(session, monday) })),
 			]);
 		},
 	});

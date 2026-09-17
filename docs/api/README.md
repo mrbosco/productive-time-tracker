@@ -43,8 +43,8 @@ token, a billing email and analytics identifiers, none of which this app has any
 
 | Purpose        | Method + path                                  | Sample                                                 |
 | -------------- | ---------------------------------------------- | ------------------------------------------------------ |
-| Resolve person | `GET /organization_memberships?include=person,organization` | `organization-memberships-include-organization.json`      |
-| List for a day | `GET /time_entries`                            | `time-entries-day.json`, `time-entries-empty-day.json` |
+| Resolve person | `GET /organization_memberships?include=person,organization.company` | `organization-memberships-avatars.json`, which also carries `availabilities`      |
+| List for a day | `GET /time_entries`                            | `time-entries-day-service-context.json`, `time-entries-empty-day.json` |
 | Read one       | `GET /time_entries/{id}`                       | `time-entry-show.json`                                 |
 | Create         | `POST /time_entries`                           | `time-entry-create.json`                               |
 | Update         | `PATCH /time_entries/{id}`                     | `time-entry-update.json`                               |
@@ -185,6 +185,32 @@ deal alongside, which is why `services.json` is recorded with `include=deal&fiel
 "Development", so the label "Project management — Development" describes two different services. A
 selector must key on the service ID and must not present its label as unambiguous.
 
+## Availability (expected hours)
+
+`people.availabilities` is the only expected-hours figure anywhere in this API. It is an
+**attribute holding a JSON string**, not a nested object, so it needs a second parse:
+
+```json
+"availabilities": "[[\"2026-09-15\", null, [8, 8, 8, 8, 8, 0, 0, 8, 8, 8, 8, 8, 0, 0], 65416]]"
+```
+
+One entry per period: `[startDate, endDate, hours, id]`. `endDate` is `null` while the period is
+open-ended. `hours` is **fourteen** numbers, not seven - a fortnight, Mon..Sun then Mon..Sun again,
+so a schedule that alternates week to week can be expressed. Index 0 is Monday: the recorded period
+starts on a Tuesday and still reads `8,8,8,8,8,0,0`, which only lines up if the array is
+Monday-based rather than start-date-based.
+
+Both weeks are identical in the recorded account, so **the alternation itself is untested against
+real data** - reading `hours[(weeksSincePeriodStart % 2) * 7 + weekdayIndex]` is correct for a
+fortnightly schedule and indistinguishable from `hours[weekdayIndex]` here.
+
+A zero is a non-working day. That is a better answer than "is it a weekend", which is what
+`lib/date.ts` could offer on its own.
+
+It is reachable without a request of its own: `fields[people]` honours it on
+`GET /organization_memberships`, the call login already makes
+(`organization-memberships-include-availabilities.json`).
+
 ## Errors
 
 Envelope is `{"errors":[…]}` with objects shaped `{ status, code, title, detail, meta, source }`.
@@ -251,6 +277,19 @@ Three things worth knowing:
    `total_time: 1` on the timer and `time: 1` on the entry; the sub-minute remainder is dropped.
    A second stop is 409 `timer_already_stopped` — treat it as "already stopped", not as a failure.
 
+**Listing one entry's runs.** `/timers?filter[time_entry_id]={id}` returns every run attached to
+that entry - 3 rows against 16 unfiltered, so the filter is real and not one of the silently ignored
+ones (`timers-for-entry.json`, `timers-all.json`).
+
+`total_time` on each row is the **linked entry's cumulative minutes after that run**, not the run's
+own length. Three runs on entry `163139951` read `2`, `26`, `26`; the entry holds 26. A single run's
+contribution is therefore `total_time[n] - total_time[n-1]`, and the first row's is its own
+`total_time`. The rows came back in start order, but nothing documents that they must, so sort on
+`started_at` before differencing.
+
+The last row's `total_time` is what the timer contributed in total; anything between that and the
+entry's `time` was typed by hand.
+
 ## Verified findings
 
 | #   | Question (from the Phase 1 extract)                                | Answer                                                                                                                                                                                                      | Sample                                                                     | SPEC impact                                                                                                                 |
@@ -278,6 +317,20 @@ Three things worth knowing:
 | `DELETE` → 204, no body, no `Content-Type`.                                                  | `time-entry-delete.txt`                      | Client must not JSON-parse 204                                        |
 | `note` is nullable; SPEC 3 and the domain diagram type it as a plain `string`.               | `time-entries-day.json`                      | **Changes SPEC 3** and `docs/diagrams/02-domain-model.mmd`            |
 | Create takes `person`/`service` as relationships, not as flat `person_id`/`service_id` attributes. | `time-entry-create.json`                | **Changes SPEC 3**                                                    |
+| `/time_entries` nests `include=service.deal.company,service.section` in one request; the deal, its company and the section all come back in `included`. | `time-entries-day-service-deal.json`         | **Unblocks UI-1 and UI-2** — no second request for the company or the project |
+| `services.section` is a real relationship and answers `"data": null` for every service in this account — requested and empty, not un-included. | `time-entries-day-service-deal.json`         | **Qualifies UI-2** — the tooltip's third line renders only when a section exists |
+| `companies.avatar_url` exists and is a URL string; the scrubber rewrites it to a placeholder, which is itself the proof it was populated. | `company-show.json`                          | **Confirms UI-1** — the card's company logo is real, initials are the fallback |
+| `people.availabilities` holds expected hours: a JSON **string** parsing to `[[start, end, hours[14], id]]`, where `hours` is Mon..Sun twice and `end` is `null` while the period is open. | `person-show.json`                           | **Unblocks UI-5 and UI-6** — non-working days and expected hours both come from it |
+| `fields[people]=…,availabilities` is honoured on `GET /organization_memberships`, so that figure rides the login request. | `organization-memberships-include-availabilities.json` | **Extends SPEC 4.2** — UI-6 costs no request of its own |
+| `/timers` accepts `filter[time_entry_id]`, and it genuinely filters: 3 rows against 16 unfiltered. | `timers-for-entry.json` + `timers-all.json`  | **Unblocks UI-9** — one entry's runs are listable                     |
+| A timer's `total_time` is the linked entry's **cumulative** minutes after that run, not the run's own length. Three runs on one entry read 2, 26, 26. | `timers-for-entry.json`                      | **Confirms SPEC 11 finding 4** — UI-9's per-run figure is a delta      |
+| The recorded day drifted between 2026-09-16 and 2026-09-17: entry `162921872` (240 min) is gone and `163073474` (0 min) is new, so the day totals `5h` rather than `9h`. | `time-entries-day-service-deal.json`         | The day fixture and every test asserting `9h` move with it            |
+| A service's whole hierarchy resolves in one day request: `include=service.deal.company,service.deal.project.company,service.section`. `deals` carry both `company` and `project`, `projects` carry a `company` of their own, and `sections` hang off the service. | `time-entries-day-service-context.json`       | **Unblocks UI-2** — five levels, no fan-out                   |
+| The project names in the recording are the design's own sample copy - `Internal project [SAMPLE]`, `Fixed price [SAMPLE]` - which is what confirms the card's meta line is `project · service` rather than `deal · service`. | `time-entries-day-service-context.json`      | **Confirms UI-2** — the dotted name is `deal.project.name`     |
+| A single-resource endpoint answers every relationship with `{"meta":{"included":false}}` unless `include` asks; `/services/{id}` and `/deals/{id}` list the relationship names and nothing else. | `service-show.json`, `deal-show.json`        | Confirms api-client rule 10 — the shapes came from the collection |
+| An organization has no picture of its own: the logo Productive's top bar renders belongs to `organization.company`, and that company's `avatar_url` is the field. Watched on `app.productive.io`, whose own request is `organization_memberships/{id}?include=…organization.company…`. | `organization-memberships-avatars.json`       | **Confirms UI-8** — the org badge is a real logo, not initials |
+| `people.avatar_url` exists and is nullable (null for the recorded person, who never uploaded one). | `person-show.json`, `organization-memberships-avatars.json` | **Confirms UI-8** — initials are the fallback, not the design |
+| `fields[people]=…,avatar_url` and `include=person,organization.company` are both honoured on the login request, alongside `availabilities`. | `organization-memberships-avatars.json`      | **Extends SPEC 4.2** — avatars and expected hours cost no request |
 
 ## Reproducing
 

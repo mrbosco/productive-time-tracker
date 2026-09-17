@@ -396,13 +396,19 @@
       "id": "4287357",
       "type": "deals",
       "attributes": {
-        "name": "Administration"
+        "name": "Example Deal"
       },
       "relationships": {
         "company": {
           "data": {
             "type": "companies",
             "id": "1523286"
+          }
+        },
+        "project": {
+          "data": {
+            "type": "projects",
+            "id": "1045235"
           }
         }
       }
@@ -411,7 +417,7 @@
       "id": "4287350",
       "type": "deals",
       "attributes": {
-        "name": "Mobile banking app [SAMPLE]"
+        "name": "Example Deal"
       },
       "relationships": {
         "company": {
@@ -419,6 +425,9 @@
             "type": "companies",
             "id": "1523289"
           }
+        },
+        "project": {
+          "data": null
         }
       }
     },
@@ -426,13 +435,19 @@
       "id": "4287361",
       "type": "deals",
       "attributes": {
-        "name": "Development"
+        "name": "Example Deal"
       },
       "relationships": {
         "company": {
           "data": {
             "type": "companies",
             "id": "1523289"
+          }
+        },
+        "project": {
+          "data": {
+            "type": "projects",
+            "id": "1045236"
           }
         }
       }
@@ -441,7 +456,7 @@
       "id": "4287349",
       "type": "deals",
       "attributes": {
-        "name": "Sonic Game [SAMPLE]"
+        "name": "Example Deal"
       },
       "relationships": {
         "company": {
@@ -449,6 +464,9 @@
             "type": "companies",
             "id": "1523288"
           }
+        },
+        "project": {
+          "data": null
         }
       }
     },
@@ -456,7 +474,7 @@
       "id": "4287351",
       "type": "deals",
       "attributes": {
-        "name": "Skin self-care app [SAMPLE]"
+        "name": "Example Deal"
       },
       "relationships": {
         "company": {
@@ -464,6 +482,9 @@
             "type": "companies",
             "id": "1523290"
           }
+        },
+        "project": {
+          "data": null
         }
       }
     },
@@ -471,13 +492,19 @@
       "id": "4287360",
       "type": "deals",
       "attributes": {
-        "name": "Monthly retainer"
+        "name": "Example Deal"
       },
       "relationships": {
         "company": {
           "data": {
             "type": "companies",
             "id": "1523288"
+          }
+        },
+        "project": {
+          "data": {
+            "type": "projects",
+            "id": "1045237"
           }
         }
       }
@@ -486,13 +513,19 @@
       "id": "4287359",
       "type": "deals",
       "attributes": {
-        "name": "Development"
+        "name": "Example Deal"
       },
       "relationships": {
         "company": {
           "data": {
             "type": "companies",
             "id": "1523290"
+          }
+        },
+        "project": {
+          "data": {
+            "type": "projects",
+            "id": "1045238"
           }
         }
       }
@@ -501,34 +534,66 @@
       "id": "1523286",
       "type": "companies",
       "attributes": {
-        "name": "Example Agency"
+        "name": "Example Companie",
+        "avatar_url": "https://example.com/avatar.png"
+      }
+    },
+    {
+      "id": "1045235",
+      "type": "projects",
+      "attributes": {
+        "name": "Internal project [SAMPLE]"
       }
     },
     {
       "id": "1523289",
       "type": "companies",
       "attributes": {
-        "name": "Company B [SAMPLE]"
+        "name": "Example Companie",
+        "avatar_url": "https://example.com/avatar.png"
+      }
+    },
+    {
+      "id": "1045236",
+      "type": "projects",
+      "attributes": {
+        "name": "Fixed price [SAMPLE]"
       }
     },
     {
       "id": "1523288",
       "type": "companies",
       "attributes": {
-        "name": "Company A [SAMPLE]"
+        "name": "Example Companie",
+        "avatar_url": "https://example.com/avatar.png"
       }
     },
     {
       "id": "1523290",
       "type": "companies",
       "attributes": {
-        "name": "Company C [SAMPLE]"
+        "name": "Example Companie",
+        "avatar_url": "https://example.com/avatar.png"
+      }
+    },
+    {
+      "id": "1045237",
+      "type": "projects",
+      "attributes": {
+        "name": "Retainer [SAMPLE]"
+      }
+    },
+    {
+      "id": "1045238",
+      "type": "projects",
+      "attributes": {
+        "name": "Time and materials [SAMPLE]"
       }
     }
   ],
   "links": {
-    "first": "https://api.productive.io/api/v2/services?fields%5Bcompanies%5D=name&fields%5Bdeals%5D=name%2Ccompany&fields%5Bservices%5D=name%2Cdeal&filter%5Btime_tracking_enabled%5D=true&include=deal.company&page%5Bnumber%5D=1&page%5Bsize%5D=200",
-    "last": "https://api.productive.io/api/v2/services?fields%5Bcompanies%5D=name&fields%5Bdeals%5D=name%2Ccompany&fields%5Bservices%5D=name%2Cdeal&filter%5Btime_tracking_enabled%5D=true&include=deal.company&page%5Bnumber%5D=1&page%5Bsize%5D=200"
+    "first": "https://api.productive.io/api/v2/services?fields%5Bcompanies%5D=name%2Cavatar_url&fields%5Bdeals%5D=name%2Ccompany%2Cproject&fields%5Bprojects%5D=name&fields%5Bservices%5D=name%2Cdeal&filter%5Btime_tracking_enabled%5D=true&include=deal.company%2Cdeal.project&page%5Bnumber%5D=1&page%5Bsize%5D=200",
+    "last": "https://api.productive.io/api/v2/services?fields%5Bcompanies%5D=name%2Cavatar_url&fields%5Bdeals%5D=name%2Ccompany%2Cproject&fields%5Bprojects%5D=name&fields%5Bservices%5D=name%2Cdeal&filter%5Btime_tracking_enabled%5D=true&include=deal.company%2Cdeal.project&page%5Bnumber%5D=1&page%5Bsize%5D=200"
   },
   "meta": {
     "current_page": 1,

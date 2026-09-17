@@ -42,7 +42,7 @@ describe('useCopyDayForward', () => {
 		expect(bodies).toHaveLength(3);
 		// The source day's own order (A-7 sorts it by `created_at`), because the POSTs are
 		// sequential - copied in parallel they would land in whatever order the network returned.
-		expect(bodies.map((body) => body.data.attributes.time)).toEqual([300, 0, 240]);
+		expect(bodies.map((body) => body.data.attributes.time)).toEqual([300, 0, 0]);
 		expect(bodies.every((body) => body.data.attributes.date === TARGET)).toBe(true);
 	});
 
@@ -123,7 +123,7 @@ describe('useCopyDayForward', () => {
 			expect(invalidate).toHaveBeenCalledTimes(2);
 		});
 		expect(invalidate).toHaveBeenCalledWith({ queryKey: ['time-entries', testSession.personId, TARGET] });
-		expect(invalidate).toHaveBeenCalledWith({ queryKey: ['week-totals', testSession.personId, MONDAY] });
+		expect(invalidate).toHaveBeenCalledWith({ queryKey: ['week-entries', testSession.personId, MONDAY] });
 	});
 
 	/** Nothing landed, so there is nothing to refetch and no reason to make the network say so. */

@@ -8,16 +8,16 @@ Client-side SPA (no server code) for managing a person's [Productive](https://ww
 
 Authoritative over anything inferred from code. Read before changing.
 
-| Document                                       | Holds                                                                                                                                                                                                                 |
-| ---------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `docs/SPEC.md`                                 | Requirements (2), domain model (3), API flows (4), assumptions (5), architecture and folder layout (6), UI (7), testing strategy (8), out of scope (9), extras (10), delivery (12)                                    |
-| `docs/adr/0001..0010`                          | Decisions and their reasoning. Do not relitigate a decided ADR in code                                                                                                                                                |
-| `docs/guidebook/RULES_DRAFT.md`                | The 32 code conventions, distilled from `docs/guidebook/infinum-handbook.md`                                                                                                                                          |
-| `docs/api/README.md`                           | Productive JSON:API endpoints, auth headers, filter shape                                                                                                                                                             |
-| Claude Design project (live)                   | **Authoritative UI reference.** `Day View.dc.html` and the `TimeTracker` component it imports are the source the screens were rendered from; read them through the `DesignSync` MCP before changing a screen's markup |
-| `docs/design/BRIEF.md`, `docs/design/screens/` | The brief the design was made from, and PNG exports of it. Behind the live project where they disagree                                                                                                                |
-| `docs/diagrams/*.mmd`                          | Use cases, domain model, login and CRUD sequences, navigation                                                                                                                                                         |
-| `docs/research/`                               | Competitive and Productive-app analysis behind the extras                                                                                                                                                             |
+| Document                                       | Holds                                                                                                                                                                                                                                                                                   |
+| ---------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `docs/SPEC.md`                                 | Requirements (2), domain model (3), API flows (4), assumptions (5), architecture and folder layout (6), UI (7), testing strategy (8), out of scope (9), extras (10), delivery (12)                                                                                                      |
+| `docs/adr/0001..0010`                          | Decisions and their reasoning. Do not relitigate a decided ADR in code                                                                                                                                                                                                                  |
+| `docs/guidebook/RULES_DRAFT.md`                | The 32 code conventions, distilled from `docs/guidebook/infinum-handbook.md`                                                                                                                                                                                                            |
+| `docs/api/README.md`                           | Productive JSON:API endpoints, auth headers, filter shape                                                                                                                                                                                                                               |
+| Claude Design project (live)                   | **Authoritative UI reference.** `Day View.dc.html` and the `TimeTracker` component it imports are the source the screens were rendered from, and `Improvements.dc.html` is the second design pass (SPEC 10.1); read them through the `DesignSync` MCP before changing a screen's markup |
+| `docs/design/BRIEF.md`, `docs/design/screens/` | The brief the design was made from, and PNG exports of it. Behind the live project where they disagree                                                                                                                                                                                  |
+| `docs/diagrams/*.mmd`                          | Use cases, domain model, login and CRUD sequences, navigation                                                                                                                                                                                                                           |
+| `docs/research/`                               | Competitive and Productive-app analysis behind the extras                                                                                                                                                                                                                               |
 
 ## Identifiers
 
@@ -29,6 +29,7 @@ IDs appear in commits, PR titles and tests. Unpadded decimal, except ADRs.
 - `UC-n` in `docs/diagrams/01-use-cases.mmd` maps 1:1 to `US-n`
 - `A-1`..`A-10` assumptions (SPEC 5)
 - `X-1`..`X-5`, `P-1`, `P-2` extra features (SPEC 10)
+- `UI-1`..`UI-11` second design pass (SPEC 10.1). `UI-7` is reserved and not built; `UI-10` shipped with US-4
 - `ADR-0001`..`ADR-0010` decisions, zero-padded to four
 
 ## Stack

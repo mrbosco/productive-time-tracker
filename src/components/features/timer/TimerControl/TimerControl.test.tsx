@@ -25,7 +25,7 @@ describe('TimerControl', () => {
 	it('shows the elapsed time (X-4)', async () => {
 		await renderWithProviders(<TimerControl running={running} isBusy={false} onStart={noop} onStop={noop} />);
 
-		expect(screen.getByText('0:42')).toBeInTheDocument();
+		expect(screen.getByText('42s')).toBeInTheDocument();
 	});
 
 	/**
@@ -79,7 +79,7 @@ describe('TimerControl', () => {
 			<TimerControl running={running} isBusy={false} onStart={noop} onStop={noop} />
 		);
 
-		expect(document.title).toBe('0:42 · Time Tracker');
+		expect(document.title).toBe('42s · Time Tracker');
 
 		unmount();
 

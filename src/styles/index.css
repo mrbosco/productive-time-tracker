@@ -5,23 +5,39 @@
 @custom-variant dark (&:is(.dark *));
 
 /* ---------------------------------------------------------------------------
-   Design tokens — pasted from docs/design/README.md §1.
-   Names on the right are the design-system variables the values come from.
+   Design tokens — a restrained refresh of the Productive palette.
    --------------------------------------------------------------------------- */
 @theme {
 	/* Colour — surfaces and ink */
-	--color-canvas: #f8f7fb; /* --bg          page ground */
+	--color-canvas: #f5f6fa; /* --bg          page ground */
 	--color-surface: #ffffff; /* --surface-2   cards, app bar, sheets */
-	--color-subtle: #efedf5; /* --subtle      skeletons, quiet fills, key caps */
-	--color-line: #e2dfec; /* --border      1px hairline, the only structure */
-	--color-ink: #111111; /* --text */
-	--color-muted: #6b687a; /* --muted-2     meta text, labels, captions */
+	--color-subtle: #eef0f4; /* --subtle      skeletons, quiet fills, key caps */
+	--color-line: #e1e4eb; /* --border      hairlines */
+	--color-ink: #24283d; /* --text */
+	--color-muted: #697080; /* --muted-2     meta text, labels, captions */
 
 	/* Colour — accent (one accent, one accented object per view) */
-	--color-accent: #5d2bff; /* --accent      indigo: primary fill, links, focus */
-	--color-accent-dark: #2d00ad; /* --indigo-dark text on the selection wash */
-	--color-selection: #efeaff; /* --selection   selected day, timer pill, avatar */
+	--color-accent: #6842df; /* --accent      primary fill, links, focus */
+	--color-accent-dark: #4826ae; /* --indigo-dark text on the selection wash */
+	--color-selection: #f0ecfc; /* --selection   selected day, timer pill, avatar */
 	--color-on-accent: #ffffff; /* --on-accent */
+
+	/*
+	 * The one dark surface in the product (UI-2). A service's context has to read as a layer above
+	 * the card rather than as part of it, and on a screen where every other surface is white or a
+	 * pale tint, dark is the only thing that says "above" without a heavier shadow.
+	 */
+	--color-raised: #25233f;
+	--color-chart-teal: #329f8f;
+	--color-chart-blue: #5c8bd6;
+
+	/*
+	 * The hairline that draws the edge of an uploaded avatar. The ground behind one is white, not a
+	 * tint: a logo is somebody else's artwork and usually carries its own white ground, so a tinted
+	 * plate frames a second white square inside itself. White makes the two the same surface and
+	 * leaves this line as the only edge - which is what the design asks for, and the reason it does.
+	 */
+	--color-avatar-line: #e6e9f5;
 
 	/* Colour — semantic (derived: the design system publishes no semantics) */
 	--color-danger: #b3261e; /* destructive text, border, Delete button, alert glyph */
@@ -57,16 +73,19 @@
 	/* gutters: 16 mobile, 48 desktop · card padding 16–20 · field gap 22 · label-to-field 6 */
 
 	/* Radius — semantic, not a scale */
-	--radius-input: 12px; /* inputs, menus, popovers, toasts, key caps */
-	--radius-entry: 20px; /* entry cards, dialogs, list states */
-	--radius-panel: 28px; /* login card, bottom sheets */
-	--radius-pill: 999px; /* every button and pill */
+	--radius-input: 8px; /* inputs, menus, popovers, toasts, key caps */
+	--radius-control: 10px; /* buttons and segmented navigation */
+	--radius-entry: 18px; /* entry cards, dialogs, list states */
+	--radius-panel: 20px; /* login card, bottom sheets */
+	--radius-pill: 999px; /* avatars, status pills, circular controls */
 
 	/* Elevation — hairlines carry structure; shadow only for overlays */
 	--shadow-menu: 0 8px 24px rgba(17, 17, 17, 0.12);
+	--shadow-card: 0 4px 24px rgb(36 40 61 / 4%);
+	--shadow-control: 0 1px 3px rgb(32 35 45 / 8%), 0 0 0 1px rgb(32 35 45 / 4%);
 	--shadow-popover: 0 10px 30px rgba(17, 17, 17, 0.14);
 	--shadow-dialog: 0 12px 40px rgba(17, 17, 17, 0.2);
-	--shadow-fab: 0 6px 20px rgba(93, 43, 255, 0.3);
+	--shadow-fab: 0 6px 20px rgb(100 61 224 / 24%);
 
 	/* Motion */
 	--ease-ui: cubic-bezier(0.2, 0.8, 0.2, 1);
@@ -78,6 +97,29 @@
 	--animate-spinner: spinner 0.7s linear infinite;
 	--animate-overlay-in: overlay-in 0.12s var(--ease-ui);
 	--animate-sheet-up: sheet-up 0.18s var(--ease-ui);
+	--animate-day-in: overlay-in 0.24s var(--ease-ui) backwards;
+	--animate-entry-in: entry-in 0.36s var(--ease-ui) backwards;
+	--animate-skeleton-sweep: skeleton-sweep 1.6s ease-in-out infinite;
+
+	@keyframes entry-in {
+		from {
+			opacity: 0;
+			transform: translateY(10px);
+		}
+		to {
+			opacity: 1;
+			transform: none;
+		}
+	}
+
+	@keyframes skeleton-sweep {
+		from {
+			transform: translateX(-100%);
+		}
+		to {
+			transform: translateX(100%);
+		}
+	}
 
 	/* The running timer (X-4), from `Timer.dc.html`.
 
@@ -211,8 +253,7 @@
 }
 
 :root {
-	/* 12px: the design's input radius. Buttons and pills override it with `rounded-pill`. */
-	--radius: 0.75rem;
+	--radius: 0.5rem;
 	--background: var(--color-canvas);
 	--foreground: var(--color-ink);
 	--card: var(--color-surface);
@@ -234,13 +275,48 @@
 	--ring: var(--color-accent);
 }
 
+/*
+ * A day nobody is expected to work, in the week strip (UI-5). A 135-degree hairline hatch at 13%
+ * of the muted ink, which reads as "ruled off" without filling the cell - a solid tint would make
+ * an empty Saturday louder than a Tuesday with six hours on it. Paired at the call site with a
+ * dashed border, so the state survives greyscale and is never carried by colour alone.
+ */
+@utility hatched {
+	background-image: repeating-linear-gradient(
+		135deg,
+		transparent 0 5px,
+		color-mix(in oklab, var(--color-muted) 7%, transparent) 5px 6px
+	);
+}
+
 @layer base {
 	* {
 		@apply border-border;
 	}
 
+	html {
+		scrollbar-gutter: stable;
+	}
+
 	body {
 		@apply bg-canvas font-sans text-ink antialiased;
+		font-feature-settings: 'cv11', 'ss01';
+	}
+
+	/*
+	 * Tailwind 4's preflight follows the browser and leaves a `<button>` with `cursor: default`,
+	 * where v3 gave it a pointer. Every control in this app is a button or a Radix trigger built on
+	 * one, so the whole UI lost the one signal that says "this does something". Put back here rather
+	 * than on each control, which is how it drifted out of half of them in the first place.
+	 */
+	button:not(:disabled),
+	summary,
+	label[for],
+	[role='button']:not([aria-disabled='true']),
+	[role='menuitem']:not([aria-disabled='true']),
+	[role='option'],
+	[role='tab'] {
+		@apply cursor-pointer;
 	}
 
 	/*
@@ -250,6 +326,20 @@
 	 */
 	:focus-visible {
 		@apply outline-2 outline-offset-2 outline-accent;
+	}
+
+	/*
+	 * ...but not for focus a script moved while the user was pointing. Chrome counts every
+	 * `element.focus()` as keyboard-like, so each Radix overlay returning focus to its trigger on
+	 * close - a menu, a dialog, a sheet, the date popover - left a ring on the control that opened
+	 * it after a click outside. `lib/focus-modality.ts` records which it was; the next key press
+	 * flips it back and the ring returns.
+	 *
+	 * Text fields are exempt. A caret alone does not say which field is live, and clicking into one
+	 * is when that matters most.
+	 */
+	[data-modality='pointer'] :focus-visible:not(input, textarea, select, [contenteditable]) {
+		@apply outline-none;
 	}
 
 	/*
@@ -279,6 +369,7 @@
 	*::before,
 	*::after {
 		animation-duration: 0.14s !important;
+		animation-delay: 0s !important;
 		animation-iteration-count: 1 !important;
 		transition-duration: 0.14s !important;
 	}
@@ -287,5 +378,12 @@
 		animation: none !important;
 		opacity: 1 !important;
 		transform: none !important;
+	}
+
+	/* Day changes stay immediate; no stagger, entrance travel, or loading sweep. */
+	.animate-day-in,
+	.animate-entry-in,
+	.animate-skeleton-sweep {
+		animation: none !important;
 	}
 }

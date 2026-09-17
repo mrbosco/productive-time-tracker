@@ -3,6 +3,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from '@/App';
 import { SessionProvider } from '@/components/features/auth/useSession';
+import { observeFocusModality } from '@/lib/focus-modality';
 import { createQueryClient } from '@/lib/query-client';
 import { createAppRouter } from '@/router';
 import '@/styles/index.css';
@@ -19,6 +20,10 @@ if (!rootElement) throw new Error('Missing #root element');
 
 const queryClient = createQueryClient();
 const router = createAppRouter(queryClient);
+
+// Outside React: it is one pair of document listeners for the life of the page, and nothing in the
+// tree reads it - the stylesheet does. Never torn down, hence the discarded cleanup.
+observeFocusModality();
 
 void startMocks().then(() => {
 	createRoot(rootElement).render(

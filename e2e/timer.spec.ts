@@ -1,4 +1,4 @@
-import { expect, type Page, test } from '@playwright/test';
+import { expect, type Locator, type Page, test } from '@playwright/test';
 
 /**
  * X-4 on both projects: starting a timer, seeing it run, and turning it into a described entry.
@@ -29,6 +29,8 @@ const SEEDED_DATE = '2026-09-15';
 const NOTED_ENTRY_NOTE = 'Probavam';
 /** What that entry already holds, which a continuation counts up from rather than replacing. */
 const NOTED_ENTRY_DURATION = '5h';
+/** What a seeded entry on today is worth, so a continuation has something to count up from. */
+const SEEDED_DURATION = '45m';
 
 /** Addressed by its note, not by position: which row it is depends on A-7, not on this test. */
 function notedEntry(page: Page) {
@@ -141,21 +143,69 @@ test.describe('timer (X-4)', () => {
 	 * entry instead of creating one (SPEC 11, finding 4). So the row that was clicked is the row
 	 * that counts up, on its own day, and the day is no longer than it was.
 	 */
-	test('continues the entry it was started from, on its own day', async ({ page }) => {
-		await page.goto(`/day/${SEEDED_DATE}`);
-		await expect(page.getByRole('article')).toHaveCount(3);
+	/**
+	 * `Card Actions.dc.html` puts this on the row as a play button where there is a pointer to
+	 * reveal it, and leaves it in the kebab on touch - no hover, and no room beside a 15px note.
+	 */
+	async function continueTimerOn(entry: Locator, page: Page, project: string) {
+		if (project === 'mobile-chrome') {
+			await entry.getByRole('button', { name: 'Entry actions' }).click();
+			await page.getByRole('menuitem', { name: 'Continue timer' }).click();
 
-		const entry = notedEntry(page);
-		await entry.getByRole('button', { name: 'Entry actions' }).click();
-		await page.getByRole('menuitem', { name: 'Continue timer' }).click();
+			return;
+		}
+		await entry.getByRole('button', { name: 'Continue timer on this entry' }).click();
+	}
 
-		// Still here, still three rows, and the first one is the one running.
-		await expect(page).toHaveURL(`/day/${SEEDED_DATE}`);
-		await expect(page.getByRole('article')).toHaveCount(3);
+	/**
+	 * Continuing is a today-only action, so the entry to continue has to be made here: a timer run,
+	 * stopped and saved, which is the shortest way to a row on today holding real minutes.
+	 */
+	async function seedEntryOnToday(page: Page) {
+		await gotoToday(page);
+		await page.getByRole('button', { name: 'Start timer' }).click();
+		await expect(page.getByRole('article')).toHaveCount(1);
+
+		await page.getByRole('banner').getByRole('button', { name: 'Stop timer' }).click();
+		const sheet = page.getByRole('dialog', { name: 'Save tracked time' });
+		await expect(sheet.getByRole('textbox', { name: 'Duration' })).toBeEnabled();
+		await sheet.getByRole('textbox', { name: 'Duration' }).fill(SEEDED_DURATION);
+		await sheet.getByRole('button', { name: 'Save entry' }).click();
+		await expect(sheet).toBeHidden();
+		await expect(page.getByRole('article').first()).toContainText(SEEDED_DURATION);
+	}
+
+	test('continues the entry it was started from, on its own day', async ({ page }, testInfo) => {
+		await seedEntryOnToday(page);
+
+		const entry = page.getByRole('article').first();
+		await continueTimerOn(entry, page, testInfo.project.name);
+
+		// Still one row, and it is the one running.
+		await expect(page.getByRole('article')).toHaveCount(1);
 		await expect(entry.getByText('Tracking')).toBeVisible();
-		await expect(entry).toContainText(NOTED_ENTRY_NOTE);
 		// Counting up from what it already holds, not from zero.
+		await expect(entry).toContainText(SEEDED_DURATION);
+	});
+
+	/**
+	 * A clock runs now, so there is nothing sensible for it to do on a row from another day - the
+	 * timer attaches to that entry and would count into it. The play button is simply not there.
+	 */
+	test('offers no way to continue an entry from another day', async ({ page }, testInfo) => {
+		await page.goto(`/day/${SEEDED_DATE}`);
+		const entry = notedEntry(page);
 		await expect(entry).toContainText(NOTED_ENTRY_DURATION);
+
+		if (testInfo.project.name === 'mobile-chrome') {
+			await entry.getByRole('button', { name: 'Entry actions' }).click();
+			await expect(page.getByRole('menuitem', { name: 'Continue timer' })).toHaveAttribute('aria-disabled', 'true');
+
+			return;
+		}
+
+		await entry.hover();
+		await expect(page.getByRole('button', { name: 'Continue timer on this entry' })).toHaveCount(0);
 	});
 
 	/**
@@ -165,16 +215,22 @@ test.describe('timer (X-4)', () => {
 	 * page, so a `page.goto` between them would reload it away and the second half would be asking
 	 * about a timer the mock had already forgotten.
 	 */
-	test('will not continue a second entry while one is running', async ({ page }) => {
-		await page.goto(`/day/${SEEDED_DATE}`);
-		await notedEntry(page).getByRole('button', { name: 'Entry actions' }).click();
-		await page.getByRole('menuitem', { name: 'Continue timer' }).click();
-		await expect(notedEntry(page).getByText('Tracking')).toBeVisible();
+	test('will not continue a second entry while one is running', async ({ page }, testInfo) => {
+		await seedEntryOnToday(page);
+		await continueTimerOn(page.getByRole('article').first(), page, testInfo.project.name);
+		await expect(page.getByRole('article').first().getByText('Tracking')).toBeVisible();
 
-		// A different row on the same day, which now has nothing to offer.
-		await page.getByRole('article').first().getByRole('button', { name: 'Entry actions' }).click();
+		if (testInfo.project.name === 'mobile-chrome') {
+			// The item is still there on touch, and refuses.
+			await page.getByRole('article').first().getByRole('button', { name: 'Entry actions' }).click();
+			await expect(page.getByRole('menuitem', { name: 'Continue timer' })).toHaveAttribute('aria-disabled', 'true');
 
-		await expect(page.getByRole('menuitem', { name: 'Continue timer' })).toHaveAttribute('aria-disabled', 'true');
+			return;
+		}
+
+		// On a pointer nowhere offers it: the running row is tracking, and every other row loses
+		// its play button while one runs.
+		await expect(page.getByRole('button', { name: 'Continue timer on this entry' })).toHaveCount(0);
 	});
 
 	/** X-2 lists `s`; this is the timer it stops, and it works from any route. */

@@ -21,28 +21,58 @@ import type { Service } from './types';
  *
  * Sparse fieldsets cut this 13x. `fields` governs relationships as well as attributes, so `deal`
  * has to be named there or the linkage vanishes while the included deals remain orphaned.
+ *
+ * The project rides along because A-1's label calls its middle part the project and had been
+ * printing the deal there. They are different records - a deal is "Data platform migration - phase
+ * 2" where its project is "Data platform migration" - and the entry card names the project now
+ * (UI-2), so a picker naming the deal would have two names for one thing. The company logo comes
+ * too, because the picker groups by company and draws one per group header.
  */
-const FIELDS = 'fields[services]=name,deal&fields[deals]=name,company&fields[companies]=name';
+const FIELDS =
+	'fields[services]=name,deal&fields[deals]=name,company,project&fields[projects]=name&fields[companies]=name,avatar_url';
 
 function buildPath(page: number): string {
 	return (
-		`/services?filter[time_tracking_enabled]=true&include=deal.company&${FIELDS}` +
+		`/services?filter[time_tracking_enabled]=true&include=deal.company,deal.project&${FIELDS}` +
 		`&page[size]=${String(MAX_PAGE_SIZE)}&page[number]=${String(page)}`
 	);
 }
 
+/**
+ * Walks `service -> deal -> project -> company`, plus the section and the deal's own company.
+ *
+ * Which company is "the company" and which is "the client" is the one judgement in here. The
+ * project's is the work's - it is what a logo is recognised as - and the deal's is whoever is
+ * billed for it. They are the same record in every entry this account has; they come apart on
+ * subcontracted work, which is the case `Service Context.dc.html` designs the Client row for. The
+ * project's is used when there is one and the deal's stands in when there is not, so an avatar
+ * never goes missing over a deal that was never filed under a project.
+ */
 export function toService(document: JsonApiDocument, resource: Resource): Service {
 	const dealId = readRelationshipId(resource, 'deal');
 	const deal = findIncluded(document, 'deals', dealId);
-	const company =
+	const client =
 		deal === undefined ? undefined : findIncluded(document, 'companies', readRelationshipId(deal, 'company'));
+	const project =
+		deal === undefined ? undefined : findIncluded(document, 'projects', readRelationshipId(deal, 'project'));
+	const company =
+		project === undefined
+			? client
+			: (findIncluded(document, 'companies', readRelationshipId(project, 'company')) ?? client);
+	const section = findIncluded(document, 'sections', readRelationshipId(resource, 'section'));
 
 	return {
 		id: resource.id,
 		name: readAttributeString(resource, 'name') ?? '',
 		dealName: deal === undefined ? null : readAttributeString(deal, 'name'),
 		dealId,
+		projectName: project === undefined ? null : readAttributeString(project, 'name'),
 		companyName: company === undefined ? null : readAttributeString(company, 'name'),
+		companyId: company?.id ?? null,
+		companyAvatarUrl: company === undefined ? null : readAttributeString(company, 'avatar_url'),
+		clientName: client === undefined ? null : readAttributeString(client, 'name'),
+		clientId: client?.id ?? null,
+		sectionName: section === undefined ? null : readAttributeString(section, 'name'),
 	};
 }
 
@@ -53,7 +83,11 @@ export function toService(document: JsonApiDocument, resource: Resource): Servic
  * are suffixed; suffixing every row would be noise.
  */
 export function labelServices(services: Service[]): { service: Service; label: string }[] {
-	const base = (service: Service) => [service.companyName, service.dealName, service.name].filter(Boolean).join(' · ');
+	// "Company · Project · Service" (A-1), and the project is the project now. The deal stands in
+	// where a service was never filed under one, which is the only reason that read as correct
+	// before.
+	const base = (service: Service) =>
+		[service.companyName, service.projectName ?? service.dealName, service.name].filter(Boolean).join(' · ');
 
 	const counts = new Map<string, number>();
 	for (const service of services) counts.set(base(service), (counts.get(base(service)) ?? 0) + 1);

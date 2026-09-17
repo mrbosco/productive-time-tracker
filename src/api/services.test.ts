@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { buildService } from '@/__tests__/test-utils';
 import servicesSample from '../../docs/api/samples/services.json';
 import orphaned from '../../docs/api/samples/services-fields-without-relationship.json';
 import type { JsonApiDocument } from './client';
@@ -36,9 +37,9 @@ describe('parseServices', () => {
 
 	it('appends the deal id only to labels that still collide, never to every row', () => {
 		const collide = [
-			{ id: 's1', name: 'Design', dealName: 'Retainer', dealId: 'd1', companyName: 'Acme' },
-			{ id: 's2', name: 'Design', dealName: 'Retainer', dealId: 'd2', companyName: 'Acme' },
-			{ id: 's3', name: 'Build', dealName: 'Retainer', dealId: 'd3', companyName: 'Acme' },
+			buildService({ id: 's1', name: 'Design', dealName: 'Retainer', dealId: 'd1', companyName: 'Acme' }),
+			buildService({ id: 's2', name: 'Design', dealName: 'Retainer', dealId: 'd2', companyName: 'Acme' }),
+			buildService({ id: 's3', name: 'Build', dealName: 'Retainer', dealId: 'd3', companyName: 'Acme' }),
 		];
 
 		const labelled = labelServices(collide);

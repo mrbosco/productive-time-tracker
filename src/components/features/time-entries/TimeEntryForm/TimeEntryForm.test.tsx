@@ -5,7 +5,15 @@ import error404 from '../../../../../docs/api/samples/error-404.json';
 import error422 from '../../../../../docs/api/samples/error-422-missing-service.json';
 import services from '../../../../../docs/api/samples/services.json';
 import type { TimeEntry } from '@/api/types';
-import { act, renderWithProviders, screen, testSession, userEvent, waitFor } from '@/__tests__/test-utils';
+import {
+	act,
+	buildService,
+	renderWithProviders,
+	screen,
+	testSession,
+	userEvent,
+	waitFor,
+} from '@/__tests__/test-utils';
 import { server } from '@/mocks/node';
 import { TimeEntryForm } from './TimeEntryForm';
 
@@ -22,21 +30,26 @@ function buildEntry(overrides: Partial<TimeEntry> = {}): TimeEntry {
 		// Deliberately not the default (`Acquiring new clients` sorts first): the point of the service
 		// line on this form is that it shows the entry's own, whatever the default happens to be.
 		serviceId: '16887840',
-		service: {
+		// Matching the recording: this deal was never filed under a project, which is what makes
+		// the label fall back to the deal name.
+		service: buildService({
 			id: '16887840',
 			name: 'Android Development',
-			dealName: 'Mobile banking app [SAMPLE]',
+			dealName: 'Example Deal',
 			dealId: '4287350',
-			companyName: 'Company B [SAMPLE]',
-		},
+			companyName: 'Example Companie',
+			companyId: '1523286',
+			clientName: 'Example Companie',
+			clientId: '1523286',
+		}),
 		createdAt: '2026-09-15T16:08:26.527+02:00',
 		...overrides,
 	};
 }
 
 /** What `labelServices` makes of the entry's service, and of the default it must not be confused with. */
-const ENTRY_SERVICE_LABEL = 'Company B [SAMPLE] · Mobile banking app [SAMPLE] · Android Development';
-const DEFAULT_SERVICE_LABEL = 'Example Agency · Administration · Acquiring new clients';
+const ENTRY_SERVICE_LABEL = 'Example Companie · Example Deal · Android Development';
+const DEFAULT_SERVICE_LABEL = 'Example Companie · Internal project [SAMPLE] · Acquiring new clients';
 
 /**
  * The edit form with a way to hand it a newer copy of the same entry, which is what the route does

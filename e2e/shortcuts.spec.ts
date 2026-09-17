@@ -80,7 +80,14 @@ test.describe('keyboard shortcuts (X-2)', () => {
 
 		// Tab is how you enter the list; the arrows move within it. Clicking a card is the same
 		// entry point and is one action rather than six tab stops.
-		await page.getByRole('article').first().click();
+		//
+		// In the corner rather than the middle: a card's centre is over the project name at 390px,
+		// and that is a button of its own now (UI-2). Clicking it would open the service context
+		// instead of choosing the card, which is what a real finger aiming at a card would avoid.
+		await page
+			.getByRole('article')
+			.first()
+			.click({ position: { x: 6, y: 6 } });
 		await expect(page.getByRole('article').first()).toBeFocused();
 
 		await page.keyboard.press('ArrowDown');
@@ -96,7 +103,10 @@ test.describe('keyboard shortcuts (X-2)', () => {
 		await page.goto(`/day/${SEEDED_DATE}`);
 		await expect(page.getByRole('article').first()).toBeVisible();
 
-		await page.getByRole('article').first().click();
+		await page
+			.getByRole('article')
+			.first()
+			.click({ position: { x: 6, y: 6 } });
 		await page.keyboard.press('Delete');
 
 		await expect(page.getByRole('dialog', { name: 'Delete this entry?' })).toBeVisible();

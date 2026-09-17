@@ -1,9 +1,10 @@
 import { queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { weekQueryKey } from '@/components/features/week/useWeekEntries';
 import { useEffect, useState } from 'react';
 import { ApiError } from '@/api/client';
 import { continueTimer, getRunningTimer, startTimer, stopTimer } from '@/api/timers';
 import { toAuth } from '@/components/features/auth/useSession';
-import { startOfWeek, todayIso } from '@/lib/date';
+import { todayIso } from '@/lib/date';
 import { clearTimerState, readTimerState, type Session, writeTimerState } from '@/lib/storage';
 
 /** The running timer as the app bar needs it, from the query or from what a refresh remembered. */
@@ -105,7 +106,7 @@ export function useTimer(session: Session) {
 	function invalidateDay(date: string) {
 		return Promise.all([
 			queryClient.invalidateQueries({ queryKey: ['time-entries', session.personId, date] }),
-			queryClient.invalidateQueries({ queryKey: ['week-totals', session.personId, startOfWeek(date)] }),
+			queryClient.invalidateQueries({ queryKey: weekQueryKey(session, date) }),
 		]);
 	}
 

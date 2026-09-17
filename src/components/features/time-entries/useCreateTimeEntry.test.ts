@@ -27,12 +27,12 @@ describe('useCreateTimeEntry', () => {
 
 	/**
 	 * Two keys, not one. SPEC 4.2 names only the day, but X-1 landed with US-1, so the week strip
-	 * and the desktop totals card both read `['week-totals', personId, monday]` - leaving that
+	 * and the desktop totals card both read `['week-entries', personId, monday]` - leaving that
 	 * stale would show a week total that disagrees with the list right under it.
 	 */
 	it('leaves the day and the week the entry lands in needing a refetch', async () => {
 		const dayKey = ['time-entries', testSession.personId, DATE];
-		const weekKey = ['week-totals', testSession.personId, MONDAY];
+		const weekKey = ['week-entries', testSession.personId, MONDAY];
 		const { result, queryClient } = renderHookWithProviders(() => useCreateTimeEntry(testSession));
 
 		// Both keys hold something fresh before the create, so "stale afterwards" is a change

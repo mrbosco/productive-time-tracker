@@ -1,4 +1,4 @@
-import { createFileRoute } from '@tanstack/react-router';
+import { createFileRoute, useRouterState } from '@tanstack/react-router';
 import { z } from 'zod';
 import { DayView } from '@/components/features/time-entries/DayView/DayView';
 import { TimeEntryForm } from '@/components/features/time-entries/TimeEntryForm/TimeEntryForm';
@@ -60,11 +60,29 @@ function NewEntryRoute() {
 	const { session } = Route.useRouteContext();
 	const { date } = Route.useSearch();
 	const { prefill } = Route.useLoaderData();
+	/*
+	 * UI-3's `Log time`: the words typed into the quick-add line, carried in history state rather
+	 * than in the search params for the reason `duplicate` is an ID - a description is somebody's
+	 * writing, and a query string ends up in their history and in any link they share. Lost on a
+	 * reload, which is right for a draft nobody has saved.
+	 */
+	const quickAddNote = useRouterState({ select: (state) => state.location.state.quickAddNote });
 
 	return (
 		<>
 			<DayView session={session} date={date} />
-			<TimeEntryForm session={session} date={date} prefill={prefill} />
+			<TimeEntryForm
+				session={session}
+				date={date}
+				prefill={prefill ?? (quickAddNote === undefined ? null : { minutes: null, note: quickAddNote })}
+			/>
 		</>
 	);
+}
+
+declare module '@tanstack/react-router' {
+	interface HistoryState {
+		/** UI-3: what the quick-add line was carrying when `Log time` was pressed. */
+		quickAddNote?: string;
+	}
 }

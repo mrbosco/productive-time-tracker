@@ -1,8 +1,9 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { weekQueryKey } from '@/components/features/week/useWeekEntries';
 import { createTimeEntry } from '@/api/time-entries';
 import { toAuth } from '@/components/features/auth/useSession';
 import { timeEntriesQueryOptions } from '@/components/features/time-entries/useTimeEntries';
-import { startOfWeek } from '@/lib/date';
+
 import type { Session } from '@/lib/storage';
 
 /** What a copy did, which is what the toast reports (SPEC 10, X-3: "count and failures"). */
@@ -84,7 +85,7 @@ export function useCopyDayForward(session: Session) {
 			// read the week, and leaving it would show a total the list below it disagrees with.
 			return Promise.all([
 				queryClient.invalidateQueries({ queryKey: ['time-entries', session.personId, to] }),
-				queryClient.invalidateQueries({ queryKey: ['week-totals', session.personId, startOfWeek(to)] }),
+				queryClient.invalidateQueries({ queryKey: weekQueryKey(session, to) }),
 			]);
 		},
 	});
