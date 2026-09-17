@@ -35,3 +35,4 @@ organization-memberships-include-availabilities.json 200
 timers-all.json                                      200
 timers-for-entry.json                                200
 time-entries-day-service-deal.json                   200
+organization-memberships-avatars.json                200

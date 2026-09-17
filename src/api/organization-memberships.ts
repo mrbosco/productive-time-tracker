@@ -28,11 +28,20 @@ import type { OrganizationMembership, Person } from './types';
  */
 const FIELDS =
 	'fields[organization_memberships]=person,organization' +
-	'&fields[people]=first_name,last_name,email' +
-	'&fields[organizations]=name';
+	'&fields[people]=first_name,last_name,email,avatar_url' +
+	'&fields[organizations]=name,company' +
+	'&fields[companies]=name,avatar_url';
 
+/**
+ * `organization.company` is how the organization's logo is reached (UI-8). An organization has no
+ * picture of its own; the one Productive's own client renders in its top bar belongs to the
+ * company record behind it, and this is the include its request uses - watched on
+ * `app.productive.io` and then recorded as `organization-memberships-avatars.json`.
+ *
+ * It costs no extra request. The person's own `avatar_url` rides along in the same fieldset.
+ */
 function buildPath(page: number): string {
-	return `/organization_memberships?include=person,organization&${FIELDS}&page[size]=${String(MAX_PAGE_SIZE)}&page[number]=${String(page)}`;
+	return `/organization_memberships?include=person,organization.company&${FIELDS}&page[size]=${String(MAX_PAGE_SIZE)}&page[number]=${String(page)}`;
 }
 
 function toPerson(resource: Resource): Person {
@@ -41,6 +50,7 @@ function toPerson(resource: Resource): Person {
 		firstName: readAttributeString(resource, 'first_name') ?? '',
 		lastName: readAttributeString(resource, 'last_name') ?? '',
 		email: readAttributeString(resource, 'email'),
+		avatarUrl: readAttributeString(resource, 'avatar_url'),
 	};
 }
 
@@ -50,6 +60,10 @@ export function parseOrganizationMemberships(document: JsonApiDocument): Organiz
 		const person = findIncluded(document, 'people', personId);
 		const organizationId = readRelationshipId(resource, 'organization');
 		const organization = findIncluded(document, 'organizations', organizationId);
+		const company =
+			organization === undefined
+				? undefined
+				: findIncluded(document, 'companies', readRelationshipId(organization, 'company'));
 
 		return {
 			id: resource.id,
@@ -57,6 +71,7 @@ export function parseOrganizationMemberships(document: JsonApiDocument): Organiz
 			person: person === undefined ? null : toPerson(person),
 			organizationId,
 			organizationName: organization === undefined ? null : readAttributeString(organization, 'name'),
+			organizationAvatarUrl: company === undefined ? null : readAttributeString(company, 'avatar_url'),
 		};
 	});
 }

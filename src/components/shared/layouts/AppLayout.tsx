@@ -1,6 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { lazy, type ReactNode, Suspense, useState } from 'react';
+import { findMembershipForOrganization } from '@/api/organization-memberships';
 import logoUrl from '@/assets/logo-productive.svg';
+import { Avatar } from '@/components/core/Avatar';
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -16,16 +18,6 @@ import type { ActivityMonitorConfig } from '@/components/features/timer/useActiv
 import { ShortcutsSheet } from '@/components/shared/ShortcutsSheet/ShortcutsSheet';
 import { useHotkeys } from '@/components/shared/useHotkeys';
 import type { Session } from '@/lib/storage';
-
-/** "Ada Lovelace" -> "AL". One letter when there is only one word, empty when the name is. */
-export function toInitials(name: string): string {
-	const words = name.split(' ').filter(Boolean);
-
-	return [words.at(0), words.length > 1 ? words.at(-1) : undefined]
-		.filter((word) => word !== undefined)
-		.map((word) => word.charAt(0).toUpperCase())
-		.join('');
-}
 
 /**
  * Loaded when a timer stops, never before.
@@ -83,8 +75,17 @@ function AppChrome({ session, children }: { session: Session; children: ReactNod
 	const [isShortcutsOpen, setIsShortcutsOpen] = useState(false);
 	const { data: memberships } = useQuery(sessionQueryOptions(session));
 	const timer = useTimerContext();
-	const email = memberships?.find((membership) => membership.personId === session.personId)?.person?.email ?? null;
-	const initials = toInitials(session.personName);
+	/*
+	 * The membership login matched on, which carries the email and the organization alike. Keyed on
+	 * the organization rather than on the person (UI-8): a token with memberships in two
+	 * organizations has a different person record in each, so the person is what varies and the
+	 * organization is what was actually chosen at login.
+	 */
+	const membership = findMembershipForOrganization(memberships ?? [], session.organizationId);
+	const email = membership?.person?.email ?? null;
+	const personAvatarUrl = membership?.person?.avatarUrl ?? null;
+	const organizationName = membership?.organizationName ?? null;
+	const organizationAvatarUrl = membership?.organizationAvatarUrl ?? null;
 
 	/*
 	 * Registered here rather than on the day view because the sheet is reachable from every
@@ -137,14 +138,37 @@ function AppChrome({ session, children }: { session: Session; children: ReactNod
 
 				<DropdownMenu>
 					<DropdownMenuTrigger
-						// The initials are decoration over the name in the menu, so the button
-						// gets the accessible name instead of leaving a screen reader to read
-						// out two letters.
+						// The avatar and the badge are decoration over the name and the organization
+						// in the menu, so the button gets the accessible name instead of leaving a
+						// screen reader to read out four letters.
 						aria-label="Account menu"
+						// 44px tall on a phone for the tap target the brief asks for, 40 on desktop so
+						// it sits on the same line as the timer pill and the `?`, which are both 40 in
+						// the approved bar. The avatar inside grew from 32 to 40 - UI-8 wants it the
+						// largest thing in the bar, and 40 is as large as it goes without breaking that
+						// row.
 						className="flex h-11 flex-none items-center gap-2 rounded-pill px-1 md:h-10"
 					>
-						<span className="grid size-8 place-items-center rounded-pill bg-selection text-caption font-medium text-accent-dark">
-							{initials}
+						<span className="relative size-10 flex-none">
+							<Avatar
+								name={session.personName}
+								src={personAvatarUrl}
+								className="size-10 rounded-pill"
+								fallbackClassName="bg-selection text-caption font-medium text-accent-dark"
+							/>
+							{/*
+							 * Which organization this is, before anything is logged into it. The ring
+							 * is the bar's own background rather than a border colour, so the badge
+							 * reads as sitting on top of the avatar instead of being cut out of it.
+							 */}
+							{organizationName !== null && (
+								<Avatar
+									name={organizationName}
+									src={organizationAvatarUrl}
+									className="absolute -right-[3px] -bottom-[3px] size-[18px] rounded-[6px] border-2 border-surface"
+									fallbackClassName="bg-accent-dark text-[8px] font-bold text-on-accent"
+								/>
+							)}
 						</span>
 						<span className="hidden md:block">
 							<CaretIcon />
@@ -152,11 +176,40 @@ function AppChrome({ session, children }: { session: Session; children: ReactNod
 					</DropdownMenuTrigger>
 
 					<DropdownMenuContent align="end" className="w-[246px]">
-						<div className="px-3 pt-2.5 pb-3">
-							<p className="text-meta font-medium">{session.personName}</p>
-							{email !== null && <p className="mt-[3px] text-caption text-muted">{email}</p>}
+						<div className="flex items-center gap-2.5 px-3 pt-2.5 pb-3">
+							<Avatar
+								name={session.personName}
+								src={personAvatarUrl}
+								className="size-9 flex-none rounded-[10px]"
+								fallbackClassName="bg-selection text-caption font-medium text-accent-dark"
+							/>
+							<div className="min-w-0">
+								<p className="truncate text-meta font-medium">{session.personName}</p>
+								{email !== null && <p className="mt-[3px] truncate text-caption text-muted">{email}</p>}
+							</div>
 						</div>
 						<DropdownMenuSeparator />
+						{/*
+						 * The organization and the ID that was typed at login, so the answer to "which
+						 * one am I in?" is on the same menu as logging out of it. Not a menu item: it
+						 * does nothing, and an entry that takes focus and then does nothing is worse
+						 * than one that plainly cannot be chosen (guidebook 18).
+						 */}
+						<div className="flex items-center gap-2.5 px-3 py-2">
+							{organizationName !== null && (
+								<Avatar
+									name={organizationName}
+									src={organizationAvatarUrl}
+									className="size-6 flex-none rounded-[6px]"
+									fallbackClassName="bg-accent-dark text-[9px] font-bold text-on-accent"
+								/>
+							)}
+							<span className="truncate text-label font-medium">
+								{organizationName === null
+									? `Organization ${session.organizationId}`
+									: `${organizationName} · org ${session.organizationId}`}
+							</span>
+						</div>
 						{/* A-1: the service every new entry and timer is logged against. */}
 						<DropdownMenuItem
 							onSelect={() => {

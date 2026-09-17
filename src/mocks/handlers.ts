@@ -1,7 +1,7 @@
 import { http, HttpResponse, type RequestHandler } from 'msw';
 import timerAlreadyStopped from '../../docs/api/samples/error-409-timer-already-stopped.json';
 import error404 from '../../docs/api/samples/error-404.json';
-import memberships from '../../docs/api/samples/organization-memberships-include-organization.json';
+import memberships from '../../docs/api/samples/organization-memberships-avatars.json';
 import services from '../../docs/api/samples/services.json';
 import timeEntriesDay from '../../docs/api/samples/time-entries-day.json';
 import timeEntriesEmptyDay from '../../docs/api/samples/time-entries-empty-day.json';

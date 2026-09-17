@@ -325,6 +325,9 @@ entry's `time` was typed by hand.
 | `/timers` accepts `filter[time_entry_id]`, and it genuinely filters: 3 rows against 16 unfiltered. | `timers-for-entry.json` + `timers-all.json`  | **Unblocks UI-9** — one entry's runs are listable                     |
 | A timer's `total_time` is the linked entry's **cumulative** minutes after that run, not the run's own length. Three runs on one entry read 2, 26, 26. | `timers-for-entry.json`                      | **Confirms SPEC 11 finding 4** — UI-9's per-run figure is a delta      |
 | The recorded day drifted between 2026-09-16 and 2026-09-17: entry `162921872` (240 min) is gone and `163073474` (0 min) is new, so the day totals `5h` rather than `9h`. | `time-entries-day-service-deal.json`         | The day fixture and every test asserting `9h` move with it            |
+| An organization has no picture of its own: the logo Productive's top bar renders belongs to `organization.company`, and that company's `avatar_url` is the field. Watched on `app.productive.io`, whose own request is `organization_memberships/{id}?include=…organization.company…`. | `organization-memberships-avatars.json`       | **Confirms UI-8** — the org badge is a real logo, not initials |
+| `people.avatar_url` exists and is nullable (null for the recorded person, who never uploaded one). | `person-show.json`, `organization-memberships-avatars.json` | **Confirms UI-8** — initials are the fallback, not the design |
+| `fields[people]=…,avatar_url` and `include=person,organization.company` are both honoured on the login request, alongside `availabilities`. | `organization-memberships-avatars.json`      | **Extends SPEC 4.2** — avatars and expected hours cost no request |
 
 ## Reproducing
 

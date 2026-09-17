@@ -68,13 +68,15 @@ describe('listOrganizationMemberships', () => {
 
 		const [membership] = await listOrganizationMemberships(auth);
 
-		expect(params?.get('include')).toBe('person,organization');
+		// `organization.company` rather than `organization`: the logo hangs off the company behind
+		// the organization, which is where Productive's own client reaches it (UI-8).
+		expect(params?.get('include')).toBe('person,organization.company');
 		// Served the unfielded recording, which has no `include`: the IDs are genuinely absent.
 		expect(membership?.personId).toBeNull();
 		expect(membership?.organizationId).toBeNull();
 	});
 
-	it('narrows the organization to its name, which keeps the record’s secrets out of the response', async () => {
+	it('narrows the organization to its name and company, keeping the record’s secrets out of the response', async () => {
 		let params: URLSearchParams | undefined;
 		server.use(
 			http.get('*/organization_memberships', ({ request }) => {
@@ -86,7 +88,9 @@ describe('listOrganizationMemberships', () => {
 
 		await listOrganizationMemberships(auth);
 
-		expect(params?.get('fields[organizations]')).toBe('name');
+		expect(params?.get('fields[organizations]')).toBe('name,company');
+		// The company is narrowed too, for the same reason the organization is.
+		expect(params?.get('fields[companies]')).toBe('name,avatar_url');
 	});
 });
 

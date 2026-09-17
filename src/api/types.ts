@@ -9,6 +9,8 @@ export interface Person {
 	firstName: string;
 	lastName: string;
 	email: string | null;
+	/** Uploaded in Productive, and null for anyone who has not. Initials are the fallback. */
+	avatarUrl: string | null;
 }
 
 export interface Service {
@@ -32,6 +34,12 @@ export interface OrganizationMembership {
 	 */
 	organizationId: string | null;
 	organizationName: string | null;
+	/**
+	 * The organization's logo, which hangs off its **company**, not off the organization itself -
+	 * Productive's own client reaches it as `include=organization.company` and renders that
+	 * company's `avatar_url` (`organization-memberships-avatars.json`).
+	 */
+	organizationAvatarUrl: string | null;
 }
 
 export interface TimeEntry {
