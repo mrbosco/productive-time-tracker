@@ -3,18 +3,9 @@ import StarterKit from '@tiptap/starter-kit';
 import { useEffect, useRef } from 'react';
 import { cn } from '@/lib/utils';
 
-/**
- * The note editor (ADR-0010).
- *
- * Trimmed to what a time-entry description is: paragraphs, bold, italic, strike and the two list
- * kinds. A note is not a document, so headings, blockquotes, code blocks, horizontal rules and
- * links are off - each would be a shape Productive's own field does not offer here, and a shape
- * this app would then have to render.
- *
- * What makes TipTap the right buy rather than a convenience is that its schema *is* the
- * sanitiser: content is parsed into the nodes below and everything else is discarded, so pasting
- * a page of markup yields prose and nothing executable ever enters the document.
- */
+/** The note editor (ADR-0010), trimmed to paragraphs, bold, italic, strike and the two list kinds.
+ * TipTap's schema *is* the sanitiser: content is parsed into the nodes below and everything else
+ * discarded, so pasting a page of markup yields prose and nothing executable. */
 export const EDITOR_EXTENSIONS = [
 	StarterKit.configure({
 		heading: false,
@@ -30,15 +21,9 @@ export const EDITOR_EXTENSIONS = [
 const FOCUSABLE =
 	'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
-/**
- * Tab means "the next control", not "indent this list".
- *
- * The editor is a field inside a form, and a list's own Tab binding would otherwise trap a
- * keyboard user between the bullets and Save (guidebook 18). ProseMirror consults `handleKeyDown`
- * before any keymap, but only stops if the handler claims the event - so claiming it means taking
- * responsibility for moving focus, which is what this does. Lists are still made with `- ` and
- * Enter, which is how they are made in the first place.
- */
+/** Tab means "the next control", not "indent this list": a list's own Tab binding would trap a
+ * keyboard user between the bullets and Save. ProseMirror consults `handleKeyDown` before any
+ * keymap but only stops if the handler claims the event, so claiming it means moving focus here. */
 function moveFocusOut(from: HTMLElement, backwards: boolean): void {
 	const focusable = [...document.querySelectorAll<HTMLElement>(FOCUSABLE)].filter(
 		(element) => element.offsetParent !== null || element === from
@@ -55,7 +40,6 @@ function moveFocusOut(from: HTMLElement, backwards: boolean): void {
 }
 
 interface RichTextEditorProps {
-	/** HTML, as the API stores it. */
 	value: string;
 	onChange: (html: string) => void;
 	placeholder?: string;
@@ -66,12 +50,10 @@ interface RichTextEditorProps {
 	className?: string;
 }
 
-/**
- * `value` seeds the editor and is not pushed back in on every keystroke: ProseMirror owns the
+/** `value` seeds the editor and is not pushed back in on every keystroke: ProseMirror owns the
  * document once it is mounted, and rewriting it from a prop would fight the caret. It is
  * re-applied only when the caller swaps in a genuinely different note - opening a different entry
- * to edit - which `setContent` handles without losing the selection for the common no-op.
- */
+ * to edit - which `setContent` handles without losing the selection for the common no-op. */
 export function RichTextEditor({
 	value,
 	onChange,
@@ -96,7 +78,7 @@ export function RichTextEditor({
 			attributes: {
 				// Stated, not inferred. `contenteditable` alone is not a role - assistive
 				// technology and the testing tools that model it both need to be told this is a
-				// multiline field, and the label wiring is what gives it a name (guidebook 18).
+				// multiline field, and the label wiring is what gives it a name.
 				role: 'textbox',
 				'aria-multiline': 'true',
 				...(id === undefined ? {} : { id }),
@@ -116,26 +98,15 @@ export function RichTextEditor({
 		},
 	});
 
-	/**
-	 * Compared against what was last applied, not against what the editor now holds.
-	 *
-	 * TipTap normalises on the way in, so `value` and `getHTML()` can differ for the same document
-	 * - and because `setContent` deliberately suppresses `onUpdate`, the parent never learns the
-	 * normalised form. Comparing the two would then never match, and the form re-renders on every
-	 * duration keystroke, so the document would be replaced and the caret thrown to the start on
-	 * each one. Remembering the string that was applied is what makes this converge.
-	 */
+	/** Compared against what was last applied, not what the editor now holds. TipTap normalises on the
+	 * way in and `setContent` suppresses `onUpdate`, so the parent never learns the normalised form -
+	 * comparing the two never matches, and the caret was thrown to the start on every re-render. */
 	const applied = useRef(value);
 
-	/**
-	 * Whether the document is empty, **subscribed to** rather than read off the editor during render.
-	 *
-	 * TipTap 3's `useEditor` no longer re-renders on every transaction the way v2 did, so
-	 * `editor.isEmpty` read in the render body is a mutable getter on a stable object: it answers
-	 * correctly on mount and then never changes again. The placeholder stayed behind the first word
-	 * typed into a form that had no other reason to re-render - the entry form only escaped it
-	 * because its first keystroke flips `isDirty`, which is a subscription by accident.
-	 */
+	/** Whether the document is empty, **subscribed to** rather than read during render. TipTap 3's
+	 * `useEditor` no longer re-renders on every transaction, so `editor.isEmpty` in the render body
+	 * answers correctly on mount and never changes again - the placeholder stayed behind the first
+	 * word typed into a form that had no other reason to re-render. */
 	const isEmpty = useEditorState({
 		editor,
 		selector: ({ editor: current }) => current?.isEmpty ?? true,
@@ -167,11 +138,9 @@ export function RichTextEditor({
 				className
 			)}
 		>
-			{/*
-			 * The placeholder is drawn rather than pulled in as another extension: it is one
+			{/* The placeholder is drawn rather than pulled in as another extension: it is one
 			 * absolutely positioned line that shows while the document is empty, and `aria-hidden`
-			 * because the field already has a label.
-			 */}
+			 * because the field already has a label. */}
 			{placeholder !== undefined && isEmpty && (
 				<span aria-hidden="true" className="pointer-events-none absolute text-muted">
 					{placeholder}

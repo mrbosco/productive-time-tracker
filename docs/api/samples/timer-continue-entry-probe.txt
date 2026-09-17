@@ -3,7 +3,7 @@ Productive's own web client (app.productive.io > Time > My time) start and stop 
 play button on an entry row. Organization id replaced with 999999 throughout; person 1448639 is the
 same account every other sample in this folder was recorded from.
 
-This answers the question SPEC 10's X-4 row was amended over, and the amendment was wrong:
+This settles how a timer attaches to an existing entry:
 continuing an entry does NOT require folding a second entry into the first. `POST /timers` takes a
 `time_entry` relationship, and given one it attaches to that entry instead of creating a new one.
 

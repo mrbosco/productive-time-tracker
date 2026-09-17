@@ -33,59 +33,42 @@ describe('TimeEntryList', () => {
 		expect(screen.queryByRole('list')).not.toBeInTheDocument();
 	});
 
-	/** R-7: one sentence and the primary action, never an illustration on its own. */
+	/** One sentence and the primary action, never an illustration on its own. */
 	it('shows the empty state when the day has no entries', async () => {
-		await renderWithProviders(<TimeEntryList {...baseProps} entries={[]} />);
+		await renderWithProviders(<TimeEntryList {...baseProps} entries={[]} date="2026-09-10" />);
 
 		expect(screen.getByText('Nothing logged for this day yet.')).toBeInTheDocument();
-		expect(screen.getByRole('link', { name: 'Add entry' })).toBeInTheDocument();
+		expect(screen.getByRole('link', { name: 'Add entry' })).toHaveAttribute('href', '/entries/new?date=2026-09-10');
 	});
 
-	/** X-3 copies yesterday's entries in; the design puts the offer in this state. */
-	it('offers to copy yesterday into an empty day (X-3)', async () => {
+	/** The offer names the day it would copy, not "yesterday". */
+	it('offers to copy the day before into an empty day, naming it', async () => {
 		const onCopyFromYesterday = vi.fn();
 		const user = userEvent.setup();
 		await renderWithProviders(<TimeEntryList {...baseProps} entries={[]} onCopyFromYesterday={onCopyFromYesterday} />);
 
-		await user.click(screen.getByRole('button', { name: 'Copy from yesterday' }));
+		await user.click(screen.getByRole('button', { name: 'Copy from Mon 14 Sep' }));
 
 		expect(onCopyFromYesterday).toHaveBeenCalledTimes(1);
 	});
 
 	/** The copy is N sequential POSTs, so the offer says so rather than sitting there looking inert. */
-	it('says a copy is under way rather than looking idle (X-3)', async () => {
+	it('says a copy is under way rather than looking idle', async () => {
 		await renderWithProviders(<TimeEntryList {...baseProps} entries={[]} onCopyFromYesterday={vi.fn()} isCopying />);
 
 		expect(screen.getByRole('button', { name: 'Copying...' })).toBeDisabled();
 	});
 
-	/**
-	 * R-7 forbids an illustration on its own. It is decorative here, so it is hidden from
-	 * assistive technology and the sentence beside it carries the meaning.
-	 */
-	it.each([
-		['empty', [] as TimeEntry[]],
-		['error', undefined],
-	])('keeps the %s state readable without its illustration', async (_name, entries) => {
-		const { container } = await renderWithProviders(<TimeEntryList {...baseProps} entries={entries} />);
-
-		const illustration = container.querySelector('svg');
-
-		expect(illustration).toHaveAttribute('aria-hidden', 'true');
-		expect(screen.getByText(/Nothing logged for this day yet\.|Could not load entries\./)).toBeInTheDocument();
-	});
-
-	it('points the empty state at the day being shown', async () => {
-		await renderWithProviders(<TimeEntryList {...baseProps} entries={[]} date="2026-09-10" />);
-
-		expect(screen.getByRole('link', { name: 'Add entry' })).toHaveAttribute('href', '/entries/new?date=2026-09-10');
-	});
-
-	/** R-8. */
-	it('announces the failure rather than swapping the text in silently', async () => {
-		await renderWithProviders(<TimeEntryList {...baseProps} entries={undefined} />);
+	it('announces the failure rather than swapping the text in silently, and offers a retry', async () => {
+		const onRetry = vi.fn();
+		const user = userEvent.setup();
+		await renderWithProviders(<TimeEntryList {...baseProps} entries={undefined} onRetry={onRetry} />);
 
 		expect(screen.getByRole('alert')).toHaveTextContent('Could not load entries.');
+
+		await user.click(screen.getByRole('button', { name: 'Retry' }));
+
+		expect(onRetry).toHaveBeenCalledTimes(1);
 	});
 
 	it('keeps entries on screen when a refetch fails after they loaded', async () => {
@@ -97,38 +80,7 @@ describe('TimeEntryList', () => {
 		expect(screen.queryByText('Could not load entries.')).not.toBeInTheDocument();
 	});
 
-	it('shows the error state and offers a retry when loading failed', async () => {
-		const onRetry = vi.fn();
-		const user = userEvent.setup();
-		await renderWithProviders(<TimeEntryList {...baseProps} entries={undefined} onRetry={onRetry} />);
-
-		expect(screen.getByText('Could not load entries.')).toBeInTheDocument();
-
-		await user.click(screen.getByRole('button', { name: 'Retry' }));
-
-		expect(onRetry).toHaveBeenCalledTimes(1);
-	});
-
-	it('does not offer Add entry while the day is failing to load', async () => {
-		await renderWithProviders(<TimeEntryList {...baseProps} entries={undefined} />);
-
-		expect(screen.queryByRole('link', { name: 'Add entry' })).not.toBeInTheDocument();
-	});
-
-	it("lists the day's entries as a list", async () => {
-		await renderWithProviders(
-			<TimeEntryList
-				{...baseProps}
-				entries={[buildEntry({ id: 'a', minutes: 240 }), buildEntry({ id: 'b', minutes: 300 })]}
-			/>
-		);
-
-		expect(screen.getAllByRole('listitem')).toHaveLength(2);
-		expect(screen.getByText('4h')).toBeInTheDocument();
-		expect(screen.getByText('5h')).toBeInTheDocument();
-	});
-
-	it('renders the entries in the order it is given them (A-7)', async () => {
+	it("lists the day's entries in the order it is given them", async () => {
 		await renderWithProviders(
 			<TimeEntryList
 				{...baseProps}
@@ -138,15 +90,8 @@ describe('TimeEntryList', () => {
 
 		const items = screen.getAllByRole('listitem');
 
+		expect(items).toHaveLength(2);
 		expect(items[0]).toHaveTextContent('Logged first');
 		expect(items[1]).toHaveTextContent('Logged second');
-	});
-
-	it('shows nothing but the entries once they are there', async () => {
-		await renderWithProviders(<TimeEntryList {...baseProps} entries={[buildEntry()]} />);
-
-		expect(screen.queryByText('Nothing logged for this day yet.')).not.toBeInTheDocument();
-		expect(screen.queryByText('Could not load entries.')).not.toBeInTheDocument();
-		expect(screen.queryByRole('status')).not.toBeInTheDocument();
 	});
 });

@@ -14,20 +14,8 @@ function PlayIcon() {
 	);
 }
 
-/**
- * Describe, then track (UI-3).
- *
- * The line used to do one thing - open the entry form - and the design's reading of the common case
- * is that it is the other one: you write down what you are about to do and start the clock. So the
- * row has two actions, a primary `Start` and a quiet `Log time` for work already done.
- *
- * `Start` writes nothing into a URL and `Log time` carries the text in history state rather than in
- * the query string, for the reason `/entries/new` gives about `duplicate`: a description is
- * somebody's writing, and a query string is kept in their history and in any link they share.
- *
- * P-1's parser stays cut. Nothing here reads `1.5h` out of the text - the words become the
- * description and the duration comes from the clock or from the form.
- */
+/** Describe, then track: a primary `Start`, and a quiet `Log time` that carries the text in history
+ * state rather than the query string. There is no parser - the words become the description. */
 export function QuickAddInput({ date }: { date: string }) {
 	const navigate = useNavigate();
 	const timer = useTimerContext();
@@ -36,14 +24,11 @@ export function QuickAddInput({ date }: { date: string }) {
 
 	const described = value.trim();
 	const isTracking = timer.running !== null;
-	/*
-	 * A timer runs now, so it only belongs on today. On any other day `Start` offered to track work
+	/* A timer runs now, so it only belongs on today. On any other day `Start` offered to track work
 	 * that is already over - and, because `POST /timers` files its entry on today, it answered by
-	 * leaving the day you were looking at. `Log time` is the whole row on a past or future day.
-	 */
+	 * leaving the day you were looking at. `Log time` is the whole row on a past or future day. */
 	const canTrack = date === todayIso();
 
-	/** Only ever called on today, so the row it creates is the row already on screen. */
 	function startTracking() {
 		timer.start(described);
 		setValue('');
@@ -52,6 +37,7 @@ export function QuickAddInput({ date }: { date: string }) {
 	function logTime() {
 		void navigate({
 			to: '/entries/new',
+			resetScroll: false,
 			search: { date },
 			state: described === '' ? undefined : { quickAddNote: described },
 		});
@@ -95,8 +81,6 @@ export function QuickAddInput({ date }: { date: string }) {
 				{canTrack && (
 					<button
 						type="submit"
-						// Not disabled while one runs: starting a second retires the first rather than
-						// refusing, which is what somebody moving on to the next thing means by it.
 						disabled={described === ''}
 						className={cn(
 							'duration-ui flex h-11 flex-none items-center gap-2 rounded-control bg-accent px-4 text-meta font-medium text-on-accent transition-colors ease-ui',
@@ -107,15 +91,17 @@ export function QuickAddInput({ date }: { date: string }) {
 						Start
 					</button>
 				)}
-				{/* The primary action on any day but today, and it is the only one there. */}
 				<button
 					type={canTrack ? 'button' : 'submit'}
 					onClick={logTime}
+					// Nothing typed means this would do exactly what `Add entry` above already does, so it
+					// waits for something to carry rather than offering a second way to open a blank form.
+					disabled={described === ''}
 					className={cn(
-						'duration-ui h-11 flex-none rounded-control px-4 text-meta font-medium transition-colors ease-ui',
+						'duration-ui h-11 flex-none rounded-control px-4 text-meta font-medium transition-colors ease-ui disabled:cursor-not-allowed disabled:opacity-45',
 						canTrack
-							? 'hidden border border-line hover:bg-subtle sm:block'
-							: 'bg-accent text-on-accent hover:bg-accent-dark'
+							? 'hidden border border-line hover:bg-subtle disabled:hover:bg-transparent sm:block'
+							: 'bg-accent text-on-accent hover:bg-accent-dark disabled:hover:bg-accent'
 					)}
 				>
 					Log time

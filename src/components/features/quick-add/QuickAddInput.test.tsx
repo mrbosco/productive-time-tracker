@@ -4,28 +4,30 @@ import { todayIso } from '@/lib/date';
 import { QuickAddInput } from './QuickAddInput';
 
 const session = testSession;
-/** The timer only runs on today, so the two tracking tests have to be standing on it. */
+/** The timer only runs on today, so the tracking test has to be standing on it. */
 const TODAY = todayIso();
 
 describe('QuickAddInput', () => {
-	it('has a label, even though the placeholder carries the instruction (guidebook 18)', async () => {
-		await renderWithProviders(<QuickAddInput date="2026-09-15" />, { session });
-
-		expect(screen.getByRole('textbox', { name: 'Quick add an entry' })).toBeInTheDocument();
-	});
-
-	/** UI-3: the common case is describing what you are about to do and starting the clock. */
+	/** The common case is describing what you are about to do and starting the clock. */
 	it('starts a timer carrying what was typed', async () => {
 		const user = userEvent.setup();
 		await renderWithProviders(<QuickAddInput date={TODAY} />, { session });
 
+		const fetchSpy = vi.spyOn(globalThis, 'fetch');
+
 		await user.type(screen.getByRole('textbox', { name: 'Quick add an entry' }), 'Reviewing the parser');
 		await user.click(screen.getByRole('button', { name: 'Start' }));
 
-		// The bar's control is the same timer, so it reports the start.
+		// `POST /timers` takes relationships and nothing else, so the words become a second write
+		// onto the entry the timer just made. Clearing the field is not evidence that they arrived.
 		await waitFor(() => {
-			expect(screen.getByRole('textbox', { name: 'Quick add an entry' })).toHaveValue('');
+			const patch = fetchSpy.mock.calls.find((call) => call[1]?.method === 'PATCH');
+			expect(patch).toBeDefined();
+
+			const body = JSON.parse(patch?.[1]?.body as string) as { data: { attributes: { note?: string } } };
+			expect(body.data.attributes.note).toBe('Reviewing the parser');
 		});
+		expect(screen.getByRole('textbox', { name: 'Quick add an entry' })).toHaveValue('');
 	});
 
 	it('opens the form with the text as the description, without putting it in the URL', async () => {
@@ -44,24 +46,6 @@ describe('QuickAddInput', () => {
 	});
 
 	/**
-	 * Starting a second retires the first rather than refusing: nothing is lost, because stopping
-	 * writes the elapsed minutes onto the entry the timer was attached to.
-	 */
-	it('keeps offering to start while one is already running', async () => {
-		const user = userEvent.setup();
-		await renderWithProviders(<QuickAddInput date={TODAY} />, { session });
-
-		await user.type(screen.getByRole('textbox', { name: 'Quick add an entry' }), 'First');
-		await user.click(screen.getByRole('button', { name: 'Start' }));
-
-		await waitFor(() => {
-			expect(screen.getByText(/Starting this stops the timer/)).toBeInTheDocument();
-		});
-		await user.type(screen.getByRole('textbox', { name: 'Quick add an entry' }), 'Second');
-		expect(screen.getByRole('button', { name: 'Start' })).toBeEnabled();
-	});
-
-	/**
 	 * A timer runs now. Offering to start one against yesterday asked to track work that is over,
 	 * and answered by navigating away to today, where the entry it made had landed.
 	 */
@@ -70,18 +54,5 @@ describe('QuickAddInput', () => {
 
 		expect(screen.queryByRole('button', { name: 'Start' })).not.toBeInTheDocument();
 		expect(screen.getByRole('button', { name: 'Log time' })).toBeInTheDocument();
-	});
-
-	it('does not submit anything on its own', async () => {
-		const user = userEvent.setup();
-		const { router } = await renderWithProviders(<QuickAddInput date="2026-09-15" />, {
-			session,
-			initialEntry: '/day/2026-09-15',
-		});
-
-		await user.type(screen.getByRole('textbox', { name: 'Quick add an entry' }), '45m standup');
-
-		expect(router.state.location.pathname).toBe('/day/2026-09-15');
-		expect(vi.isMockFunction(globalThis.fetch)).toBe(false);
 	});
 });

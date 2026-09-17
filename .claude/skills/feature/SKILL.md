@@ -1,6 +1,6 @@
 ---
 name: feature
-description: Implement one user story or extra feature end to end - branch, code, tests, changeset, commit. Use when starting work on an R-, US-, X- or P- identifier from docs/SPEC.md.
+description: Implement one feature end to end - branch, code, tests, changeset, commit. Use when starting work on a requirement from docs/SPEC.md.
 ---
 
 # Build a feature
@@ -11,12 +11,12 @@ One story per branch. If the request spans two stories, stop and split it.
 
 Find the ID in `docs/SPEC.md` before writing anything:
 
-- `US-n` / `R-n`: the tables in 2.1. Note every `R-` row tracing to the story; they are the acceptance criteria.
-- `X-n` / `P-n`: the table in 10, which carries the full scope of each extra.
+- A required feature: the `R-n` and `N-n` tables in SPEC 9. The `R-` rows are the acceptance criteria.
+- Something beyond the assignment: the table in SPEC 6, which names each extra and what it covers.
 
-Also read: the route in 6.2, the state keys in 6.3, the matching screens in `docs/design/screens/`, and any ADR the spec cites. If the requirement is ambiguous, check 5 (assumptions) before asking - it may already be decided.
+Also read: the routes and state keys in SPEC 1, the matching screens in `docs/screenshots/`, and any ADR the spec cites. If the requirement is ambiguous, check SPEC 4 (assumptions) before asking - it may already be decided.
 
-Do not start an extra (`X-`, `P-`) until the required stories are merged (SPEC 10).
+Do not start an extra until the required features are merged (SPEC 6).
 
 ## 2. Branch
 
@@ -28,7 +28,7 @@ Scope comes from the list in `.claude/rules/git.md`.
 
 ## 3. Plan the files
 
-Place them per SPEC 6.1 and guidebook 1-5:
+Place them per SPEC 1 and guidebook 1-5:
 
 - Feature UI and its hooks: `src/components/features/<domain>/`
 - Reused across features: `src/components/shared/`
@@ -48,7 +48,7 @@ Follow `.claude/rules/guidebook.md`. The ones most often missed:
 - Booleans read as predicates; no abbreviated names (7, 8)
 - Tailwind classes stay unsorted by hand - the Prettier plugin orders them (17)
 
-Server state goes through TanStack Query with the key shapes fixed in SPEC 6.3. Forms are react-hook-form + zod; share the schema between create and edit.
+Server state goes through TanStack Query with the key shapes fixed in SPEC 1. Forms are react-hook-form + zod; share the schema between create and edit.
 
 Need an endpoint, payload shape or filter syntax? Use the `api-explorer` agent rather than guessing.
 
@@ -87,7 +87,7 @@ feat(time-entries): add entry form with inline validation
 The day list had no create path. The zod schema is shared with the edit route
 so both surfaces reject the same input.
 
-Refs: US-2, R-9
+Refs: R-9
 ```
 
 Commit only when the user asks. Then use the `pr` skill.

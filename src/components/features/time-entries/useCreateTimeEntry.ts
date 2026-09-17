@@ -6,22 +6,10 @@ import { toAuth } from '@/components/features/auth/useSession';
 
 import type { Session } from '@/lib/storage';
 
-/**
- * Creating a time entry for the logged-in person (R-9).
- *
- * `personId` comes from the session, never from a field - the assignment's "for the sake of
- * simplicity, set it dynamically" (R-10). `serviceId` comes from A-1's default, because the form
- * has three fields and the service is not one of them.
- *
- * Two keys are invalidated, not one. SPEC 4.2 only names the day, but X-1 shipped with US-1, so the
- * week strip and the desktop totals card are both rendered from `['week-totals', personId, monday]`
- * - invalidating only the day would leave the strip showing a total that no longer matches the list
- * directly beneath it.
- *
- * Nothing is inserted optimistically. A create response carries only the `organization`
- * relationship (api-client rule 15), so an optimistic row could not render the service name every
- * card shows, and would flicker from blank to correct on the refetch.
- */
+/** Creating a time entry for the logged-in person. `personId` comes from the session and `serviceId`
+ * from the chosen default. Two keys are invalidated, because the strip above the list reads the
+ * week. Nothing is inserted optimistically: a create response carries only `organization`, so the
+ * row could not render the service name. */
 export function useCreateTimeEntry(session: Session) {
 	const queryClient = useQueryClient();
 
@@ -32,7 +20,6 @@ export function useCreateTimeEntry(session: Session) {
 			// Awaited so the day list is already refetching when the route changes; the list then
 			// renders its data rather than briefly showing the day without the new entry.
 			return Promise.all([
-				queryClient.invalidateQueries({ queryKey: ['time-entries', session.personId, input.date] }),
 				queryClient.invalidateQueries({
 					queryKey: weekQueryKey(session, input.date),
 				}),

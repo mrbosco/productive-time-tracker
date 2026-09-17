@@ -18,11 +18,8 @@ function buildEntry(minutes: number, id: string): TimeEntry {
 }
 
 describe('calculateDayTotal', () => {
-	it('sums the minutes', () => {
+	it('sums the minutes, and is zero for a day with nothing on it', () => {
 		expect(calculateDayTotal([buildEntry(240, 'a'), buildEntry(0, 'b'), buildEntry(300, 'c')])).toBe(540);
-	});
-
-	it('is zero for a day with nothing on it', () => {
 		expect(calculateDayTotal([])).toBe(0);
 	});
 });
@@ -40,12 +37,5 @@ describe('DaySummary', () => {
 
 		expect(screen.getByText(/1 entry/)).toBeInTheDocument();
 		expect(screen.queryByText(/1 entries/)).not.toBeInTheDocument();
-	});
-
-	it('counts a zero-minute entry towards the total count but not the time', () => {
-		render(<DaySummary entries={[buildEntry(0, 'a'), buildEntry(0, 'b')]} />);
-
-		expect(screen.getByText('0h')).toBeInTheDocument();
-		expect(screen.getByText(/2 entries/)).toBeInTheDocument();
 	});
 });

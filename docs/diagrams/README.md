@@ -1,6 +1,8 @@
 # Diagrams
 
-Mermaid sources (`.mmd`) render natively on GitHub and in the published SPEC. Use-case IDs (UC-n) match `docs/SPEC.md` requirement IDs.
+Mermaid sources for the app's structure. GitHub renders Mermaid inside fenced code blocks in
+Markdown, not in a bare `.mmd` file, so these are read either in an editor with a Mermaid preview or
+by pasting the source into a ```` ```mermaid ```` block.
 
 | File                       | What                                                   |
 | -------------------------- | ------------------------------------------------------ |
@@ -10,4 +12,5 @@ Mermaid sources (`.mmd`) render natively on GitHub and in the published SPEC. Us
 | `04-day-crud-sequence.mmd` | List, create, edit, delete with cache invalidation     |
 | `05-navigation.mmd`        | Route map                                              |
 
-Note: `UC-n` in `01-use-cases.mmd` maps 1:1 to `US-n` in SPEC 2.1. `US-n` is the canonical form used in commits, PR titles and tests.
+`UC-n` in `01-use-cases.mmd` numbers the assignment's user stories in order: login, view a day, add,
+edit, delete.

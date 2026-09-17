@@ -4,22 +4,15 @@ import { toAuth } from '@/components/features/auth/useSession';
 import { startOfWeek, weekDays } from '@/lib/date';
 import type { Session } from '@/lib/storage';
 
-/**
- * The one key a week lives under. Exported because five mutations invalidate it, and a week that
- * two of them spelled differently would leave the strip and the grid disagreeing.
- */
+/** The one key a week lives under. Exported because five mutations invalidate it, and a week that
+ * two of them spelled differently would leave the strip and the grid disagreeing. */
 export function weekQueryKey(session: Session, date: string) {
 	return ['week-entries', session.personId, startOfWeek(date)] as const;
 }
 
-/**
- * Every entry in the week a date falls in - one request, keyed on its Monday, so stepping between
- * days inside a week reuses the cache (SPEC 6.3).
- *
- * The same query the week strip reads: `useWeekTotals` is this with a `select` over it. They were
- * briefly two keys over identical requests, which made the timesheet fetch the week twice and gave
- * every mutation a second thing to remember to invalidate.
- */
+/** Every entry in the week a date falls in - one request, keyed on its Monday, so stepping between
+ * days inside a week reuses the cache. `useWeekTotals` is this with a `select` over it; they were
+ * briefly two keys over identical requests, which fetched the week twice. */
 export function weekEntriesQueryOptions(session: Session, date: string) {
 	const days = weekDays(date);
 	const [from = date] = days;

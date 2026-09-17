@@ -1,11 +1,5 @@
-/**
- * The isometric illustrations from the design system's illustration sheet. Decorative: each is
- * `aria-hidden` and always sits beside a sentence that carries the meaning, so nothing is lost
- * when they are not rendered (R-7: never an illustration alone).
- *
- * Inline rather than files in `assets/`: they are two-colour, gradient-filled and tiny, and an
- * `<img>` would cost a request each and could not inherit anything.
- */
+/** Decorative illustrations: each is `aria-hidden` and always sits beside a sentence that carries the
+ * meaning. Inline rather than files in `assets/`, which would cost a request each. */
 function Gradients({ prefix }: { prefix: string }) {
 	return (
 		<defs>

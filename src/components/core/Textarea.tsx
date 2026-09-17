@@ -1,16 +1,8 @@
 import * as React from 'react';
 import { cn } from '@/lib/utils';
 
-/**
- * shadcn's Textarea, restyled to the design tokens (guidebook 16: copied in, edited here).
- *
- * Sized and coloured to match `Input`, including `placeholder:text-muted` - Tailwind's Preflight
- * leaves the placeholder at the browser's own grey, which is not this design's muted.
- *
- * `resize-none` because the design draws a fixed box and a drag handle would break the sticky
- * footer's layout on mobile. `field-sizing-content` grows it with the text instead, which is the
- * autogrow the brief asks for and is a CSS property rather than a resize observer.
- */
+/** shadcn's Textarea, copied in and restyled to the design tokens. `resize-none` because a drag
+ * handle would break the sticky footer on mobile; `field-sizing-content` autogrows it instead. */
 function Textarea({ className, ...props }: React.ComponentProps<'textarea'>) {
 	return (
 		<textarea

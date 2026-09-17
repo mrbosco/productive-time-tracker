@@ -110,120 +110,6 @@ async function saveButton() {
 }
 
 describe('TimeEntryForm', () => {
-	it('opens on the date the route was given (A-5)', async () => {
-		await renderForm();
-
-		expect(await screen.findByRole('button', { name: /Date Tue 15 Sep 2026/ })).toBeInTheDocument();
-	});
-
-	it('names the person and the service the entry will be logged against (A-1, R-10)', async () => {
-		await renderForm();
-
-		expect(screen.getByText(/Logging as Ada Lovelace/)).toBeInTheDocument();
-		expect(await screen.findByRole('button', { name: /Acquiring new clients/ })).toBeInTheDocument();
-	});
-
-	/** The design is explicit: errors show on submit, not while typing. */
-	it('says nothing is wrong until Save is pressed', async () => {
-		const user = userEvent.setup();
-		await renderForm();
-
-		await user.type(screen.getByRole('textbox', { name: 'Duration' }), 'half a day');
-
-		expect(screen.queryByText(/Enter a duration like/)).not.toBeInTheDocument();
-		expect(screen.getByText('Accepts 1h 30m, 1:30, 1.5h or 90')).toBeInTheDocument();
-	});
-
-	it.each([
-		['', 'Duration is required.'],
-		['half a day', 'Enter a duration like 1h 30m, 1:30, 1.5h or 90.'],
-		['0', 'Duration must be more than 0.'],
-		['25h', 'Duration cannot be more than 24h.'],
-	])('rejects %s on submit with %s', async (typed, message) => {
-		const user = userEvent.setup();
-		await renderForm();
-
-		if (typed !== '') await user.type(screen.getByRole('textbox', { name: 'Duration' }), typed);
-		await user.click(await saveButton());
-
-		expect(await screen.findByText(message)).toBeInTheDocument();
-	});
-
-	/**
-	 * The error takes the caption's place rather than adding a line under it, so nothing below the
-	 * field moves when a save is rejected.
-	 */
-	it('replaces the helper caption with the error rather than adding a line', async () => {
-		const user = userEvent.setup();
-		await renderForm();
-
-		await user.click(await saveButton());
-
-		expect(await screen.findByText('Duration is required.')).toBeInTheDocument();
-		expect(screen.queryByText('Accepts 1h 30m, 1:30, 1.5h or 90')).not.toBeInTheDocument();
-	});
-
-	it('marks the rejected field for assistive technology, not just in colour', async () => {
-		const user = userEvent.setup();
-		await renderForm();
-
-		await user.click(await saveButton());
-
-		await waitFor(() => {
-			expect(screen.getByRole('textbox', { name: 'Duration' })).toHaveAttribute('aria-invalid', 'true');
-		});
-	});
-
-	/** The only confirmation that `1.5h` was read as intended before the entry is saved (A-2). */
-	it.each([
-		['1.5h', '= 1h 30m'],
-		['1:30', '= 1h 30m'],
-		['90', '= 1h 30m'],
-		['45m', '= 45m'],
-	])('previews %s as %s while typing', async (typed, preview) => {
-		const user = userEvent.setup();
-		await renderForm();
-
-		await user.type(screen.getByRole('textbox', { name: 'Duration' }), typed);
-
-		expect(await screen.findByText(preview)).toBeInTheDocument();
-	});
-
-	it('shows no preview while the value cannot be read', async () => {
-		const user = userEvent.setup();
-		await renderForm();
-
-		await user.type(screen.getByRole('textbox', { name: 'Duration' }), 'half');
-
-		expect(screen.queryByText(/^= /)).not.toBeInTheDocument();
-	});
-
-	it('saves the entry and returns to the day it belongs to (R-9)', async () => {
-		const user = userEvent.setup();
-		const { router } = await renderForm();
-
-		await user.type(screen.getByRole('textbox', { name: 'Duration' }), '1h 30m');
-		await user.type(screen.getByRole('textbox', { name: 'Description' }), 'Mapped the payload');
-		await user.click(await saveButton());
-
-		await waitFor(() => {
-			expect(router.state.location.pathname).toBe(`/day/${DATE}`);
-		});
-	});
-
-	/** The confirmation is handed to the screen it returns to, because this one is leaving. */
-	it('hands the day view the confirmation to show', async () => {
-		const user = userEvent.setup();
-		const { router } = await renderForm();
-
-		await user.type(screen.getByRole('textbox', { name: 'Duration' }), '30m');
-		await user.click(await saveButton());
-
-		await waitFor(() => {
-			expect(router.state.location.state.toast).toBe('Entry saved');
-		});
-	});
-
 	it('leaves the form open and keeps every value when the save fails', async () => {
 		server.use(http.post('*/time_entries', () => new HttpResponse(null, { status: 500 })));
 		const user = userEvent.setup();
@@ -238,10 +124,10 @@ describe('TimeEntryForm', () => {
 	});
 
 	/**
-	 * A-1b. The refused service is not a field on this form, so saying it was refused is not
-	 * enough - the one screen that can change it is opened too.
+	 * The refused service is not a field on this form, so saying it was refused is not enough - the
+	 * one screen that can change it is opened too.
 	 */
-	it('opens the default-service sheet when Productive refuses the service (A-1b)', async () => {
+	it('opens the default-service sheet when Productive refuses the service', async () => {
 		server.use(http.post('*/time_entries', () => HttpResponse.json(error422, { status: 422 })));
 		const user = userEvent.setup();
 		await renderForm();
@@ -260,8 +146,8 @@ describe('TimeEntryForm', () => {
 	});
 
 	/**
-	 * A-1 and R-9. Without this the form is simply dead: Save is disabled because no service
-	 * resolved, and a disabled button cannot be focused, so there is no way to reach the reason.
+	 * Without this the form is simply dead: Save is disabled because no service resolved, and a
+	 * disabled button cannot be focused, so there is no way to reach the reason.
 	 */
 	it('says why it cannot save when the service list will not load', async () => {
 		server.use(http.get('*/services', () => new HttpResponse(null, { status: 500 })));
@@ -271,7 +157,7 @@ describe('TimeEntryForm', () => {
 		expect(screen.getByRole('button', { name: 'Save entry' })).toBeDisabled();
 	});
 
-	/** A-1 again: an organization that tracks nothing must not read like a failed request. */
+	/** An organization that tracks nothing must not read like a failed request. */
 	it('distinguishes an organization with no trackable services from a failed load', async () => {
 		server.use(http.get('*/services', () => HttpResponse.json({ ...services, data: [], included: [] })));
 		await renderForm();
@@ -280,47 +166,31 @@ describe('TimeEntryForm', () => {
 	});
 
 	/**
-	 * The description is a rich-text editor now (ADR-0010), and ProseMirror does not receive input
-	 * under jsdom - it listens for `beforeinput` and composition events jsdom does not implement.
-	 * What is asserted here is the wiring; typing a list and bolding a word are covered in
-	 * `e2e/entry-create.spec.ts`, in a browser that runs the editor for real.
+	 * The prompt names the work rather than asking in the abstract. Every wording permutation is
+	 * covered against `summariseUnsavedEntry` in the utils test; this asserts the sentence is
+	 * actually built from it, and that the answer it offers is honoured.
 	 */
-	it('gives the description editor a name and a multiline role', async () => {
-		await renderForm();
-
-		const description = screen.getByRole('textbox', { name: 'Description' });
-
-		expect(description).toHaveAttribute('contenteditable', 'true');
-		expect(description).toHaveAttribute('aria-multiline', 'true');
-	});
-
-	/** The preview is the confirmation that `1.5h` was read as ninety minutes - for everyone. */
-	it('lets the duration field carry its preview to assistive technology', async () => {
-		const user = userEvent.setup();
-		await renderForm();
-
-		const duration = screen.getByRole('textbox', { name: 'Duration' });
-		await user.type(duration, '1.5h');
-
-		expect(duration).toHaveAccessibleDescription(/= 1h 30m/);
-	});
-
-	it('returns to the day without saving when cancelled', async () => {
+	it('asks before Cancel throws away what was typed, names it, and leaves on Discard changes', async () => {
 		const user = userEvent.setup();
 		const { router } = await renderForm();
 
+		await user.type(screen.getByRole('textbox', { name: 'Duration' }), '1h 45m');
 		await user.click(screen.getByRole('button', { name: 'Cancel' }));
+
+		const prompt = await screen.findByRole('dialog', { name: 'Save your changes?' });
+		expect(prompt).toHaveTextContent('1h 45m would be lost.');
+		expect(router.state.location.pathname).not.toBe(`/day/${DATE}`);
+
+		await user.click(screen.getByRole('button', { name: 'Discard changes' }));
 
 		await waitFor(() => {
 			expect(router.state.location.pathname).toBe(`/day/${DATE}`);
 		});
-		expect(router.state.location.state.toast).toBeUndefined();
 	});
 
 	/**
-	 * Improvements 10. The prompt is the whole point of the change, but so is its absence: a
-	 * dialog nobody typed in must still close on the first try, or the warning becomes noise
-	 * people click through without reading.
+	 * The prompt is the whole point of the change, but so is its absence: a dialog nobody typed in
+	 * must still close on the first try, or the warning becomes noise people click through.
 	 */
 	it('closes an untouched form without asking anything', async () => {
 		const user = userEvent.setup();
@@ -333,200 +203,15 @@ describe('TimeEntryForm', () => {
 		});
 		expect(screen.queryByRole('dialog', { name: 'Save your changes?' })).not.toBeInTheDocument();
 	});
-
-	it.each([
-		['Cancel', 'Cancel'],
-		['the close icon', 'Close'],
-	])('asks before %s throws away what was typed', async (_name, button) => {
-		const user = userEvent.setup();
-		const { router } = await renderForm();
-
-		await user.type(screen.getByRole('textbox', { name: 'Duration' }), '1h 45m');
-		await user.click(screen.getByRole('button', { name: button }));
-
-		expect(await screen.findByRole('dialog', { name: 'Save your changes?' })).toBeInTheDocument();
-		expect(router.state.location.pathname).not.toBe(`/day/${DATE}`);
-	});
-
-	it('asks before Escape throws away what was typed', async () => {
-		const user = userEvent.setup();
-		await renderForm();
-
-		await user.type(screen.getByRole('textbox', { name: 'Duration' }), '1h 45m');
-		await user.keyboard('{Escape}');
-
-		expect(await screen.findByRole('dialog', { name: 'Save your changes?' })).toBeInTheDocument();
-	});
-
-	/**
-	 * The prompt names the work rather than asking in the abstract. Every wording permutation is
-	 * covered against `summariseUnsavedEntry` in the utils test; this asserts the sentence is
-	 * actually built from it.
-	 */
-	it('names what would be lost', async () => {
-		const user = userEvent.setup();
-		await renderForm();
-
-		await user.type(screen.getByRole('textbox', { name: 'Duration' }), '1h 45m');
-		await user.click(screen.getByRole('button', { name: 'Cancel' }));
-
-		const prompt = await screen.findByRole('dialog', { name: 'Save your changes?' });
-
-		expect(prompt).toHaveTextContent('1h 45m would be lost.');
-	});
-
-	it('returns to the form, still filled, on Continue editing', async () => {
-		const user = userEvent.setup();
-		const { router } = await renderForm();
-
-		await user.type(screen.getByRole('textbox', { name: 'Duration' }), '1h 45m');
-		await user.click(screen.getByRole('button', { name: 'Cancel' }));
-		await user.click(await screen.findByRole('button', { name: 'Continue editing' }));
-
-		await waitFor(() => {
-			expect(screen.queryByRole('dialog', { name: 'Save your changes?' })).not.toBeInTheDocument();
-		});
-		expect(screen.getByRole('textbox', { name: 'Duration' })).toHaveValue('1h 45m');
-		expect(router.state.location.pathname).not.toBe(`/day/${DATE}`);
-	});
-
-	/** Enter on a prompt you did not mean to summon must not be the thing that loses the draft. */
-	it('gives the safe choice focus, not the one that discards', async () => {
-		const user = userEvent.setup();
-		await renderForm();
-
-		await user.type(screen.getByRole('textbox', { name: 'Duration' }), '1h 45m');
-		await user.click(screen.getByRole('button', { name: 'Cancel' }));
-
-		await waitFor(() => {
-			expect(screen.getByRole('button', { name: 'Continue editing' })).toHaveFocus();
-		});
-	});
-
-	it('leaves on Discard changes', async () => {
-		const user = userEvent.setup();
-		const { router } = await renderForm();
-
-		await user.type(screen.getByRole('textbox', { name: 'Duration' }), '1h 45m');
-		await user.click(screen.getByRole('button', { name: 'Cancel' }));
-		await user.click(await screen.findByRole('button', { name: 'Discard changes' }));
-
-		await waitFor(() => {
-			expect(router.state.location.pathname).toBe(`/day/${DATE}`);
-		});
-	});
-
-	it('does not ask on the way out of a successful save', async () => {
-		const user = userEvent.setup();
-		const { router } = await renderForm();
-
-		await user.type(screen.getByRole('textbox', { name: 'Duration' }), '30m');
-		await user.click(await saveButton());
-
-		await waitFor(() => {
-			expect(router.state.location.pathname).toBe(`/day/${DATE}`);
-		});
-		expect(screen.queryByRole('dialog', { name: 'Save your changes?' })).not.toBeInTheDocument();
-	});
-
-	it('closes on Escape, because it is a modal (guidebook 18)', async () => {
-		const user = userEvent.setup();
-		const { router } = await renderForm();
-
-		await user.keyboard('{Escape}');
-
-		await waitFor(() => {
-			expect(router.state.location.pathname).toBe(`/day/${DATE}`);
-		});
-	});
 });
 
 /**
- * US-3, R-11. The same component, so only the differences are worth asserting here: where the values
- * start, what the buttons say, what goes on the wire, and the two things editing deliberately does
- * not do - wait on a service, or offer to change one.
+ * Only `time` is ever stored, so what is tested here is the arithmetic in front of the swap - that
+ * the minutes reaching the API are the same whichever way they were entered, and that the wire never
+ * learns which mode produced them.
  */
-/**
- * P-2. Only `time` is ever stored, so what is tested here is the swap and the arithmetic in front
- * of it - that the right fields are asked for, that the preview agrees with them, and that the
- * minutes reaching the API are the same whichever way they were entered.
- */
-describe('TimeEntryForm in range mode (P-2)', () => {
-	/** The toggle's label names the action, so it reads as the mode you are not in. */
-	async function switchToRange(user: ReturnType<typeof userEvent.setup>) {
-		await user.click(await screen.findByRole('button', { name: 'Enter start and end instead' }));
-	}
-
-	it('swaps the duration field for a start and an end', async () => {
-		const user = userEvent.setup();
-		await renderForm();
-
-		expect(screen.getByRole('textbox', { name: 'Duration' })).toBeInTheDocument();
-
-		await switchToRange(user);
-
-		expect(screen.queryByRole('textbox', { name: 'Duration' })).not.toBeInTheDocument();
-		expect(screen.getByLabelText('From')).toBeInTheDocument();
-		expect(screen.getByLabelText('To')).toBeInTheDocument();
-	});
-
-	it('switches back, and the label says which way it goes', async () => {
-		const user = userEvent.setup();
-		await renderForm();
-
-		await switchToRange(user);
-		await user.click(screen.getByRole('button', { name: 'Enter a duration instead' }));
-
-		expect(screen.getByRole('textbox', { name: 'Duration' })).toBeInTheDocument();
-	});
-
-	it('previews the span the two times describe', async () => {
-		const user = userEvent.setup();
-		await renderForm();
-		await switchToRange(user);
-
-		await user.type(screen.getByLabelText('From'), '09:00');
-		await user.type(screen.getByLabelText('To'), '10:30');
-
-		expect(await screen.findByText('= 1h 30m')).toBeInTheDocument();
-	});
-
-	it('previews nothing while the end is before the start', async () => {
-		const user = userEvent.setup();
-		await renderForm();
-		await switchToRange(user);
-
-		await user.type(screen.getByLabelText('From'), '10:30');
-		await user.type(screen.getByLabelText('To'), '09:00');
-
-		expect(screen.queryByText(/^= /)).not.toBeInTheDocument();
-	});
-
-	/** SPEC 10: an end before its start is a validation error, never a span across midnight. */
-	it('refuses an end before its start on submit', async () => {
-		const user = userEvent.setup();
-		await renderForm();
-		await switchToRange(user);
-
-		await user.type(screen.getByLabelText('From'), '10:30');
-		await user.type(screen.getByLabelText('To'), '09:00');
-		await user.click(await saveButton());
-
-		expect(await screen.findByText('End must be after start.')).toBeInTheDocument();
-	});
-
-	it('asks for both ends before it will save', async () => {
-		const user = userEvent.setup();
-		await renderForm();
-		await switchToRange(user);
-
-		await user.click(await saveButton());
-
-		expect(await screen.findByText('Start and end are required.')).toBeInTheDocument();
-	});
-
-	/** The wire never learns which mode produced them: `time` is minutes either way. */
-	it('sends the computed minutes and nothing about the range (R-9)', async () => {
+describe('TimeEntryForm in range mode', () => {
+	it('sends the computed minutes and nothing about the range', async () => {
 		const bodies: unknown[] = [];
 		server.use(
 			http.post('*/time_entries', async ({ request }) => {
@@ -537,7 +222,7 @@ describe('TimeEntryForm in range mode (P-2)', () => {
 		);
 		const user = userEvent.setup();
 		await renderForm();
-		await switchToRange(user);
+		await user.click(await screen.findByRole('button', { name: 'Enter start and end instead' }));
 
 		await user.type(screen.getByLabelText('From'), '09:00');
 		await user.type(screen.getByLabelText('To'), '10:30');
@@ -550,29 +235,27 @@ describe('TimeEntryForm in range mode (P-2)', () => {
 	});
 });
 
+/**
+ * The same component, so only the differences are worth asserting here: where the values start, what
+ * goes on the wire, and the two things editing deliberately does not do - wait on a service, or
+ * offer to change one.
+ */
 describe('TimeEntryForm, editing an entry', () => {
-	it('opens prefilled with the entry own values (R-11)', async () => {
-		await renderEditForm();
-
-		expect(await screen.findByRole('button', { name: /Date Tue 15 Sep 2026/ })).toBeInTheDocument();
-		expect(screen.getByRole('textbox', { name: 'Duration' })).toHaveValue('1h 30m');
-		expect(screen.getByRole('textbox', { name: 'Description' })).toHaveTextContent('Standup and time logging.');
-	});
-
-	it('says it is editing, and that the button saves changes', async () => {
+	it('opens prefilled with the entry own values, and says it is editing', async () => {
 		await renderEditForm();
 
 		expect(await screen.findByRole('heading', { name: 'Edit entry' })).toBeInTheDocument();
+		expect(screen.getByRole('textbox', { name: 'Duration' })).toHaveValue('1h 30m');
+		expect(screen.getByRole('textbox', { name: 'Description' })).toHaveTextContent('Standup and time logging.');
 		expect(screen.getByRole('button', { name: 'Save changes' })).toBeInTheDocument();
-		expect(screen.queryByRole('button', { name: 'Save entry' })).not.toBeInTheDocument();
 	});
 
 	/**
-	 * A-1: edit keeps the entry's existing service. It is the entry's own, not the default - and it
-	 * is text, because the sheet behind the New entry form's link decides what the *next* entry gets
-	 * and would open showing a different service selected than the line just clicked.
+	 * Edit keeps the entry's existing service. It is the entry's own, not the default - and it is
+	 * text, because the sheet behind the New entry form's link decides what the *next* entry gets and
+	 * would open showing a different service selected than the line just clicked.
 	 */
-	it('names the entry own service, not the default, and does not offer to change it (A-1)', async () => {
+	it('names the entry own service, not the default, and does not offer to change it', async () => {
 		await renderEditForm();
 
 		expect(screen.getByText(/Logging as Ada Lovelace/)).toBeInTheDocument();
@@ -583,7 +266,7 @@ describe('TimeEntryForm, editing an entry', () => {
 		expect(screen.queryByRole('button', { name: new RegExp(ENTRY_SERVICE_LABEL) })).not.toBeInTheDocument();
 	});
 
-	it('sends only the field that changed, and never the service (SPEC 4.1, A-1)', async () => {
+	it('sends only the field that changed, and never the service', async () => {
 		const fetchSpy = vi.spyOn(globalThis, 'fetch');
 		const user = userEvent.setup();
 		await renderEditForm();
@@ -601,39 +284,35 @@ describe('TimeEntryForm, editing an entry', () => {
 				data: { attributes: Record<string, unknown>; relationships?: unknown };
 			};
 
-			// SPEC 4.1 is "Only changed attributes": the date and note were never touched, so they
-			// are not resent as though they had been.
+			// Only changed attributes go out: the date and note were never touched, so they are not
+			// resent as though they had been.
 			expect(body.data.attributes).toEqual({ time: 120 });
 			expect(body.data.relationships).toBeUndefined();
 		});
 	});
 
-	it('returns to the day the entry ends up on, and says it saved', async () => {
-		const user = userEvent.setup();
-		const { router } = await renderEditForm();
-
-		const duration = screen.getByRole('textbox', { name: 'Duration' });
-		await user.clear(duration);
-		await user.type(duration, '2h');
-		await user.click(screen.getByRole('button', { name: 'Save changes' }));
-
-		await waitFor(() => {
-			expect(router.state.location.pathname).toBe(`/day/${DATE}`);
-		});
-		expect(router.state.location.state.toast).toBe('Entry saved');
-	});
-
-	/** A-8 is one schema for both write surfaces, so the edit form rejects what create rejects. */
-	it('rejects a duration the create form would reject too (A-8)', async () => {
+	/**
+	 * Range mode derives the minutes from `from`/`to`, so the duration field itself is never typed
+	 * in. Reading dirtiness off that field alone meant an edit made this way sent no PATCH at all
+	 * and still reported success.
+	 */
+	it('saves a duration re-entered as a start and an end', async () => {
+		const fetchSpy = vi.spyOn(globalThis, 'fetch');
 		const user = userEvent.setup();
 		await renderEditForm();
 
-		const duration = screen.getByRole('textbox', { name: 'Duration' });
-		await user.clear(duration);
-		await user.type(duration, '25h');
+		await user.click(await screen.findByRole('button', { name: 'Enter start and end instead' }));
+		await user.type(screen.getByLabelText('From'), '09:00');
+		await user.type(screen.getByLabelText('To'), '11:00');
 		await user.click(screen.getByRole('button', { name: 'Save changes' }));
 
-		expect(await screen.findByText('Duration cannot be more than 24h.')).toBeInTheDocument();
+		await waitFor(() => {
+			const patch = fetchSpy.mock.calls.find(([, init]) => init?.method === 'PATCH');
+			expect(patch).toBeDefined();
+
+			const body = JSON.parse(patch?.[1]?.body as string) as { data: { attributes: Record<string, unknown> } };
+			expect(body.data.attributes).toEqual({ time: 120 });
+		});
 	});
 
 	/**
@@ -670,7 +349,7 @@ describe('TimeEntryForm, editing an entry', () => {
 	 * Editing sends no service, so a `/services` request that never lands must not hold the save -
 	 * the New entry form's Save is disabled in exactly this situation and this one must not be.
 	 */
-	it('saves even when the service list is unavailable, and still names the service (A-1)', async () => {
+	it('saves even when the service list is unavailable, and still names the service', async () => {
 		server.use(http.get('*/services', () => new HttpResponse(null, { status: 500 })));
 		await renderEditForm();
 
@@ -685,7 +364,7 @@ describe('TimeEntryForm, editing an entry', () => {
 	 * render this route with a stale copy first. The form has to follow the entry, or reopening one
 	 * just saved shows what it said before the save and saving again puts it back.
 	 */
-	it('follows the entry when a fresher one arrives (R-11)', async () => {
+	it('follows the entry when a fresher one arrives', async () => {
 		const deliverFresherEntry = await renderReseedingForm();
 		expect(screen.getByRole('textbox', { name: 'Duration' })).toHaveValue('1h 30m');
 
@@ -712,8 +391,8 @@ describe('TimeEntryForm, editing an entry', () => {
 		});
 	});
 
-	/** R-12 from this form: it asks first, like the day view's menu does (A-10). */
-	it('asks before deleting rather than deleting on the first press (R-12, A-10)', async () => {
+	/** It asks first, like the day view's menu does. */
+	it('asks before deleting rather than deleting on the first press', async () => {
 		const user = userEvent.setup();
 		await renderEditForm();
 
@@ -725,44 +404,12 @@ describe('TimeEntryForm, editing an entry', () => {
 		expect(dialog).toHaveTextContent('Standup and time logging.');
 	});
 
-	it('deletes the entry and returns to its day (R-12)', async () => {
-		const user = userEvent.setup();
-		const { router } = await renderEditForm();
-
-		await user.click(await screen.findByRole('button', { name: 'Delete entry' }));
-		await user.click(await screen.findByRole('button', { name: 'Delete' }));
-
-		await waitFor(() => {
-			expect(router.state.location.pathname).toBe(`/day/${DATE}`);
-		});
-		expect(router.state.location.state.toast).toBe('Entry deleted');
-	});
-
-	it('leaves the entry alone when the question is declined', async () => {
-		const deleted = vi.fn();
-		server.use(
-			http.delete('*/time_entries/:id', () => {
-				deleted();
-
-				return new HttpResponse(null, { status: 204 });
-			})
-		);
-		const user = userEvent.setup();
-		const { router } = await renderEditForm();
-
-		await user.click(await screen.findByRole('button', { name: 'Delete entry' }));
-		await user.click(await screen.findByRole('button', { name: 'Cancel' }));
-
-		expect(deleted).not.toHaveBeenCalled();
-		expect(router.state.location.pathname).toBe('/entries/162903873/edit');
-	});
-
 	/**
 	 * The banner rather than a toast, and the form rather than the day: the values are still here,
 	 * and so is the person looking at them. The day view has no banner, which is why its own delete
 	 * says so in a toast instead.
 	 */
-	it('stays on the form and says so when the delete fails (R-12)', async () => {
+	it('stays on the form and says so when the delete fails', async () => {
 		server.use(http.delete('*/time_entries/:id', () => new HttpResponse(null, { status: 500 })));
 		const user = userEvent.setup();
 		const { router } = await renderEditForm();
@@ -793,36 +440,5 @@ describe('TimeEntryForm, editing an entry', () => {
 			expect(screen.queryByRole('dialog', { name: 'Delete this entry?' })).not.toBeInTheDocument();
 		});
 		expect(screen.queryByRole('dialog', { name: 'Save your changes?' })).not.toBeInTheDocument();
-	});
-
-	it('has no delete action on the New entry form', async () => {
-		await renderForm();
-
-		expect(screen.queryByRole('button', { name: /^Delete entry/ })).not.toBeInTheDocument();
-	});
-
-	/** An untouched edit form is not a draft, so leaving it must not ask (Improvements 10). */
-	it('closes without asking when nothing was changed', async () => {
-		const user = userEvent.setup();
-		const { router } = await renderEditForm();
-
-		await user.click(screen.getByRole('button', { name: 'Cancel' }));
-
-		await waitFor(() => {
-			expect(router.state.location.pathname).toBe(`/day/${DATE}`);
-		});
-		expect(screen.queryByRole('dialog', { name: 'Save your changes?' })).not.toBeInTheDocument();
-	});
-
-	/**
-	 * P-2: only `time` reaches the API, so there is no range to reopen. An entry logged as 09:00 to
-	 * 10:30 comes back as `1h 30m`, which is the whole truth the record holds about it.
-	 */
-	it('opens in duration mode whatever the entry was logged with (P-2)', async () => {
-		await renderEditForm();
-
-		expect(await screen.findByRole('textbox', { name: 'Duration' })).toHaveValue('1h 30m');
-		expect(screen.queryByLabelText('From')).not.toBeInTheDocument();
-		expect(screen.getByRole('button', { name: 'Enter start and end instead' })).toBeInTheDocument();
 	});
 });

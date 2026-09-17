@@ -8,12 +8,9 @@ export interface RouterContext {
 	auth: AuthContextValue;
 }
 
-/**
- * `auth` is filled in by `<RouterProvider context={{ auth }}>` in `App.tsx`, because it comes from
- * React state and the router is created once, outside React. The non-null assertion is the shape
- * TanStack documents for exactly this: the value is undefined only between `createRouter` and the
- * first render, and nothing runs in that window.
- */
+/** `auth` is filled in by `<RouterProvider context={{ auth }}>` in `App.tsx`, because it comes from
+ * React state and the router is created once outside React. The non-null assertion is the shape
+ * TanStack documents for it: undefined only between `createRouter` and the first render. */
 export function createAppRouter(queryClient: QueryClient) {
 	return createRouter({
 		routeTree,
@@ -28,14 +25,8 @@ declare module '@tanstack/react-router' {
 		router: ReturnType<typeof createAppRouter>;
 	}
 
-	/**
-	 * History state, which travels with a navigation but never appears in the URL.
-	 *
-	 * `toast` is how a write tells the screen it returns to that it succeeded: the entry form
-	 * navigates to the day and the day raises the confirmation. Keeping it out of the URL keeps it
-	 * out of anything the user shares; the day view spends it once shown, because history state
-	 * itself does survive a reload.
-	 */
+	/** History state: travels with a navigation, never appears in the URL. `toast` is how a write
+	 * tells the screen it returns to that it succeeded. */
 	interface HistoryState {
 		toast?: string;
 	}

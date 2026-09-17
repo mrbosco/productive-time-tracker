@@ -17,20 +17,9 @@ interface ConfirmDialogProps {
 	initialFocus?: 'confirm' | 'cancel';
 }
 
-/**
- * The question asked before something is lost (SPEC 6.1, design brief 4).
- *
- * `initialFocus` defaults to the cancel button, and that default is the reason this component
- * exists rather than each caller assembling a `Dialog`. Radix focuses the first tabbable, so Enter
- * pressed on a dialog nobody meant to summon would take the affirmative - which for US-4 means a
- * saved entry is gone. The safe choice takes focus unless a caller says otherwise, and the one
- * caller that does (`UnsavedChangesDialog`) says so because there the affirmative *is* the safe
- * choice.
- *
- * Layered above whatever opened it. On the day view that is the screen, but the entry form is
- * itself a dialog, and an overlay on the default layer would dim the day and leave the form lit
- * over it - so both sit on the raised pair the unsaved prompt already used.
- */
+/** The question asked before something is lost. `initialFocus` defaults to cancel, which is why this
+ * exists rather than each caller assembling a `Dialog`: Radix focuses the first tabbable, so Enter
+ * would otherwise take the affirmative. */
 export function ConfirmDialog({
 	open,
 	onOpenChange,

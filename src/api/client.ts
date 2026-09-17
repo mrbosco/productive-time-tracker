@@ -1,13 +1,11 @@
-/**
- * Hand-written JSON:API client for the Productive API (ADR-0002).
- *
- * Endpoint facts and the response bodies these rules were derived from live in
- * `docs/api/README.md` and `docs/api/samples/`. Constraints: `.claude/rules/api-client.md`.
- */
+/** Hand-written JSON:API client for the Productive API. Endpoint facts and the response bodies these
+ * rules were derived from live in `docs/api/README.md` and `docs/api/samples/`. */
+
+import { z } from 'zod';
 
 const JSON_API_MEDIA_TYPE = 'application/vnd.api+json';
 
-/** Credentials travel as an argument, never as module state (ADR-0004). */
+/** Credentials travel as an argument, never as module state. */
 export interface Auth {
 	token: string;
 	organizationId: string;
@@ -18,10 +16,8 @@ export interface ResourceIdentifier {
 	id: string;
 }
 
-/**
- * A relationship the request did not `include` arrives as `{ meta: { included: false } }` - with no
- * `data` key at all. Absent `data` means "not requested", never "no related record".
- */
+/** A relationship the request did not `include` arrives as `{ meta: { included: false } }` - with no
+ * `data` key at all. Absent `data` means "not requested", never "no related record". */
 export interface Relationship {
 	data?: ResourceIdentifier | ResourceIdentifier[] | null;
 	meta?: { included?: boolean };
@@ -48,6 +44,36 @@ export interface JsonApiDocument {
 	included?: Resource[];
 	meta?: Partial<PageMeta>;
 }
+
+/**
+ * The envelope, validated rather than asserted.
+ *
+ * `JSON.parse` returns `any`, so without this the first thing that notices a changed wire shape is
+ * a `0h` where a duration should be - the defensive readers below turn a missing field into a
+ * plausible value. Parsing here turns it into an `ApiError` the UI already knows how to show.
+ *
+ * Loose objects on purpose: this validates the shape the client depends on and lets every other key
+ * through untouched, so a field the API adds is carried rather than stripped.
+ */
+const resourceIdentifierSchema = z.looseObject({ type: z.string(), id: z.string() });
+
+const relationshipSchema = z.looseObject({
+	data: z.union([resourceIdentifierSchema, z.array(resourceIdentifierSchema), z.null()]).optional(),
+	meta: z.looseObject({ included: z.boolean().optional() }).optional(),
+});
+
+const resourceSchema = z.looseObject({
+	id: z.string(),
+	type: z.string(),
+	attributes: z.record(z.string(), z.unknown()).optional(),
+	relationships: z.record(z.string(), relationshipSchema).optional(),
+});
+
+const jsonApiDocumentSchema = z.looseObject({
+	data: z.union([resourceSchema, z.array(resourceSchema)]),
+	included: z.array(resourceSchema).optional(),
+	meta: z.looseObject({}).optional(),
+});
 
 export interface ApiErrorDetail {
 	code: string | null;
@@ -118,17 +144,15 @@ async function readBody(response: Response): Promise<unknown> {
 	}
 }
 
-/**
- * Issues one request. No retry, no caching, no deduplication - TanStack Query owns all three.
- * Resolves to `null` for 204.
- */
+/** Issues one request. No retry, no caching, no deduplication - TanStack Query owns all three.
+ * Resolves to `null` for 204. */
 export async function request(auth: Auth, path: string, init: RequestInit = {}): Promise<JsonApiDocument | null> {
 	let response: Response;
 	let body: unknown;
 
 	try {
-		// Header construction is inside the try on purpose: the token is typed on the login screen
-		// (R-1), and `Headers.set` throws on a value carrying a newline or a non-Latin-1 character.
+		// Header construction is inside the try on purpose: the token is typed by hand, and
+		// `Headers.set` throws on a value carrying a newline or a non-Latin-1 character.
 		const headers = new Headers(init.headers);
 		headers.set('X-Auth-Token', auth.token);
 		headers.set('X-Organization-Id', auth.organizationId);
@@ -150,12 +174,18 @@ export async function request(auth: Auth, path: string, init: RequestInit = {}):
 
 	if (!response.ok) throw toApiError(response.status, body);
 
-	if (!isRecord(body) || !('data' in body)) {
-		throw new ApiError(response.status, [], 'The Productive API returned an unreadable response.');
+	const parsed = jsonApiDocumentSchema.safeParse(body);
+
+	if (!parsed.success) {
+		// The failing path, because "data: invalid input" points at the part of the envelope that
+		// changed far faster than "unreadable response" does.
+		const [issue] = parsed.error.issues;
+		const where = issue === undefined ? '' : ` (${issue.path.join('.') || 'root'}: ${issue.message})`;
+
+		throw new ApiError(response.status, [], `The Productive API returned an unexpected response shape${where}.`);
 	}
 
-	// Shape is guarded above; interfaces carry no index signature, hence the widening hop.
-	return body as unknown as JsonApiDocument;
+	return parsed.data;
 }
 
 export function requireDocument(document: JsonApiDocument | null): JsonApiDocument {
@@ -201,10 +231,8 @@ export function readResource(document: JsonApiDocument): Resource {
 	return resource;
 }
 
-/**
- * Resolves a to-one relationship to its ID. Returns null in three cases the caller cannot tell
- * apart - not requested, explicitly null, or to-many - so never surface it to a user as "none".
- */
+/** Resolves a to-one relationship to its ID. Returns null in three cases the caller cannot tell
+ * apart - not requested, explicitly null, or to-many - so never surface it to a user as "none". */
 export function readRelationshipId(resource: Resource, name: string): string | null {
 	const data = resource.relationships?.[name]?.data;
 	if (data === undefined || data === null || Array.isArray(data)) return null;

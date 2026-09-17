@@ -13,10 +13,10 @@ TanStack Query for server state; a small typed client (`src/api/client.ts`) that
 ## Rationale
 
 - TanStack Query gives per-key caching, invalidation, optimistic updates and request de-duplication, which directly addresses the "efficiency" criterion (one request per day view, cache reuse when navigating back).
-- A hand-written client (about 100 lines) keeps the JSON:API handling explicit and reviewable; datx would hide it behind a store abstraction with a learning curve that does not fit the budget.
+- A hand-written client (about 240 lines) keeps the JSON:API handling explicit and reviewable; datx would hide it behind a store abstraction with a learning curve that does not fit the budget.
 - Types are derived from recorded sample responses (`docs/api/samples/`), not from the 130k-line OpenAPI file, to avoid generating thousands of unused types.
 
 ## Consequences
 
-- Relationships are resolved manually (`included` lookup helper). Acceptable for two relationships (person, service).
+- Relationships are resolved manually (`included` lookup helper). Acceptable for this app's relationship depth (service and the company/project/deal chain behind it).
 - If the app grew to many resources, generating types from OpenAPI would be the next step.

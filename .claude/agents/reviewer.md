@@ -6,8 +6,6 @@ tools: Read, Grep, Glob, Bash
 
 You review a diff. **You never edit, stage, commit or push.** Use Bash only for read-only inspection: `git diff`, `git status`, `git log`, `git show`. Nothing that writes.
 
-Note `main` may have zero commits, in which case `git diff HEAD` fails - use `git status --short` and `git diff --cached` instead.
-
 ## Read first
 
 - `docs/SPEC.md` - the requirement rows the change claims to satisfy
@@ -17,7 +15,7 @@ Note `main` may have zero commits, in which case `git diff HEAD` fails - use `gi
 
 ## Checklist
 
-**Requirements.** Does the diff actually satisfy every `R-` row traced to the story, or only the headline one? Does it contradict an assumption in SPEC 5 or an ADR? Does it build something listed in SPEC 9 as out of scope?
+**Requirements.** Does the diff actually satisfy the whole requirement, or only the headline of it? Does it contradict an assumption in SPEC 4 or an ADR? Does it build something listed in SPEC 8 as out of scope?
 
 **Structure (guidebook 1-5).** Right domain under `src/components/`? `core` / `shared` / `features` used as defined? API access in `src/api/`, one module per resource? Route components in `src/routes/`? Is `routeTree.gen.ts` edited by hand (it must not be)?
 

@@ -17,7 +17,7 @@ import { type Session, writeSession } from '@/lib/storage';
  * The app's staleness, not zero.
  *
  * `staleTime: 0` is the usual advice for tests and it hid a real bug: `fetchQuery` inherits the
- * client's staleness, so X-4's "refetch the timer to learn its entry" answered from a cache the
+ * client's staleness, so the timer's "refetch to learn its entry" answered from a cache the
  * app had filled a moment earlier and the pill never started. Under a zero-stale client that
  * fetch always went to the network and the test passed. Matching `createQueryClient` costs
  * nothing - every test starts with an empty cache - and keeps that class of bug catchable.
@@ -62,8 +62,8 @@ function createTestRouter(ui: ReactElement, initialEntry: string) {
 /**
  * A service with every level above it unset, so a test names only the ones it is about.
  *
- * Here rather than per file (testing.md rule 1): a service now carries five levels of hierarchy for
- * UI-1 and UI-2, and seven test files were each spelling all of them out to set one.
+ * Here rather than per file: a service carries five levels of hierarchy for the card's avatar and
+ * meta line, and seven test files were each spelling all of them out to set one.
  */
 export function buildService(overrides: Partial<Service> = {}): Service {
 	return {
@@ -117,8 +117,8 @@ export async function renderWithProviders(ui: ReactElement, { session, initialEn
 	/*
 	 * `TimerProvider` only when there is a session, because it needs one - and because a screen
 	 * rendered without one is a screen behind the auth boundary, where no timer exists. Extended
-	 * here rather than wrapped per file (testing.md rule 1): the day view and the app bar both read
-	 * the timer now, and X-5's banner will be the third.
+	 * here rather than wrapped per file: the day view, the app bar and the idle banner all read the
+	 * one timer.
 	 */
 	function Wrapper({ children }: { children: ReactNode }) {
 		return (

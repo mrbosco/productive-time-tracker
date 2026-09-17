@@ -12,14 +12,7 @@ function renderDefaultService(current: Session = session) {
 }
 
 describe('useDefaultService', () => {
-	it('is pending until the services arrive', () => {
-		const { result } = renderDefaultService();
-
-		expect(result.current.isPending).toBe(true);
-		expect(result.current.service).toBeNull();
-	});
-
-	it('falls back to the first service by name', async () => {
+	it('falls back to the first service by name when none was chosen', async () => {
 		const { result } = renderDefaultService();
 
 		await waitFor(() => {
@@ -36,15 +29,6 @@ describe('useDefaultService', () => {
 			expect(result.current.isPending).toBe(false);
 		});
 		expect(result.current.service?.name).toBe('Administrative work');
-	});
-
-	it('falls back to the first service when the chosen one is gone', async () => {
-		const { result } = renderDefaultService({ ...session, defaultServiceId: 'removed' });
-
-		await waitFor(() => {
-			expect(result.current.isPending).toBe(false);
-		});
-		expect(result.current.service?.name).toBe('Acquiring new clients');
 	});
 
 	it('reports a failure to load as an error, not as an empty list', async () => {

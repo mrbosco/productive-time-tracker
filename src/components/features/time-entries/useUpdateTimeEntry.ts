@@ -9,53 +9,29 @@ import type { Session } from '@/lib/storage';
 
 interface UpdateTimeEntryInput {
 	id: string;
-	/** The date the entry had before this edit, so the day it left is invalidated too. */
 	previousDate: string;
-	/** The date it has after it, changed or not: the day it landed on is invalidated either way. */
 	date: string;
-	/**
-	 * Only the attributes that actually changed (SPEC 4.1, "Only changed attributes"). Separate from
-	 * `date` above because that one is needed for the cache keys whether or not it was edited, and
-	 * routing information must not decide what goes on the wire.
-	 */
+	/** Only the attributes that actually changed. Separate from `date` above, which is needed for the
+	 * cache keys whether or not it was edited: cache routing must not decide what goes on the wire. */
 	changes: Partial<TimeEntryInput>;
 }
 
-/**
- * Editing a time entry (R-11).
- *
- * The service is never sent. A-1 decided that edit keeps the entry's existing service, so the only
- * attributes that can reach the wire are date, time and note - and of those, only the ones the form
- * reports as actually edited (SPEC 4.1).
- *
- * Where the create hook invalidates two keys, this one invalidates up to five, because an edit can
- * move an entry to another day. SPEC 4.2 asks for "that date (and the old date if the date was
- * changed on edit)", and X-1's week strip means each date drags its Monday along: leaving the old
- * week alone would show the entry's minutes on two weeks at once. A `Set` collapses them back to
- * two keys when the date did not change, so the ordinary edit costs what it did before.
- *
- * Nothing is updated optimistically. SPEC 4.2 asks for that on delete only, and a PATCH response
- * carries just the `organization` relationship (api-client rule 15), so an optimistic row could not
- * render the service name every card shows.
- */
+/** Editing a time entry. The service is never sent, and an edit can move an entry to another day, so
+ * both days and both weeks are invalidated. Only the duration is written optimistically (below): a
+ * PATCH response carries just `organization`, so a row could not render the service name. */
 export function useUpdateTimeEntry(session: Session) {
 	const queryClient = useQueryClient();
 
 	return useMutation({
 		mutationFn: ({ id, changes }: UpdateTimeEntryInput) => updateTimeEntry(toAuth(session), id, changes),
-		/**
-		 * Optimistic on the duration alone (`Card Actions.dc.html`: "both must land on the same
-		 * optimistic-update path"). The inline field is a correction made where the number is
-		 * written, so the number has to move with it - waiting for a PATCH and a refetch reads as
-		 * the edit having been ignored, which is what it was reported as.
-		 *
-		 * Only when `minutes` is the one thing changing. A date move rewrites which day an entry is
-		 * on, which is more than a cache can honestly guess at.
-		 */
+		/** Optimistic on the duration alone. The inline field is a correction made where the number is
+		 * written, so the number has to move with it - waiting for a PATCH and a refetch reads as the
+		 * edit having been ignored. A date move rewrites which day an entry is on, which is more than
+		 * a cache can honestly guess at. */
 		onMutate: ({ id, date, previousDate, changes }) => {
 			if (changes.minutes === undefined || date !== previousDate) return undefined;
 
-			const keys = [['time-entries', session.personId, date], [...weekQueryKey(session, date)]];
+			const keys = [[...weekQueryKey(session, date)]];
 			const previous = keys.map((key) => [key, queryClient.getQueryData<TimeEntry[]>(key)] as const);
 
 			for (const [key] of previous) {
@@ -72,25 +48,21 @@ export function useUpdateTimeEntry(session: Session) {
 		},
 
 		onSuccess: (_entry, { id, previousDate, date }) => {
-			/*
-			 * Removed, not invalidated, and synchronously - nothing observes this key, because the
-			 * edit route reads its entry from a loader rather than a subscription, and
-			 * `invalidateQueries` only refetches queries something is watching. An invalidated one
-			 * would sit in the cache stale and `ensureQueryData` would hand it straight back, so
-			 * reopening an entry just saved prefilled the values from before the save - and saving
-			 * that form put them back.
-			 */
+			/* Removed, not invalidated: nothing observes this key, because the edit route reads its
+			 * entry from a loader, and `invalidateQueries` only refetches what something watches. An
+			 * invalidated one would sit stale and `ensureQueryData` would hand it straight back, so
+			 * reopening an entry just saved prefilled the values from before the save. */
 			queryClient.removeQueries({ queryKey: ['time-entry', id] });
 
-			const days = new Set([previousDate, date]);
+			// Both weeks, because an edit can move an entry across a week boundary. A Set, because
+			// most edits do not and that is then one invalidation rather than two of the same key.
 			const weeks = new Set([startOfWeek(previousDate), startOfWeek(date)]);
 
 			// Awaited so the day list is already refetching when the route changes; it then renders
 			// the edited entry rather than briefly showing the value that was just replaced.
-			return Promise.all([
-				...[...days].map((day) => queryClient.invalidateQueries({ queryKey: ['time-entries', session.personId, day] })),
-				...[...weeks].map((monday) => queryClient.invalidateQueries({ queryKey: weekQueryKey(session, monday) })),
-			]);
+			return Promise.all(
+				[...weeks].map((monday) => queryClient.invalidateQueries({ queryKey: weekQueryKey(session, monday) }))
+			);
 		},
 	});
 }

@@ -1,22 +1,14 @@
 import { useEffect, useRef } from 'react';
 import { cn } from '@/lib/utils';
 
-/** The design's dismissal delay (`TimeTracker.dc.html`). */
 const TOAST_DURATION_MS = 2600;
 
-/**
- * Longer for a failure. A confirmation can go once it has been read - the thing it describes stays
- * on screen. A failure is the opposite: it reports something that did not happen, it is the only
- * report of it where there is no banner to carry one (SPEC 4.2), and the screen behind it looks
- * exactly as it did before the attempt.
- */
+/** Longer for a failure: a confirmation can go once read, where a failure reports something that
+ * did *not* happen and the screen behind looks unchanged. */
 const ERROR_TOAST_DURATION_MS = 6000;
 
-/**
- * Longer again when the toast carries an action, because the action is the point of it: an Undo
- * that leaves before it can be reached is a confirmation with a button on it (`Card Actions.dc.html`,
- * "Undo, not confirm").
- */
+/** Longer again with an action: an Undo that leaves before it can be reached is just a
+ * confirmation with a button on it. */
 const ACTION_TOAST_DURATION_MS = 8000;
 
 function CheckIcon() {
@@ -42,27 +34,11 @@ interface ToastProps {
 	onDismiss: () => void;
 	durationMs?: number;
 	variant?: 'success' | 'error';
-	/** One way back out of what just happened. Dismisses the toast after running. */
 	action?: { label: string; onAction: () => void };
 }
 
-/**
- * The confirmation that a write landed: bottom-centre on mobile, bottom-right on desktop
- * (`05-global-toasts.png`).
- *
- * Presentational, and there is deliberately no provider or store behind it. Every toast in this
- * app is raised by the screen the user is standing on - the day view, after a create returns to it
- * or a delete completes in place - so the state is local, which is what SPEC 6.3 asks for.
- *
- * Two variants, which is what the design's component sheet draws. The build notes preferred a
- * form's error banner to an error toast, and where there is a form that still holds - the entry
- * form reports its own failures inline, beside the values that failed. The day view has no banner:
- * a delete that fails there has nowhere else to be said, and SPEC 4.2 asks for it in as many words.
- *
- * `role="status"` for a success, because it confirms something the user just did and can be
- * announced politely. An error is `role="alert"`: it reports that what they asked for did not
- * happen, which is worth interrupting for.
- */
+/** The confirmation that a write landed. No provider behind it - every toast is raised by the screen
+ * the user is standing on. `role="alert"` for an error, `status` for a success. */
 export function Toast({ children, onDismiss, durationMs, variant = 'success', action }: ToastProps) {
 	const delay =
 		durationMs ??
@@ -71,14 +47,8 @@ export function Toast({ children, onDismiss, durationMs, variant = 'success', ac
 			: variant === 'error'
 				? ERROR_TOAST_DURATION_MS
 				: TOAST_DURATION_MS);
-	/**
-	 * The timer is keyed on the message and the delay, never on `onDismiss`.
-	 *
-	 * Callers pass an inline arrow - which is the readable thing to write - and a new one arrives
-	 * on every parent render. Depending on it would clear and restart the countdown each time, so
-	 * a toast on a screen that re-renders could hang around indefinitely. The handler is read from
-	 * a ref instead, which is the referential stability guidebook 11 allows memoising for.
-	 */
+	/** Keyed on the message and the delay, never on `onDismiss`: callers pass an inline arrow, and a
+	 * new one each render would restart the countdown, so the toast could hang around forever. */
 	const dismiss = useRef(onDismiss);
 
 	useEffect(() => {
@@ -103,10 +73,6 @@ export function Toast({ children, onDismiss, durationMs, variant = 'success', ac
 				'md:inset-x-auto md:right-8 md:bottom-8 md:px-0'
 			)}
 		>
-			{/*
-			 * The wrapper ignores the pointer so a toast never swallows a click on what is behind
-			 * it; the card takes it back only when there is something in there to click.
-			 */}
 			<div
 				className={cn(
 					'flex animate-sheet-up items-center gap-2.5 rounded-input border border-line bg-surface px-4 py-3 shadow-menu',

@@ -1,44 +1,20 @@
-/**
- * A time entry's `note` is nullable and may carry HTML: notes written in Productive's rich-text
- * editor come back as markup, and a recorded one reads `<ul><li><p>Probavam</p></li></ul>`
- * (A-9, `docs/api/samples/time-entries-day.json`).
- *
- * This module supplies the *text* of a note, for the callers that want a line rather than a
- * document: whether there is a description at all, and later a confirmation dialog or a window
- * title. Rendering a note with the structure it was written in is `components/shared/Note`
- * (ADR-0010, which superseded A-9's original "strip it all to text").
- *
- * `dangerouslySetInnerHTML` is never used by either: it is the one XSS door ADR-0004 leaves itself
- * the job of keeping shut, and neither path needs it.
- */
+/** A time entry's `note` may carry HTML: notes written in Productive's rich-text editor come back as
+ * markup, e.g. `<ul><li><p>Probavam</p></li></ul>`. This module supplies the *text* of one, for
+ * callers that want a line rather than a document; rendering a note with its structure intact is
+ * `components/features/time-entries/Note`. Neither uses `dangerouslySetInnerHTML`. */
 
-/**
- * Markup, as distinct from prose that happens to contain an angle bracket.
- *
- * Three readings were wrong before this one. Gating on `<` alone sent the app's own plain text
- * through the HTML parser, and the tokenizer reads `<` plus a letter as a tag it never finds the
- * end of: "if x<y then" came back as "if x". Gating on a tag *shape* still ate "Fixed <Button>
- * rendering". And gating on an opening tag from a closed list still ate "if a<b then c>d", because
- * `<b` is a real tag name and `[^>]*` happily swallowed " then c" up to the next `>`.
- *
- * So the test is a *closing* tag or a void element. Markup that needs stripping always has one -
- * Productive's editor emits `<p>`, `<ul>`, `<li>` pairs - and prose almost never does.
- */
+/** Markup, as distinct from prose that happens to contain an angle bracket. Three narrower tests were
+ * wrong before this one: gating on `<` ate "if x<y then" (the tokenizer reads `<y` as a tag it never
+ * closes), gating on a tag *shape* ate "Fixed <Button> rendering", and gating on an opening tag from
+ * a closed list ate "if a<b then c>d". So the test is a *closing* tag or a void element. */
 const PRODUCTIVE_MARKUP =
 	/<\/(?:p|div|span|ul|ol|li|a|b|i|u|s|em|strong|code|pre|blockquote|h[1-6]|table|thead|tbody|tr|td|th|script|style)>|<(?:br|hr|img)\b[^>]*\/?>/i;
 
-/**
- * Elements whose text is not prose and must never be rendered as the note.
- *
- * Exported because `components/shared/Note` walks the same document for elements rather than for
- * text, and two copies of this list would drift - which is exactly what happened once: the
- * renderer learned about foreign namespaces and this one did not, so the card decided it had a
- * description from text the renderer then refused to draw.
- *
- * `SVG` and `MATH` are skipped whole. Inside a foreign namespace `tagName` keeps its authored
- * case, so their children arrive lower case and slip past a comparison written in upper case -
- * see `isNonProse`.
- */
+/** Elements whose text is not prose and must never be rendered as the note. Exported because `Note`
+ * walks the same document, and two copies drifted once already - the renderer learned about foreign
+ * namespaces and this list did not, so a card claimed a description the renderer refused to draw.
+ * `SVG` and `MATH` are skipped whole: inside a foreign namespace `tagName` keeps its authored case,
+ * so their children arrive lower case and slip past an upper-case comparison. */
 export const NON_PROSE_TAGS = new Set([
 	'SCRIPT',
 	'STYLE',
@@ -51,7 +27,6 @@ export const NON_PROSE_TAGS = new Set([
 	'MATH',
 ]);
 
-/** The one place either walker decides an element carries no prose. */
 export function isNonProse(element: Element): boolean {
 	return NON_PROSE_TAGS.has(element.tagName.toUpperCase());
 }
@@ -77,10 +52,7 @@ const BLOCK_TAGS = new Set([
 	'UL',
 ]);
 
-/**
- * One break per boundary. Without the guard, two sibling paragraphs close and open against each
- * other and produce a blank line between every pair.
- */
+/** One break per boundary: two sibling paragraphs would otherwise leave a blank line between. */
 function pushBreak(out: string[]): void {
 	if (out.length > 0 && !out[out.length - 1].endsWith('\n')) out.push('\n');
 }
@@ -111,20 +83,13 @@ function collectText(node: Node, out: string[]): void {
 	}
 }
 
-/**
- * HTML to text, line breaks preserved. `null` becomes an empty string, and a note with no markup
- * is returned untouched - which is every note this app writes, so the common case never touches
- * the parser.
- *
- * `DOMParser` rather than a regex or a live element: it is the platform's own parser, it does not
- * execute scripts or fetch resources for the document it builds, and it gets nesting right where
- * a regex would not.
- */
-/** Whether a note carries markup, as distinct from prose containing an angle bracket. */
 export function containsMarkup(note: string): boolean {
 	return PRODUCTIVE_MARKUP.test(note);
 }
 
+/** HTML to text, line breaks preserved. A note with no markup is returned untouched, so the common
+ * case never reaches the parser. `DOMParser` rather than a regex or a live element: it builds an
+ * inert document that fetches nothing, and it gets nesting right. */
 export function toPlainText(note: string | null | undefined): string {
 	if (note === null || note === undefined) return '';
 	if (!containsMarkup(note)) return note;
@@ -137,9 +102,7 @@ export function toPlainText(note: string | null | undefined): string {
 		out
 			.join('')
 			// Source indentation arrives as its own text node, so a pretty-printed document would
-			// otherwise contribute newlines of its own on top of the boundaries. Every run of
-			// breaks collapses to one: a note is rendered as text in a card clamped to three
-			// lines, where a preserved blank line buys nothing.
+			// add newlines on top of the boundaries. Every run collapses to one.
 			.replace(/[^\S\n]*\n[\s]*/g, '\n')
 			.trim()
 	);

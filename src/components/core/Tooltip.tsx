@@ -2,23 +2,12 @@ import { Tooltip as TooltipPrimitive } from 'radix-ui';
 import type * as React from 'react';
 import { cn } from '@/lib/utils';
 
-/**
- * The dark panel a hover reveals (UI-2), on Radix.
- *
- * The provider is folded into the root rather than mounted once at the top of the app: the only
- * thing it carries is the delay, that delay is the design's and is the same everywhere, and a
- * caller that has to remember to wrap its own tooltip is a caller that will forget.
- *
- * Not a substitute for a label. Radix opens this on focus as well as hover and closes it on
- * Escape, but a tooltip is unreachable on touch either way - the caller is expected to draw
- * something else there (guidebook 18).
- */
+/** The dark panel a hover reveals, on Radix. Not a substitute for a label: a tooltip is unreachable
+ * on touch, so the caller draws something else there. */
 function Tooltip({
-	/*
-	 * A second by default, which is the week strip's case: seven cells you sweep across on the way
+	/* A second by default, which is the week strip's case: seven cells you sweep across on the way
 	 * to clicking one, where the design's 200ms fires four panels in passing. A caller whose target
-	 * is not swept over - the project name, which you have to aim at - passes the shorter delay.
-	 */
+	 * is not swept over - the project name, which you have to aim at - passes the shorter delay. */
 	delayDuration = 1000,
 	...props
 }: React.ComponentProps<typeof TooltipPrimitive.Root>) {

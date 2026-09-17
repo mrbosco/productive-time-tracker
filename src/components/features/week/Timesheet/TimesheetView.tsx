@@ -5,8 +5,6 @@ import { Toast } from '@/components/core/Toast';
 import { TimerDot } from '@/components/features/timer/TimerControl/TimerControl';
 import { useTimerContext } from '@/components/features/timer/TimerProvider';
 import { useElapsedSeconds } from '@/components/features/timer/useTimer';
-import { useCreateTimeEntry } from '@/components/features/time-entries/useCreateTimeEntry';
-import { useUpdateTimeEntry } from '@/components/features/time-entries/useUpdateTimeEntry';
 import { useExpectedHours } from '@/components/features/week/useExpectedHours';
 import { useWeekEntries } from '@/components/features/week/useWeekEntries';
 import { expectedMinutesOn } from '@/lib/availability';
@@ -14,10 +12,9 @@ import { addDays, dayOfMonth, formatDayShort, formatWeekdayAndDay, isWeekend, to
 import { formatDuration, formatElapsed } from '@/lib/duration';
 import type { Session } from '@/lib/storage';
 import { cn } from '@/lib/utils';
-import { TimesheetCellEditor } from './TimesheetCellEditor';
-import { type TimesheetCell, toTimesheet } from './Timesheet.utils';
+import { TimesheetCell } from './TimesheetCell';
+import { toTimesheet } from './Timesheet.utils';
 
-/** `Mon 14 – Sun 20 Sep`, or `This week` when it is. */
 function describeWeek(monday: string, today: string): string {
 	const sunday = addDays(monday, 6);
 	const span = `${formatWeekdayAndDay(monday)} – ${formatDayShort(sunday)}`;
@@ -40,23 +37,13 @@ function ChevronIcon({ back = false }: { back?: boolean }) {
 	);
 }
 
-/*
- * `min-content` rather than 0 on the day columns: a tracking cell holds a pill wide enough for
+/* `min-content` rather than 0 on the day columns: a tracking cell holds a pill wide enough for
  * `1h 9m 20s`, and a column allowed to squeeze below that clipped it against the next border.
- * Below the width where seven of those fit, the table scrolls sideways instead of collapsing.
- */
+ * Below the width where seven of those fit, the table scrolls sideways instead of collapsing. */
 const GRID = 'grid grid-cols-[minmax(220px,340px)_repeat(7,minmax(min-content,1fr))_120px]';
 
-/**
- * A week of logged time as a grid: one row per project and service, one column per day (UI-7).
- *
- * The day view answers "what did I do today"; this answers "is my week filled in", which is a
- * different question and a worse fit for a list. Rows are the pairs the week already has entries
- * for, plus anything added by hand.
- *
- * Desktop only, which is the design's call and not a shortcut: nine columns do not survive 390px,
- * and the day view is the mobile answer to the same question.
- */
+/** A week of logged time as a grid: one row per project and service, one column per day, plus any row
+ * added by hand. Desktop only - nine columns do not survive 390px, and the day view answers there. */
 export function TimesheetView({ session, date }: { session: Session; date: string }) {
 	const navigate = useNavigate();
 	const today = todayIso();
@@ -65,8 +52,6 @@ export function TimesheetView({ session, date }: { session: Session; date: strin
 	const { data: entries, isPending, isError, refetch } = useWeekEntries(session, date);
 	const availability = useExpectedHours(session);
 	const timer = useTimerContext();
-	const createEntry = useCreateTimeEntry(session);
-	const updateEntry = useUpdateTimeEntry(session);
 
 	const [toast, setToast] = useState<string | null>(null);
 
@@ -76,17 +61,11 @@ export function TimesheetView({ session, date }: { session: Session; date: strin
 
 		return minutes === null ? sum : (sum ?? 0) + minutes;
 	}, null);
-	/** Which row the timer is running on, for the pill that names it beside the week's numbers. */
 	const trackingRow = sheet.rows.find((row) =>
 		row.cells.some((cell) => cell.entries.some((entry) => entry.id === timer.running?.entryId))
 	);
-	/*
-	 * One number in all three places the design puts a running timer - the app bar, this pill and
-	 * the cell - and it is the timer's own elapsed, not anything summed from the grid. They used to
-	 * disagree: the pill showed the entry's stored total and the cell showed the day's, so a screen
-	 * with a timer on it printed three different durations and left the reader to guess which was
-	 * the clock.
-	 */
+	/** One number in all three places a running timer appears - the app bar, this pill and the cell - so
+	 * they cannot disagree by a second. */
 	const elapsed = formatElapsed(useElapsedSeconds(timer.running?.startedAt ?? null));
 
 	const isNonWorking = (day: string) => {
@@ -95,40 +74,8 @@ export function TimesheetView({ session, date }: { session: Session; date: strin
 		return minutes === null ? isWeekend(day) : minutes === 0;
 	};
 
-	/**
-	 * A cell is a sum, so writing one back is only unambiguous when it holds nothing or one entry.
-	 * With several the design's own answer applies: adjust the most recent. Which one moved is said
-	 * in the toast rather than marked on the cell - a count next to a duration read as a multiplier.
-	 */
-	async function saveCell(serviceId: string, cell: TimesheetCell, minutes: number) {
-		const [newest] = cell.entries;
-
-		try {
-			if (newest === undefined) {
-				await createEntry.mutateAsync({ date: cell.date, minutes, note: null, serviceId });
-			} else {
-				const rest = cell.entries.slice(1).reduce((sum, entry) => sum + entry.minutes, 0);
-				await updateEntry.mutateAsync({
-					id: newest.id,
-					previousDate: newest.date,
-					date: newest.date,
-					changes: { minutes: Math.max(0, minutes - rest) },
-				});
-			}
-			setToast(
-				cell.entries.length > 1
-					? `Entry saved · the most recent of ${String(cell.entries.length)} on that day`
-					: 'Entry saved'
-			);
-		} catch {
-			setToast('Could not save that cell.');
-			throw new Error('save failed');
-		}
-	}
-
 	return (
 		<>
-			{/* Below `md` the grid is unreadable rather than cramped, so it is not drawn at all. */}
 			<main className="mx-auto flex w-full max-w-[1376px] flex-col gap-5 px-4 pt-6 pb-14 md:px-8 md:pt-9 xl:px-12">
 				<div className="rounded-entry border border-line bg-surface p-6 text-center md:hidden">
 					<p className="text-list">The timesheet needs a wider screen. Rotate, or use the day view.</p>
@@ -278,7 +225,7 @@ export function TimesheetView({ session, date }: { session: Session; date: strin
 														key={cell.date}
 														className={cn('border-l border-line/60 p-0', isNonWorking(cell.date) && 'hatched')}
 													>
-														<TimesheetCellEditor
+														<TimesheetCell
 															cell={cell}
 															elapsed={elapsed}
 															rowName={`${row.project} ${row.service}`}
@@ -288,7 +235,6 @@ export function TimesheetView({ session, date }: { session: Session; date: strin
 																cell.entries.some((entry) => entry.id === timer.running?.entryId)
 															}
 															onStopTimer={timer.stop}
-															onSave={(minutes) => saveCell(row.serviceId, cell, minutes)}
 														/>
 													</td>
 												))}

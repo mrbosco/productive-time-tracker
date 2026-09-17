@@ -17,7 +17,7 @@ describe('formatDuration', () => {
 		expect(formatDuration(minutes)).toBe(expected);
 	});
 
-	/** A zero-minute entry is real data, not a placeholder - Productive writes them (A-8). */
+	/** A zero-minute entry is real data, not a placeholder - Productive writes them. */
 	it('renders a zero-minute entry rather than an empty string', () => {
 		expect(formatDuration(0)).toBe('0h');
 	});
@@ -61,7 +61,7 @@ describe('parseDuration', () => {
 		// Over the form's 24h rule, but still a duration: the schema rejects it, not the parser.
 		['25h', 1500],
 		['1440', 1440],
-		// Zero parses; A-8 rejects it in the schema, for a different reason and a different message.
+		// Zero parses; the form schema rejects it, for a different reason and a different message.
 		['0', 0],
 		['0h', 0],
 	])('reads %s as %i minutes', (input, expected) => {
@@ -111,7 +111,7 @@ describe('toMinutesOfDay', () => {
 	});
 
 	/**
-	 * Why P-2 got a second function rather than another pattern inside the first: the two read the
+	 * Why the start-and-end mode got a second function rather than another pattern inside the first: the two read the
 	 * same shape differently. `1:75` is an hour and seventy-five minutes of work, which is a real
 	 * duration; it is not a time of day, and a clock that accepted it would be inventing one.
 	 */
@@ -154,7 +154,7 @@ describe('formatElapsed', () => {
 	});
 
 	/**
-	 * Why X-4 does not reuse `formatDuration`: that one answers "what is this entry worth" in whole
+	 * Why the running timer does not reuse `formatDuration`: that one answers "what is this entry worth" in whole
 	 * minutes, and `0h` for a timer forty seconds old hides the only sign it is running.
 	 */
 	it('shows seconds where formatDuration shows nothing', () => {

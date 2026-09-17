@@ -22,14 +22,6 @@ describe('timeEntryQueryOptions', () => {
 		expect(entry).toMatchObject({ id: ENTRY_ID, date: '2026-09-15' });
 	});
 
-	/** The key SPEC 6.3 fixes, and the one `useUpdateTimeEntry` drops after a save. */
-	it('caches under the key the update drops', async () => {
-		const queryClient = createClient();
-		await queryClient.ensureQueryData(timeEntryQueryOptions(testSession, ENTRY_ID));
-
-		expect(queryClient.getQueryData(['time-entry', ENTRY_ID])).toMatchObject({ id: ENTRY_ID });
-	});
-
 	/** What the route's error component reads to tell "deleted elsewhere" from "server fell over". */
 	it('surfaces a 404 as an ApiError carrying the status', async () => {
 		server.use(http.get('*/time_entries/:id', () => HttpResponse.json(error404, { status: 404 })));

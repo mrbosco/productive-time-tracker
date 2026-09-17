@@ -11,7 +11,7 @@ That decision has two costs, and both are now visible in the running app:
 1. **A list is not rendered as a list.** `toPlainText` flattens `<ul><li><p>Probavam</p></li></ul>` to a bare line. Productive says the entry is a list; the app draws a paragraph. R-6 asks the entry to show its description, and a description whose structure has been removed is not the one the user wrote.
 2. **A list cannot be written.** The entry form is a `<textarea>`, so there is no way to start a list or bold a word. A-9 accepted the consequence in advance - "editing such an entry shows the stripped text; saving overwrites with plain text, which is documented" - and documented data loss is still data loss. **The edit form does not exist yet (US-3)**, so nothing has been degraded in practice; this is the defect US-3 would otherwise have shipped with, fixed before it can happen rather than after.
 
-So A-9 is amended: the app now reads and writes the same rich text Productive does. This ADR records the dependency that takes, because CLAUDE.md requires one before any dependency is added.
+So A-9 is amended: the app now reads and writes the same rich text Productive does. This ADR records the dependency that takes, as every added dependency here does.
 
 Three options were considered: a markdown-ish plain textarea, a hand-rolled `contenteditable`, and a real editor.
 
@@ -37,7 +37,7 @@ in : <p>hi</p><script>alert(1)</script><img src=x onerror=alert(1)>
 out: <p>hi</p>
 ```
 
-So the editor is also the sanitiser, and `dangerouslySetInnerHTML` still appears nowhere in the app - reading is done by mapping the parsed DOM onto React elements for an allowlisted set of tags (`src/components/shared/Note/Note.tsx`), which fails closed on anything else.
+So the editor is also the sanitiser, and `dangerouslySetInnerHTML` still appears nowhere in the app - reading is done by mapping the parsed DOM onto React elements for an allowlisted set of tags (`src/components/features/time-entries/Note/Note.tsx`), which fails closed on anything else.
 
 ## Rejected: markdown-ish in the existing textarea
 
@@ -55,8 +55,8 @@ The credible alternative, with a smaller core. Rejected because the matching-out
 
 ## Consequences
 
-- One new direct dependency and its ProseMirror tree, and it is not small: **404 kB raw / 128 kB gzipped**, measured from the build. That is the real cost of this decision and the main argument against it.
-- It is paid only by the screen that uses it. `autoCodeSplitting` puts the whole tree in the `entries.new` chunk; the day view's own chunk is 92 kB and contains none of it, so the screen that must render on one request (SPEC 4.2) is unaffected. Verified by grepping the built assets, not assumed.
+- One new direct dependency and its ProseMirror tree, and it is not small: **390 kB raw / 123 kB gzipped**, measured from the build. That is the real cost of this decision and the main argument against it.
+- It is paid only by the screen that uses it. `autoCodeSplitting` puts the whole tree in the `entries.new` chunk; the day view's own chunk is 128 kB and contains none of it, so the screen that must render on one request (SPEC 3) is unaffected. Verified by grepping the built assets, not assumed.
 - If that weight ever needs to come down, the lever is Lexical or a smaller custom ProseMirror build, not a smaller TipTap - the StarterKit is already trimmed to seven nodes and marks.
 - A-9 is amended rather than deleted: `note` is still nullable, still may contain HTML, and the app still never uses `dangerouslySetInnerHTML`. What changes is that the HTML is preserved instead of flattened.
 - `lib/note.ts` keeps `toPlainText`, which is still the right thing for a one-line summary - the delete confirmation (US-4) and the `document.title` (X-4) both want text, not markup.

@@ -19,17 +19,8 @@ export function StopIcon({ className }: { className?: string }) {
 	);
 }
 
-/**
- * The status light of a running timer (`Timer.dc.html`, "The dot breathes").
- *
- * A hard blink reads as an alert; a 2.4s scale-and-fade reads as alive, which is what a running
- * timer is. It is decoration and has no hit area at all - the design's central point here is that
- * the pill should have exactly one thing that looks pressable, and this is not it.
- *
- * `withHalo` marks the arrival: the dot scales in with one expanding ring 200ms behind it, then
- * hands over to the breathing loop inside the same declaration. It is skipped for a timer restored
- * from a reload, which did not just start and should simply be found already running.
- */
+/** The status light of a running timer. Decoration with no hit area: the pill should have exactly
+ * one pressable thing in it, which is the stop button. */
 export function TimerDot({ className, withHalo = false }: { className?: string; withHalo?: boolean }) {
 	return (
 		<span aria-hidden="true" className={cn('relative block size-2 flex-none', className)}>
@@ -47,15 +38,9 @@ export function TimerDot({ className, withHalo = false }: { className?: string; 
 	);
 }
 
-/**
- * The stop control: the one raised, filled, obviously-pressable thing in a running timer
- * (`Timer.dc.html`, "One pressable thing").
- *
- * The same 34px circle wherever a timer can be stopped - the app bar and the tracking card - so it
- * is learned once. Its accessible name is fixed at "Stop timer" rather than carrying the elapsed
- * time: a name that changed every second would be re-announced every second, and the design asks
- * for the running state to be announced once instead.
- */
+/** The stop control, the same 34px circle wherever a timer can be stopped. Its accessible name is
+ * fixed at "Stop timer" rather than carrying the elapsed time: a name that changed every second
+ * would be re-announced every second. */
 export function StopTimerButton({
 	onStop,
 	disabled = false,
@@ -64,7 +49,6 @@ export function StopTimerButton({
 }: {
 	onStop: () => void;
 	disabled?: boolean;
-	/** Renders the word beside the square, which the design does where there is room for it. */
 	label?: string;
 	className?: string;
 }) {
@@ -87,22 +71,8 @@ export function StopTimerButton({
 	);
 }
 
-/**
- * The timer control in the app bar (SPEC 10, X-4; `Timer.dc.html`).
- *
- * Idle is a button. Running is **not**: it is a pill of text with one button inside it, because
- * the two flat glyphs it used to carry - a dot and a square, both ink, both the same weight - left
- * nothing reading as the control and made the whole pill clickable by accident. Status sits on the
- * left, the action on the right, and only the action has a background of its own.
- *
- * The elapsed time is mirrored into `document.title` so a timer left running in a background tab
- * is visible from the tab strip, which is the one place a browser shows it without being looked at.
- *
- * ponytail: the design also animates the pill's *width* between two measured values on start, so
- * the eye follows one object rather than registering two. That needs measuring the running label
- * at its widest and holding it, and the entrance below already carries the transition; the width
- * still snaps. `Timer.dc.html`'s build note has the recipe if the snap ever grates.
- */
+/** The timer control in the app bar. Idle is a button; running is **not** - a pill of text with one
+ * button inside it. The elapsed time is mirrored into `document.title` for background tabs. */
 export function TimerControl({
 	running,
 	isBusy,
@@ -112,10 +82,6 @@ export function TimerControl({
 }: {
 	running: RunningTimer | null;
 	isBusy: boolean;
-	/**
-	 * This timer was started in this session, rather than restored from a reload: play the arrival.
-	 * Defaults to false, which is a timer simply found running - the state, without the entrance.
-	 */
 	justStarted?: boolean;
 	onStart: () => void;
 	onStop: () => void;
@@ -126,8 +92,6 @@ export function TimerControl({
 	useEffect(() => {
 		if (running === null) return;
 
-		// Captured rather than hardcoded, so this restores whatever the document was called rather
-		// than asserting a name of its own.
 		const original = document.title;
 		document.title = `${elapsed} · ${original}`;
 
@@ -153,12 +117,8 @@ export function TimerControl({
 	return (
 		<div className="flex h-11 flex-none items-center gap-[11px] rounded-pill bg-selection pr-1.5 pl-4">
 			<TimerDot withHalo={justStarted} />
-			{/*
-			 * Readable, but deliberately not part of the stop button's name: a name that changes is
-			 * announced again every time it does, and this changes every second. As plain content it
-			 * is never announced on its own and is there to be read when navigated to - which is the
-			 * only way a screen-reader user can find out how long the timer has been going.
-			 */}
+			{/* Readable, but not part of the stop button's name: a name that changes is announced again every
+						     time it does, and this changes every second. */}
 			<span
 				className={cn('text-list font-medium text-accent-dark tabular-nums', justStarted && 'animate-timer-digits-in')}
 			>
@@ -166,10 +126,8 @@ export function TimerControl({
 			</span>
 			<StopTimerButton onStop={onStop} disabled={isBusy} className={cn(justStarted && 'animate-timer-stop-in')} />
 
-			{/*
-			 * Announced once, when the timer starts, rather than on every tick (`Timer.dc.html`
-			 * build notes). The clock itself is `aria-hidden` for the same reason.
-			 */}
+			{/* Announced once, when the timer starts, rather than on every tick. The clock itself is
+			     `aria-hidden` for the same reason. */}
 			<span role="status" className="sr-only">
 				Timer running
 			</span>

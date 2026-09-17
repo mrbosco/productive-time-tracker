@@ -16,7 +16,7 @@ R-2 requires the token and organization ID to survive a page refresh and to be c
 ## Rationale
 
 - `localStorage` matches the "page refresh keeps the user logged in" requirement; `sessionStorage` would log the user out on a new tab, which contradicts the expectation of a tracker used daily.
-- The realistic risk is XSS; mitigations within scope: React's default escaping, no `dangerouslySetInnerHTML`, no third-party scripts, a strict CSP meta tag, dependency audit in CI.
+- The realistic risk is XSS; mitigations within scope: React's default escaping, no `dangerouslySetInnerHTML`, no third-party scripts, a strict CSP meta tag.
 
 ## Consequences
 

@@ -7,11 +7,9 @@ import type { Session } from '@/lib/storage';
 /** An hour: the trackable-services list is organization configuration, not a person's data. */
 const SERVICES_STALE_TIME = 60 * 60 * 1000;
 
-/**
- * `/services` is organization-wide - `filter[person_id]` is silently ignored - so this cannot be
- * "the services this person can track on" (A-1). The key still carries the person ID because a
- * different person means a different session; the token never appears in it (api-client rule 7).
- */
+/** `/services` is organization-wide - `filter[person_id]` is silently ignored - so this cannot be
+ * "the services this person can track on". The key still carries the person ID because a
+ * different person means a different session; the token never appears in it. */
 export function servicesQueryOptions(session: Session) {
 	return queryOptions({
 		queryKey: ['services', session.personId],
@@ -25,27 +23,15 @@ export interface DefaultService {
 	/** "Company · Project · Service", disambiguated by deal ID where that form still collides. */
 	label: string | null;
 	isPending: boolean;
-	/**
-	 * Separate from `service === null` on purpose: "we could not read the list" and "this
+	/** Separate from `service === null` on purpose: "we could not read the list" and "this
 	 * organization tracks nothing" need different words, and a create path that cannot tell them
-	 * apart would report a network failure as an empty account.
-	 */
+	 * apart would report a network failure as an empty account. */
 	isError: boolean;
 }
 
-/**
- * The label one particular service wears, in the same "Company · Project · Service" shape the
- * default gets (A-1) - including the deal-ID suffix when two services would otherwise read alike,
- * which is why the whole list is labelled rather than just this one.
- *
- * The edit form needs this because the service an entry is already logged against is not
- * necessarily the default, and rendering the same fact as a bare name on one screen and a full path
- * on the next is the kind of seam that reads as two different applications.
- *
- * Falls back to the service's own name: the entry carries it from `include=service`, so the line is
- * never empty while the list is still loading, and never wrong if the service has since been
- * untracked and dropped out of `/services`.
- */
+/** One service's "Company · Project · Service" label, including the deal-ID suffix when two would
+ * read alike - which is why the whole list is labelled. Falls back to the service's own name, so the
+ * line is never empty while the list loads and never wrong if the service was since untracked. */
 export function useServiceLabel(session: Session, service: Service | null): string | null {
 	const { data } = useQuery(servicesQueryOptions(session));
 
@@ -56,16 +42,9 @@ export function useServiceLabel(session: Session, service: Service | null): stri
 	return match?.label ?? service.name;
 }
 
-/**
- * The service a new entry is logged against (A-1). The API requires one on create but the form has
- * only three fields, so the app picks: the person's chosen default, else the first service by name.
- * Sorting is client-side and by name because the pick has to be stable across sessions, and
- * `/services` guarantees no ordering.
- *
- * The session is a parameter rather than a `useSession()` call because every caller sits behind the
- * auth guard and already holds a non-null one - taking it here would mean handling a null that
- * cannot happen.
- */
+/** The service a new entry is logged against. The API requires one on create but the form has three
+ * fields, so the app picks: the chosen default, else the first by name. Sorted client-side because
+ * `/services` guarantees no ordering and the pick has to be stable across sessions. */
 export function useDefaultService(session: Session): DefaultService {
 	const { data, isPending, isError } = useQuery(servicesQueryOptions(session));
 

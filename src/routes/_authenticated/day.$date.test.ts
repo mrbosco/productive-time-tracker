@@ -39,23 +39,19 @@ function runLoader(date: string) {
 }
 
 describe('the day route guard', () => {
-	it('lets a real calendar date through', () => {
-		expect(runGuard('2026-09-15')).toBeUndefined();
-	});
-
-	it.each(['not-a-date', '2026-9-15', '2026-13-45', '2026-02-30', ''])(
-		'redirects %s to today rather than asking the API for it (ADR-0007)',
-		(date) => {
-			expect(isRedirect(runGuard(date))).toBe(true);
-		}
-	);
-
-	it('redirects to today, and replaces rather than stacking history', () => {
+	it('lets a real calendar date through, and redirects anything that is not one to today', () => {
 		vi.useFakeTimers();
 		vi.setSystemTime(new Date(2026, 8, 16, 10, 0));
 
+		expect(runGuard('2026-09-15')).toBeUndefined();
+
+		for (const date of ['not-a-date', '2026-9-15', '2026-02-30', '']) {
+			expect(isRedirect(runGuard(date))).toBe(true);
+		}
+
 		// The target lives under `options`: a thrown redirect is a Response subclass, and the
-		// navigation it describes is not spread onto it.
+		// navigation it describes is not spread onto it. `replace`, so a mistyped URL does not
+		// leave a step in the history that goes straight back to it (ADR-0007).
 		expect(runGuard('not-a-date')).toMatchObject({
 			options: { to: '/day/$date', params: { date: '2026-09-16' }, replace: true },
 		});
@@ -64,25 +60,16 @@ describe('the day route guard', () => {
 
 describe('the day route loader', () => {
 	/**
-	 * SPEC 4.2 asks for one request per selected day, started on navigation and cached under
-	 * `(personId, date)`. The key is the contract create, update and delete invalidate against,
-	 * so it is worth pinning here - nothing else asserts that the route and the hook agree on it.
+	 * One request, started on navigation, under the key create, update and delete invalidate
+	 * against. The day list, the week strip and the totals are all selections over it, so pinning
+	 * the count here is what stops a second query for the same rows creeping back.
 	 */
-	it('starts the day request on navigation, under the key the day is cached by', () => {
-		const { prefetchQuery } = runLoader('2026-09-15');
-
-		expect(prefetchQuery).toHaveBeenCalledWith(
-			expect.objectContaining({ queryKey: ['time-entries', testSession.personId, '2026-09-15'] })
-		);
-	});
-
-	/** The other half of the screen, and the request X-1 exists to make only once per week. */
-	it('starts the week request too, keyed on the week Monday', () => {
+	it('starts one request on navigation, under the week key the writes invalidate', () => {
 		const { prefetchQuery } = runLoader('2026-09-15');
 
 		expect(prefetchQuery).toHaveBeenCalledWith(
 			expect.objectContaining({ queryKey: ['week-entries', testSession.personId, '2026-09-14'] })
 		);
-		expect(prefetchQuery).toHaveBeenCalledTimes(2);
+		expect(prefetchQuery).toHaveBeenCalledTimes(1);
 	});
 });

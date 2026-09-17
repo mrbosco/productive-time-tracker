@@ -2,23 +2,8 @@ import { Dialog as DialogPrimitive } from 'radix-ui';
 import type * as React from 'react';
 import { cn } from '@/lib/utils';
 
-/**
- * shadcn's Dialog on Radix, restyled to the design tokens (guidebook 16).
- *
- * Radix is what makes this satisfy guidebook 18 without hand-written code: focus is trapped while
- * the dialog is open and returned to the trigger on close, Escape and the backdrop dismiss, and
- * everything behind is marked `aria-hidden` so a screen reader cannot wander into the page under
- * the modal.
- *
- * `overlayClassName` exists for one case: a dialog opened over another dialog has to sit above
- * the first one's content, not just above its overlay, or the form underneath stays undimmed and
- * still looks live.
- *
- * `DialogContent` carries no position of its own. The two dialogs in this design sit in different
- * places - the entry form fills the screen on mobile and centres at 560px on desktop, US-4's
- * confirm is a 340px box at both widths - and a default here would only be something each caller
- * had to override. What the primitive is for is the portal, the overlay and the Radix wiring.
- */
+/** shadcn's Dialog on Radix, restyled to the design tokens. `overlayClassName` exists for one case: a
+ * dialog over another has to sit above the first one's content, not just its overlay. */
 function Dialog({ ...props }: React.ComponentProps<typeof DialogPrimitive.Root>) {
 	return <DialogPrimitive.Root data-slot="dialog" {...props} />;
 }
@@ -61,11 +46,8 @@ function DialogContent({
 	);
 }
 
-/**
- * Required by Radix, which warns without one and leaves the dialog unnamed for a screen reader.
- * Visually it is the screen title on mobile and the dialog heading on desktop, so the size comes
- * from the caller.
- */
+/** Required by Radix, which warns without one and leaves the dialog unnamed. The size comes from
+ * the caller: a screen title on mobile, a dialog heading on desktop. */
 function DialogTitle({ className, ...props }: React.ComponentProps<typeof DialogPrimitive.Title>) {
 	return (
 		<DialogPrimitive.Title

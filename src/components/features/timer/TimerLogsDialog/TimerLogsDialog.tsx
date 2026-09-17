@@ -9,20 +9,14 @@ import type { Session } from '@/lib/storage';
 import { cn } from '@/lib/utils';
 import { toTimerLog } from './TimerLogsDialog.utils';
 
-/**
- * How an entry's minutes were arrived at (UI-9).
- *
- * Read-only, and the footer is the point of it: tracked by the clock, corrected by hand, and the
- * number that was actually logged. Which matters the moment somebody disputes an invoice - until
- * now the card showed the result and nothing about where it came from.
- */
+/** How an entry's minutes were arrived at: one row per timer run, plus whatever was typed by hand.
+ * Read-only - the numbers are an account of the past, not fields. */
 export function TimerLogsDialog({
 	session,
 	entry,
 	onOpenChange,
 }: {
 	session: Session;
-	/** The entry whose runs to show. Null closes the dialog, as the delete dialog is driven. */
 	entry: TimeEntry | null;
 	onOpenChange: (open: boolean) => void;
 }) {
@@ -39,7 +33,6 @@ export function TimerLogsDialog({
 
 	return (
 		<Dialog open onOpenChange={onOpenChange}>
-			{/* Positioned like the confirm dialog, which is the only other centred one in the app. */}
 			<DialogContent
 				aria-describedby={undefined}
 				className="top-1/2 left-1/2 w-[min(440px,calc(100%-40px))] -translate-x-1/2 -translate-y-1/2 rounded-entry p-6 shadow-dialog"

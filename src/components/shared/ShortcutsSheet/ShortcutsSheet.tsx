@@ -1,11 +1,7 @@
 import { Sheet, SheetContent, SheetTitle } from '@/components/core/Sheet';
 
-/**
- * The rows of `05-global-shortcuts.png`, in the order it draws them.
- *
- * The two directional rows carry both arrows in one cap, as the design draws them: `← →` is one
- * shortcut with two directions, and four rows would say there are four things to learn.
- */
+/** Every shortcut the app binds. The two directional rows carry both arrows in one cap: `← →` is
+ * one shortcut with two directions, and four rows would say there are four things to learn. */
 const SHORTCUTS: { keys: string; action: string }[] = [
 	{ keys: 'n', action: 'New entry' },
 	{ keys: '← →', action: 'Previous / next day' },
@@ -31,17 +27,8 @@ function CloseIcon() {
 	);
 }
 
-/**
- * What the keyboard can do, from the `?` button in the app bar and from the `?` key (SPEC 10, X-2).
- *
- * A `dl`, not a table: each row is a term and what it means, which is what a description list is
- * for, and it needs no column headers to be read out correctly.
- *
- * The sheet itself is why `Esc` needs no handler anywhere - Radix closes it, as it closes every
- * other dialog in the app, so the row documents behaviour that already exists rather than adding
- * a key. `useHotkeys` also stops the `?` key from reaching here while it is open, because focus is
- * inside a `role="dialog"`: the sheet cannot re-open itself on top of itself.
- */
+/** What the keyboard can do, from the `?` button and the `?` key. A `dl`, not a table: each row is a
+ * term and what it means. `useHotkeys` stops `?` reaching here while the sheet is open. */
 export function ShortcutsSheet({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
 	return (
 		<Sheet open={open} onOpenChange={onOpenChange}>

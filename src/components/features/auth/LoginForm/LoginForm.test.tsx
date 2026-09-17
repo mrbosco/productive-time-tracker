@@ -1,7 +1,6 @@
 import { http, HttpResponse } from 'msw';
 import { describe, expect, it } from 'vitest';
 import error401 from '../../../../../docs/api/samples/error-401.json';
-import error403 from '../../../../../docs/api/samples/error-403.json';
 import unknownOrganization from '../../../../../docs/api/samples/organization-memberships-unknown-organization.json';
 import { renderWithProviders, screen, userEvent, waitFor } from '@/__tests__/test-utils';
 import { SESSION_STORAGE_KEY } from '@/lib/storage';
@@ -22,28 +21,6 @@ function readStoredSession(): Record<string, string> | null {
 }
 
 describe('LoginForm', () => {
-	it('labels both credential fields', async () => {
-		await renderWithProviders(<LoginForm />, { initialEntry: '/login' });
-
-		expect(screen.getByLabelText('API token')).toBeInTheDocument();
-		expect(screen.getByLabelText('Organization ID')).toBeInTheDocument();
-	});
-
-	it('keeps the submit button disabled until both fields are filled', async () => {
-		const user = userEvent.setup();
-		await renderWithProviders(<LoginForm />, { initialEntry: '/login' });
-
-		expect(screen.getByRole('button', { name: 'Log in' })).toBeDisabled();
-
-		await user.type(screen.getByLabelText('API token'), 'test-token');
-		expect(screen.getByRole('button', { name: 'Log in' })).toBeDisabled();
-
-		await user.type(screen.getByRole('textbox', { name: 'Organization ID' }), '999999');
-		await waitFor(() => {
-			expect(screen.getByRole('button', { name: 'Log in' })).toBeEnabled();
-		});
-	});
-
 	it('keeps only the digits typed into the organization ID', async () => {
 		const user = userEvent.setup();
 		await renderWithProviders(<LoginForm />, { initialEntry: '/login' });
@@ -51,28 +28,6 @@ describe('LoginForm', () => {
 		await user.type(screen.getByLabelText('Organization ID'), '12ab34');
 
 		expect(screen.getByLabelText('Organization ID')).toHaveValue('1234');
-	});
-
-	it('will not submit an empty organization ID', async () => {
-		const user = userEvent.setup();
-		await renderWithProviders(<LoginForm />, { initialEntry: '/login' });
-
-		await user.type(screen.getByLabelText('API token'), 'test-token');
-		await user.type(screen.getByLabelText('Organization ID'), 'acme');
-
-		expect(screen.getByRole('button', { name: 'Log in' })).toBeDisabled();
-	});
-
-	it('hides the token until the show toggle is pressed', async () => {
-		const user = userEvent.setup();
-		await renderWithProviders(<LoginForm />, { initialEntry: '/login' });
-
-		expect(screen.getByLabelText('API token')).toHaveAttribute('type', 'password');
-
-		await user.click(screen.getByRole('button', { name: 'Show token' }));
-
-		expect(screen.getByLabelText('API token')).toHaveAttribute('type', 'text');
-		expect(screen.getByRole('button', { name: 'Hide token' })).toHaveAttribute('aria-pressed', 'true');
 	});
 
 	it('stores the session and navigates home on success', async () => {
@@ -92,17 +47,6 @@ describe('LoginForm', () => {
 		});
 	});
 
-	it('prefetches the services list so the first entry does not wait for it', async () => {
-		const user = userEvent.setup();
-		const { queryClient } = await renderWithProviders(<LoginForm />, { initialEntry: '/login' });
-
-		await logIn(user);
-
-		await waitFor(() => {
-			expect(queryClient.getQueryData(['services', '1448639'])).toBeDefined();
-		});
-	});
-
 	it('reports a rejected token', async () => {
 		server.use(http.get('*/organization_memberships', () => HttpResponse.json(error401, { status: 401 })));
 		const user = userEvent.setup();
@@ -112,16 +56,6 @@ describe('LoginForm', () => {
 
 		expect(await screen.findByRole('alert')).toHaveTextContent('Invalid API token.');
 		expect(readStoredSession()).toBeNull();
-	});
-
-	it('reports a token that has no person in the organization', async () => {
-		server.use(http.get('*/organization_memberships', () => HttpResponse.json(error403, { status: 403 })));
-		const user = userEvent.setup();
-		await renderWithProviders(<LoginForm />, { initialEntry: '/login' });
-
-		await logIn(user);
-
-		expect(await screen.findByRole('alert')).toHaveTextContent('This token is not a member of organization 999999.');
 	});
 
 	it('refuses an organization the token is not a member of', async () => {

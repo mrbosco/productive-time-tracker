@@ -10,7 +10,15 @@ import membershipsWithPerson from '../../docs/api/samples/organization-membershi
 import timeEntriesDay from '../../docs/api/samples/time-entries-day.json';
 import timeEntriesEmptyDay from '../../docs/api/samples/time-entries-empty-day.json';
 import { server } from '../mocks/node';
-import { ApiError, type JsonApiDocument, readPageMeta, request, toApiError } from './client';
+import {
+	ApiError,
+	type JsonApiDocument,
+	readPageMeta,
+	readResource,
+	request,
+	requireDocument,
+	toApiError,
+} from './client';
 import { parseOrganizationMemberships } from './organization-memberships';
 import { parseTimeEntries } from './time-entries';
 
@@ -23,25 +31,25 @@ describe('JSON:API parsing', () => {
 
 		expect(entries).toHaveLength(3);
 		// The day list includes services with only `name`, so the deal fields are absent here by
-		// design - the selector's fuller shape comes from /services (A-1).
+		// design - the selector's fuller shape comes from /services.
 		expect(entries[0]?.service).toMatchObject({ id: '16887825', name: 'Acquiring new clients' });
 		expect(entries[0]?.service?.dealName).toBeNull();
 	});
 
-	it('keeps a note that arrived as rich-text HTML intact for the renderer to strip (A-9)', () => {
+	it('keeps a note that arrived as rich-text HTML intact for the renderer to strip', () => {
 		const entry = parseTimeEntries(asDocument(timeEntriesDay)).find((candidate) => candidate.id === '162903873');
 
 		expect(entry?.note).toBe('<ul><li><p>Probavam</p></li></ul>');
 	});
 
-	it('preserves a zero-minute entry rather than treating it as missing (A-8)', () => {
+	it('preserves a zero-minute entry rather than treating it as missing', () => {
 		const entry = parseTimeEntries(asDocument(timeEntriesDay)).find((candidate) => candidate.id === '162921848');
 
 		expect(entry?.minutes).toBe(0);
 		expect(entry?.note).toBeNull();
 	});
 
-	it('reads draft from the API flag, which a zero-minute entry does not imply (A-8)', () => {
+	it('reads draft from the API flag, which a zero-minute entry does not imply', () => {
 		const entries = parseTimeEntries(asDocument(timeEntriesDay));
 		const zeroMinute = entries.find((candidate) => candidate.id === '162921848');
 
@@ -136,5 +144,36 @@ describe('request', () => {
 		server.use(http.delete('*/gone', () => new HttpResponse(null, { status: 204 })));
 
 		await expect(request(auth, '/gone', { method: 'DELETE' })).resolves.toBeNull();
+	});
+
+	/**
+	 * The envelope is validated, not assumed. Without this the readers downstream turn a changed
+	 * shape into a plausible value - a missing duration renders as `0h` - and the first sign of it
+	 * is a wrong number on the screen rather than an error anyone can act on.
+	 */
+	it('refuses a 200 whose body is not a JSON:API document', async () => {
+		server.use(http.get('*/odd', () => HttpResponse.json({ nonsense: true })));
+
+		await expect(request(auth, '/odd')).rejects.toThrow(ApiError);
+	});
+
+	it('refuses a resource whose id is not a string, and names the field it failed on', async () => {
+		server.use(http.get('*/odd', () => HttpResponse.json({ data: [{ id: 17, type: 'time_entries' }] })));
+
+		await expect(request(auth, '/odd')).rejects.toThrow(/data/);
+	});
+
+	/** A field the API adds must ride along rather than be stripped, or reading it later silently
+	 * returns nothing. */
+	it('keeps keys the schema does not name', async () => {
+		server.use(
+			http.get('*/extra', () =>
+				HttpResponse.json({ data: { id: '1', type: 'time_entries', attributes: { invented_later: 'kept' } } })
+			)
+		);
+
+		const document = await request(auth, '/extra');
+
+		expect(readResource(requireDocument(document)).attributes?.invented_later).toBe('kept');
 	});
 });

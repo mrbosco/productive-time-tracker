@@ -1,3 +1,6 @@
+import { useDayEntrance } from '@/components/features/time-entries/useDayEntrance';
+import { addDays, formatDayShort } from '@/lib/date';
+import { cn } from '@/lib/utils';
 import { Clock3, Copy, Plus } from 'lucide-react';
 import { Link } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
@@ -9,29 +12,24 @@ import { LoadFailedIllustration } from '@/components/shared/Illustration/Illustr
 interface TimeEntryListProps {
 	entries: TimeEntry[] | undefined;
 	isPending: boolean;
-	/** A retry already in flight, so the button says so instead of looking inert. */
 	isRetrying?: boolean;
 	onRetry: () => void;
-	/** The day being shown, so the empty state's `Add entry` lands on the right date. */
 	date: string;
-	/** Asks the day view to confirm a delete (R-12). The dialog and the toast belong to the screen. */
+	/** Asks the day view to confirm a delete. The dialog and the toast belong to the screen. */
 	onRequestDelete: (entry: TimeEntry) => void;
-	/**
-	 * The card the arrow keys are standing on (X-2), or `null` before they have been used. The day
-	 * view owns it because the keys are bound there and because `e` and `Delete` act on it.
-	 */
+	/** The card the arrow keys are standing on, or `null` before they have been used. The day view
+	 * owns it, because the keys are bound there. */
 	focusedEntryId?: string | null;
 	onFocusEntry?: (id: string) => void;
-	/** X-3: fills an empty day from the one before it. The day view owns the copy and its toast. */
+	/** Fills an empty day from the one before it. The day view owns the copy and its toast. */
 	onCopyFromYesterday?: () => void;
 	isCopying?: boolean;
-	/** X-4: starts a timer on that entry, which the stop then adds to. */
+	/** Starts a timer on that entry, which the stop then adds to. */
 	onContinueTimer?: (entry: TimeEntry) => void;
-	/** Writes a corrected duration from the card (UI-4). The day view owns the write and the toast. */
+	/** Writes a corrected duration from the card. The day view owns the write and the toast. */
 	onSaveDuration?: (entry: TimeEntry, minutes: number) => Promise<void>;
-	/** Opens UI-9's timer logs for one entry. */
+	/** Opens the timer logs for one entry. */
 	onShowTimerLogs?: (entry: TimeEntry) => void;
-	/** The entry a timer is running against, and when it started (X-4). */
 	trackingEntryId?: string | null;
 	trackingSince?: string | null;
 	onStopTimer?: () => void;
@@ -68,17 +66,9 @@ function CardSkeleton() {
 }
 
 /**
- * The day's entries, and the three ways there are none to show.
- *
- * ponytail: `empty` and `error` are states of this component rather than `shared/EmptyState` and
- * `shared/ErrorState`, which SPEC 6.1 names - the design's own component sheet captions them
- * `TimeEntryList · empty / error / loading`, and each would have exactly one caller today.
- *
- * US-3 was expected to be the second caller and turned out not to be. Its "this entry no longer
- * exists" is a bare centred sentence and a link on the page background
- * (`04-edit-entry-mobile-notfound.png`), where these are a bordered card with an illustration, a
- * sentence and a button - sharing a component between them would mean a prop for every part that
- * differs, which is all of them. It stays here until something wants *this* shape.
+ * The day's entries, and the three ways there are none to show. ponytail: empty and error are states
+ * of this component rather than components of their own - the edit route's not-found is a bare
+ * sentence and a link, so the two share no shape. Extract when something wants *this* one.
  */
 export function TimeEntryList({
 	entries,
@@ -98,13 +88,11 @@ export function TimeEntryList({
 	trackingSince = null,
 	onStopTimer,
 }: TimeEntryListProps) {
+	const entrance = useDayEntrance(date);
+
 	if (isPending) {
 		return (
-			<div key={date} className="flex animate-day-in flex-col gap-2.5">
-				{/*
-				 * `role="status"` so the wait is announced: a screen-reader user gets silence
-				 * otherwise, because skeletons are decoration and carry no text.
-				 */}
+			<div key={date} className={cn('flex flex-col gap-2.5', entrance)}>
 				<span role="status" className="sr-only">
 					Loading entries
 				</span>
@@ -116,19 +104,10 @@ export function TimeEntryList({
 		);
 	}
 
-	/*
-	 * R-8. The list reports its own failure and offers a way out, rather than the route's error
-	 * boundary replacing the whole screen - the date navigator above stays usable, so another day
-	 * is one tap away even while this one is failing.
-	 *
-	 * The condition is "nothing to show", not "the query reports an error". A refetch that fails
-	 * after a successful load leaves the day's entries in the cache, and replacing a list the user
-	 * can still read with an error card loses more than it explains.
-	 *
-	 * `role="alert"` because this replaces the `role="status"` of the loading branch. Without it
-	 * the live region simply unmounts and the failure is inserted as static text, so a screen
-	 * reader announces nothing at all.
-	 */
+	/* The list reports its own failure rather than letting the route's error boundary replace the
+	 * screen. The condition is "nothing to show", not "the query errored" - a refetch that fails
+	 * after a successful load still has entries worth reading. `role="alert"` because this replaces
+	 * the loading branch's `role="status"`, which would otherwise unmount and announce nothing. */
 	if (entries === undefined) {
 		return (
 			<ListState key={date} role="alert">
@@ -161,7 +140,7 @@ export function TimeEntryList({
 				<p className="max-w-80 text-meta leading-relaxed text-muted">Add an entry or copy yesterday's work.</p>
 				<div className="mt-6 flex flex-wrap justify-center gap-2.5">
 					<Button asChild size="sm">
-						<Link to="/entries/new" search={{ date }}>
+						<Link to="/entries/new" search={{ date }} resetScroll={false}>
 							<Plus size={16} aria-hidden="true" />
 							Add entry
 						</Link>
@@ -174,7 +153,7 @@ export function TimeEntryList({
 						onClick={onCopyFromYesterday}
 					>
 						<Copy size={15} aria-hidden="true" />
-						{isCopying ? 'Copying...' : 'Copy from yesterday'}
+						{isCopying ? 'Copying...' : `Copy from ${formatDayShort(addDays(date, -1))}`}
 					</Button>
 				</div>
 				<p className="mt-5 hidden items-center gap-1.5 text-caption text-muted md:flex">
@@ -185,15 +164,11 @@ export function TimeEntryList({
 		);
 	}
 
-	/*
-	 * A roving tabindex needs exactly one tab stop, and before any arrow key has been pressed there
-	 * is no chosen card - so the first one stands in. Without this the whole list is skipped by Tab
-	 * and there is no way in from the keyboard at all (guidebook 18).
-	 */
+	/* A roving tabindex needs exactly one tab stop, and before any arrow key none is chosen - so the
+	 * first stands in. Without it Tab skips the list entirely. */
 	const tabStopId = focusedEntryId ?? entries[0]?.id;
 
 	return (
-		// Replay only on a different day or a newly inserted entry, never on timer ticks/refetches.
 		<ul key={date} className="flex flex-col rounded-entry border border-line bg-surface p-2 shadow-card">
 			{entries.map((entry, index) => (
 				<li
@@ -203,8 +178,6 @@ export function TimeEntryList({
 				>
 					<TimeEntryCard
 						entry={entry}
-						// Only a card the day view has actually chosen pulls focus to itself; the
-						// stand-in above is a tab stop and nothing more.
 						isFocused={entry.id === focusedEntryId}
 						isTabStop={entry.id === tabStopId}
 						onTakeFocus={() => {

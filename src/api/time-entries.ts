@@ -1,7 +1,7 @@
+import { z } from 'zod';
 import {
+	ApiError,
 	type Auth,
-	readAttributeNumber,
-	readAttributeString,
 	findIncluded,
 	type JsonApiDocument,
 	MAX_PAGE_SIZE,
@@ -16,19 +16,49 @@ import {
 import { toService } from './services';
 import type { MutatedTimeEntry, TimeEntry, TimeEntryInput } from './types';
 
+/**
+ * The attributes this app reads, and only those - a time entry carries about forty-five on the wire.
+ *
+ * Validated rather than read defensively: a `time` that stopped being a number would otherwise be
+ * silently rendered as `0h`, which is a wrong answer presented as a real one. `note` is genuinely
+ * nullable and `time` is genuinely allowed to be `0`, so both stay permissive; `draft` is absent
+ * from mutation responses, so it is optional.
+ */
+const timeEntryAttributesSchema = z.object({
+	date: z.string(),
+	time: z.number().int(),
+	note: z.string().nullable().optional(),
+	created_at: z.string().optional(),
+	draft: z.boolean().optional(),
+});
+
+function readTimeEntryAttributes(resource: Resource) {
+	const parsed = timeEntryAttributesSchema.safeParse(resource.attributes ?? {});
+
+	if (!parsed.success) {
+		const [issue] = parsed.error.issues;
+		const where = issue === undefined ? '' : ` (${issue.path.join('.')}: ${issue.message})`;
+
+		throw new ApiError(200, [], `A time entry came back in an unexpected shape${where}.`);
+	}
+
+	return parsed.data;
+}
+
 function toTimeEntry(document: JsonApiDocument, resource: Resource): TimeEntry {
 	const serviceId = readRelationshipId(resource, 'service');
 	const service = findIncluded(document, 'services', serviceId);
+	const attributes = readTimeEntryAttributes(resource);
 
 	return {
 		id: resource.id,
-		date: readAttributeString(resource, 'date') ?? '',
-		minutes: readAttributeNumber(resource, 'time'),
-		note: readAttributeString(resource, 'note'),
-		draft: resource.attributes?.draft === true,
+		date: attributes.date,
+		minutes: attributes.time,
+		note: attributes.note ?? null,
+		draft: attributes.draft === true,
 		serviceId,
 		service: service === undefined ? null : toService(document, service),
-		createdAt: readAttributeString(resource, 'created_at') ?? '',
+		createdAt: attributes.created_at ?? '',
 	};
 }
 
@@ -42,32 +72,22 @@ export function parseTimeEntry(document: JsonApiDocument): TimeEntry {
 
 function parseMutatedTimeEntry(document: JsonApiDocument): MutatedTimeEntry {
 	const resource = readResource(document);
+	const attributes = readTimeEntryAttributes(resource);
 
 	return {
 		id: resource.id,
-		date: readAttributeString(resource, 'date') ?? '',
-		minutes: readAttributeNumber(resource, 'time'),
-		note: readAttributeString(resource, 'note'),
-		draft: resource.attributes?.draft === true,
-		createdAt: readAttributeString(resource, 'created_at') ?? '',
+		date: attributes.date,
+		minutes: attributes.time,
+		note: attributes.note ?? null,
+		draft: attributes.draft === true,
+		createdAt: attributes.created_at ?? '',
 	};
 }
 
-/**
- * Sparse fieldsets take a day from 8.6 KB to 1.6 KB - a full time entry carries ~45 attributes
- * (costs, approval, invoicing, overtime) and this screen renders four of them.
- */
-/**
- * Widened for UI-1 and UI-2: a card leads with the company the work is for and names the project
- * beside the service, and the context behind that name is the deal, the section and - when it is
- * somebody else - the client. Productive nests all of it under the service, and `/time_entries`
- * resolves the whole chain in the one request the day already makes
- * (`time-entries-day-service-context.json`).
- *
- * `fields` governs relationships as well as attributes, so every step has to be named on the step
- * above it - `deal` on the service, `project` and `company` on the deal - or the linkage vanishes
- * and the walk stops at a name.
- */
+/** Sparse fieldsets take a day from 8.6 KB to 1.6 KB - a full time entry carries ~45 attributes and
+ * this screen renders four. The chain is wide because a card names the company, project, deal,
+ * section and client behind a service. `fields` governs relationships as well as attributes, so
+ * every step has to be named on the step above it, or the linkage vanishes. */
 const FIELDS =
 	'fields[time_entries]=date,time,note,created_at,draft,service' +
 	'&fields[services]=name,deal,section' +
@@ -88,34 +108,23 @@ function buildRangePath(personId: string, from: string, to: string, page: number
 }
 
 /**
- * `created_at` **descending** - newest first (A-7, amended). The API rejects `sort=created_at`, so
- * it happens here. Parsed rather than string-compared: the timestamps carry UTC offsets, which text
- * ordering gets wrong.
+ * `created_at` descending. The API rejects `sort=created_at`, so it happens here, and parsed rather
+ * than string-compared because the timestamps carry UTC offsets that text ordering gets wrong.
  *
- * Newest first because the top of the list is where a day is read and written: the entry just
- * logged, and the timer just started, are what someone is looking for, and appending them to the
- * bottom of a full day puts them off the screen. A-7 originally said ascending, "order of logging",
- * which is the right order for a ledger and the wrong one for a screen you work from.
+ * Newest first because the entry just logged is what someone is looking for; appending it to the
+ * bottom of a full day puts it off the screen.
  */
 function compareByCreatedAt(a: TimeEntry, b: TimeEntry): number {
 	return Date.parse(b.createdAt) - Date.parse(a.createdAt);
 }
 
-/**
- * One day's entries. `after`/`before` are inclusive, so a single date needs both set to it.
- *
- * Paging is a safety net rather than an expectation: 200 is the API's ceiling and a person rarely
- * logs that many entries in a day. An empty day reports `total_pages: 0`, hence the `<` loop.
- */
+/** One day's entries. `after`/`before` are inclusive, so a single date needs both set to it. */
 export async function listTimeEntries(auth: Auth, personId: string, date: string): Promise<TimeEntry[]> {
 	return listTimeEntriesInRange(auth, personId, date, date);
 }
 
-/**
- * Every entry between two calendar dates, both ends included. The week strip reads a whole week
- * this way rather than issuing seven day requests (SPEC 10, X-1); a single day is the same call
- * with `from` and `to` set to it.
- */
+/** Every entry between two calendar dates, both ends included. The week strip reads a whole week
+ * this way rather than issuing seven day requests. */
 export async function listTimeEntriesInRange(
 	auth: Auth,
 	personId: string,
@@ -127,6 +136,33 @@ export async function listTimeEntriesInRange(
 	return documents.flatMap(parseTimeEntries).sort(compareByCreatedAt);
 }
 
+/**
+ * The distinct services a person logged against over a range, for the picker's `Recent` marks.
+ *
+ * Its own request rather than a reuse of `listTimeEntriesInRange`: that one includes the whole
+ * company/project/deal chain to render a card, and none of it is read here. Asking only for the
+ * `service` linkage keeps a month of entries to one field per row.
+ */
+export async function listRecentServiceIds(auth: Auth, personId: string, from: string, to: string): Promise<string[]> {
+	const documents = await requestAllPages(auth, (page) => {
+		const filters =
+			`filter[person_id]=${encodeURIComponent(personId)}` +
+			`&filter[after]=${encodeURIComponent(from)}&filter[before]=${encodeURIComponent(to)}`;
+
+		return (
+			`/time_entries?${filters}&fields[time_entries]=service` +
+			`&page[size]=${String(MAX_PAGE_SIZE)}&page[number]=${String(page)}`
+		);
+	});
+
+	const ids = documents
+		.flatMap(listResources)
+		.map((resource) => readRelationshipId(resource, 'service'))
+		.filter((id): id is string => id !== null);
+
+	return [...new Set(ids)];
+}
+
 export async function getTimeEntry(auth: Auth, id: string): Promise<TimeEntry> {
 	// `fields[time_entries]` is silently ignored on this endpoint, so the full record comes back
 	// regardless; asking for it anyway would only imply a narrowing that does not happen.
@@ -135,11 +171,9 @@ export async function getTimeEntry(auth: Auth, id: string): Promise<TimeEntry> {
 	return parseTimeEntry(requireDocument(await request(auth, path)));
 }
 
-/**
- * Create and update responses carry only the `organization` relationship - never `person` or
+/** Create and update responses carry only the `organization` relationship - never `person` or
  * `service` - so the returned entry's `service` is always null. Callers that render a service name
- * must reuse what they already had or refetch.
- */
+ * must reuse what they already had or refetch. */
 export async function createTimeEntry(
 	auth: Auth,
 	input: TimeEntryInput & { personId: string; serviceId: string }

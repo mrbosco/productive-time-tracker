@@ -40,8 +40,8 @@ describe('useHotkeys', () => {
 		expect(onNew).not.toHaveBeenCalled();
 	});
 
-	/** SPEC 10, X-2: "all shortcuts are disabled while an input, textarea or dialog has focus". */
-	it('stays out of the way while a field has focus (X-2)', async () => {
+	/** Every shortcut is disabled while an input, textarea or dialog has focus. */
+	it('stays out of the way while a field has focus', async () => {
 		const onNew = vi.fn();
 		const user = userEvent.setup();
 		await renderWithProviders(<Harness hotkeys={{ n: onNew }} />);

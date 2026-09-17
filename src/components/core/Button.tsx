@@ -3,17 +3,8 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import { Slot } from 'radix-ui';
 import { cn } from '@/lib/utils';
 
-/**
- * shadcn's Button, restyled to the design tokens (guidebook 16: copied in, edited here).
- *
- * Buttons use a compact corner radius. Sizes carry the design's tap targets: `default` is 52px
- * on mobile and 48px from `md` up, and icon buttons stay 44 x 44 even where the glyph is 18px,
- * because a 44px target is the floor on touch (design README §1).
- *
- * Disabled is a flatter fill rather than `opacity-50`: a half-transparent button over the canvas
- * drops its label under AA contrast, and the login screen's disabled state is on screen from the
- * first paint.
- */
+/** shadcn's Button, copied in and restyled to the design tokens. Icon buttons stay 44 x 44 even where
+ * the glyph is 18px; disabled is a flatter fill, since `opacity-50` drops the label under AA. */
 const buttonVariants = cva(
 	cn(
 		'inline-flex shrink-0 items-center justify-center gap-2 rounded-control font-medium whitespace-nowrap',
@@ -34,8 +25,6 @@ const buttonVariants = cva(
 				link: 'text-accent underline-offset-4 hover:underline disabled:text-muted',
 			},
 			size: {
-				// 52px at every width: the design centres the same card on the desktop canvas
-				// rather than resizing anything, so there is no narrower desktop control.
 				default: 'h-13 gap-2.5 px-6 text-list',
 				sm: 'h-11 px-4 text-list',
 				icon: 'size-11',

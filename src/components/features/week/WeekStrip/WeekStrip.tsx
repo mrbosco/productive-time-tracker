@@ -17,44 +17,25 @@ import { cn } from '@/lib/utils';
 import type { WeekTotals } from '../useWeekTotals';
 
 interface WeekStripProps {
-	/** The selected day; the strip shows the Monday-to-Sunday week it falls in. */
 	date: string;
 	weekTotals: WeekTotals | undefined;
 	isPending: boolean;
-	/** The week could not be read. Cells show no total rather than a zero they cannot stand behind. */
 	isError?: boolean;
 	today?: string;
-	/**
-	 * The person's working hours (UI-6). Empty until the membership query lands, and for an account
-	 * that has never set any - in which case the strip says nothing about what was expected rather
-	 * than claiming nothing was.
-	 */
+	/** The person's working hours. Empty until the membership query lands, and for an account that
+	 * never set any - in which case the strip says nothing about what was expected. */
 	availability?: AvailabilityPeriod[];
 }
 
-/**
- * How a cell reads when nothing is logged on it (UI-5).
- *
- * `0h` is a gap - work was expected on this day and none of it is here - and an em dash means
- * there was nothing to expect. Which way round that is matters: this **reverses X-1**, where the
- * dash marked a past workday and `0h` covered weekends and the future. That made the two cells
- * that mean opposite things look identical on a Saturday, and it is the complaint UI-5 opens with.
- */
+/** `0h` is a gap - work was expected and none is here - and an em dash means none was expected. */
 function formatCellTotal(minutes: number, isNonWorking: boolean): string {
 	if (minutes > 0) return formatDuration(minutes);
 
 	return isNonWorking ? '—' : '0h';
 }
 
-/**
- * What a cell is called when it is read out rather than looked at. The visible text is split
- * between a mobile and a desktop label and reads as "M 14 6h 15m" either way, which is not a name;
- * this is, and it lets both visible labels be hidden from assistive technology.
- *
- * The hatch and the dashed border say "non-working" to someone looking at the strip, so the name
- * has to say it too - a state drawn only in the fill is a state a screen reader cannot report
- * (guidebook 18).
- */
+/** What a cell is called when read out. The visible text is split between a mobile and a desktop
+ * label, so neither works alone, and the hatch that means "non-working" has to be spoken. */
 function describeCell(
 	iso: string,
 	minutes: number,
@@ -66,17 +47,11 @@ function describeCell(
 
 	const logged =
 		minutes > 0 ? `${formatDuration(minutes)} logged` : isNonWorking ? 'no work expected' : 'nothing logged';
-	// The hover panel is a pointer convenience; the same numbers belong in the name, or a touch
-	// screen and a screen reader never get them at all (guidebook 18).
 	const against = expected === null || expected === 0 ? '' : ` of ${formatDuration(expected)} expected`;
 
 	return `${formatDayShort(iso)}, ${logged}${against}`;
 }
 
-/**
- * The week's own total. Not a link and not focusable: there is no `/day/week` to go to, and UI-5's
- * whole point is that it should stop looking like an eighth day.
- */
 function WeekTotalPanel({
 	total,
 	expected,
@@ -119,12 +94,10 @@ function WeekTotalPanel({
 	);
 }
 
-/** Expected, worked, and what is left of the first after the second (UI-6). */
 function ExpectedRows({ expected, worked }: { expected: number; worked: number }) {
 	const rows = [
 		{ label: 'Expected work time', value: expected },
 		{ label: 'Worked time', value: worked },
-		// Clamped: an overrun is not negative hours left, it is none.
 		{ label: 'Work hours left', value: Math.max(0, expected - worked) },
 	];
 
@@ -144,13 +117,8 @@ function CellSkeleton({ className }: { className?: string }) {
 	return <div aria-hidden="true" className={cn('animate-pulse rounded-input bg-subtle', className)} />;
 }
 
-/**
- * The week around the selected day, with what was logged on each (SPEC 10, X-1).
- *
- * Scrolls horizontally on mobile as fixed 56px cells and lays out as an eight-column grid on
- * desktop, the eighth being the week's own total. Totals are hidden while loading rather than
- * showing stale numbers.
- */
+/** The week around the selected day: a scrolling row of 56px cells on mobile, an eight-column grid
+ * on desktop whose eighth column is the week's total. */
 export function WeekStrip({
 	date,
 	weekTotals,
@@ -171,20 +139,8 @@ export function WeekStrip({
 	const stripRef = useRef<HTMLElement>(null);
 	const selectedRef = useRef<HTMLAnchorElement>(null);
 
-	/**
-	 * Bring the selected day into view (design brief 3.2: "with the selected cell centered").
-	 *
-	 * Seven 56px cells plus the week's own come to roughly 460px, which does not fit a 390px screen,
-	 * and the row always starts at Monday - so choosing a Friday scrolls the cell that was just
-	 * chosen off the edge, and the strip then shows a week with no visible selection in it.
-	 *
-	 * Conditioned on the row actually overflowing rather than on a breakpoint: the desktop grid never
-	 * does, so one check covers both widths and everything between them. `block: 'nearest'` keeps it
-	 * to the horizontal axis - without it the page itself scrolls to put the strip in view on load.
-	 *
-	 * `isPending` is a dependency because the skeleton branch below renders no cells at all: the refs
-	 * are attached on the render after the week lands, and the date has not changed by then.
-	 */
+	/** Bring the selected day into view. `block: 'nearest'` keeps it to the horizontal axis, or the
+	 * page scrolls to put the strip in view on load; `isPending` because the skeleton holds no refs. */
 	useEffect(() => {
 		const strip = stripRef.current;
 		const selected = selectedRef.current;
@@ -206,9 +162,6 @@ export function WeekStrip({
 	}
 
 	return (
-		// `scrollbar-none` rather than a visible bar: the strip is one row of tap targets, and the
-		// effect above is what puts the selected cell in front of you rather than leaving it to be
-		// hunted for.
 		<nav
 			ref={stripRef}
 			aria-label="Week"
@@ -218,9 +171,8 @@ export function WeekStrip({
 				const isSelected = day === date;
 				const minutes = weekTotals?.[day] ?? 0;
 				const expected = expectedOn(day);
-				// The person's own working hours where they are known (UI-6), which catches a
-				// four-day week that a weekend test cannot. The weekend is the fallback for an
-				// account that has never set any.
+				// The person's own working hours where they are known, which catches a four-day week that a
+				// weekend test cannot. The weekend is the fallback for an account that has never set any.
 				const isNonWorking = expected === null ? isWeekend(day) : expected === 0;
 
 				const cell = (
@@ -230,16 +182,11 @@ export function WeekStrip({
 						to="/day/$date"
 						params={{ date: day }}
 						aria-label={describeCell(day, minutes, isNonWorking, isError, expected)}
-						// `aria-current="page"` is set by the router itself on the active link, so
-						// the selected cell is marked without this component tracking it.
 						className={cn(
 							'duration-ui relative flex h-[92px] w-16 flex-none flex-col items-center gap-1 overflow-hidden rounded-input border bg-surface pt-2.5 leading-[1.2] whitespace-nowrap transition-colors ease-ui hover:bg-subtle md:h-[124px] md:w-auto md:items-start md:gap-2 md:px-4 md:pt-3',
 							isNonWorking
 								? 'border-dashed border-line hatched md:border-transparent'
 								: 'border-line md:border-transparent',
-							// The token's own name for itself is "selected day" - the strip had been
-							// carrying the whole selection on a 3px underline, which is the one thing
-							// on a cell that a neighbouring cell's border can be mistaken for.
 							isSelected && 'border-accent bg-accent text-white shadow-fab hover:bg-accent md:border-accent'
 						)}
 					>
@@ -302,11 +249,6 @@ export function WeekStrip({
 					</Link>
 				);
 
-				/*
-				 * The panel is a pointer affordance and nothing more: a cell is a link, so on a
-				 * touch screen its one gesture is already spoken for by navigating to that day.
-				 * What it would have said is in the cell's accessible name either way.
-				 */
 				if (!hasHover || expected === null || isError) return cell;
 
 				return (
@@ -319,14 +261,6 @@ export function WeekStrip({
 				);
 			})}
 
-			{/*
-			 * A panel, not a card (UI-5): no border, no hover, no href and no tab stop, because it is
-			 * the only thing in this row that is not a day and cannot be navigated to. The equals sign
-			 * is what says "this is the sum of those" without a word for it.
-			 *
-			 * UI-6's numbers reach it by hover and by name, never by focus - giving it a tab stop to
-			 * make the panel keyboard-reachable is the thing UI-5 took away.
-			 */}
 			<WeekTotalPanel total={weekTotal} expected={weekExpected} isError={isError} hasHover={hasHover} />
 		</nav>
 	);

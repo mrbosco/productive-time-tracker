@@ -14,11 +14,8 @@ import { sessionQueryOptions, useSession } from '@/components/features/auth/useS
 import { servicesQueryOptions } from '@/components/features/settings/useDefaultService';
 import type { Session } from '@/lib/storage';
 
-/**
- * `trim` is load-bearing, not tidiness: a token pasted with a trailing newline makes
- * `Headers.set` throw, which the client reports as a transport failure - so an easy paste mistake
- * would read as "Network error. Try again." and send the user looking at their wifi.
- */
+/** `trim` is load-bearing: a token pasted with a trailing newline makes `Headers.set` throw, which
+ * the client reports as a transport failure - so a paste mistake reads as "Network error". */
 const credentialsSchema = z.object({
 	token: z.string().trim().min(1, 'Enter your API token.'),
 	organizationId: z.string().trim().regex(/^\d+$/, 'The organization ID is a number, like 1234.'),
@@ -26,11 +23,8 @@ const credentialsSchema = z.object({
 
 type Credentials = z.infer<typeof credentialsSchema>;
 
-/**
- * Maps a failed login to what the person can do about it. Branching is on the HTTP status, never
- * on `detail` text (api-client rule 19): 401 means the token is wrong, while 403 `no_person` means
- * the token is fine and the organization is not theirs - two different fixes.
- */
+/** Maps a failed login to what the person can do about it, branching on status and never on
+ * `detail` text: 401 is a wrong token, 403 `no_person` a fine token and a wrong organization. */
 function toLoginErrorMessage(error: unknown, organizationId: string): string {
 	if (!(error instanceof ApiError)) return 'Something went wrong. Try again.';
 
@@ -41,11 +35,6 @@ function toLoginErrorMessage(error: unknown, organizationId: string): string {
 	return error.message;
 }
 
-/**
- * Icons are drawn here as solid monochrome paths rather than pulled from an icon set, and these
- * two are the design system's own: a stroked set reads wrong beside them. Both paint with
- * `currentColor` so they take their colour from whatever contains them.
- */
 function AlertIcon() {
 	return (
 		<svg width="18" height="18" viewBox="0 0 20 20" aria-hidden="true" className="mt-px flex-none text-danger">
@@ -85,11 +74,8 @@ export function LoginForm() {
 		defaultValues: { token: '', organizationId: '' },
 	});
 
-	/**
-	 * A plain handler rather than `useMutation`: this runs once, needs no cache entry, no retry
-	 * and no invalidation, and `useMutation` would hold the submitted credentials in the mutation
-	 * cache afterwards - the one place ADR-0004 says the token must not end up.
-	 */
+	/** A plain handler rather than `useMutation`, which would hold the submitted credentials in the
+	 * mutation cache afterwards - the one place ADR-0004 says the token must not end up. */
 	async function submit({ token, organizationId }: Credentials) {
 		setIsPending(true);
 		setErrorMessage(null);
@@ -97,10 +83,9 @@ export function LoginForm() {
 		try {
 			const memberships = await listOrganizationMemberships({ token, organizationId });
 
-			// The call answers with every membership the token owns, whatever organization was
-			// asked for, so the one for the entered organization has to be found among them - the
-			// step the assignment describes on page two. Taking the first membership instead would
-			// sign the user in against an organization they never typed.
+			// The call answers with every membership the token owns, whatever organization was asked
+			// for, so the entered one has to be found among them: taking the first would sign the
+			// user in against an organization they never typed.
 			const membership = findMembershipForOrganization(memberships, organizationId);
 			if (membership === undefined) {
 				setErrorMessage(`This token is not a member of organization ${organizationId}.`);
@@ -123,14 +108,14 @@ export function LoginForm() {
 			};
 
 			// This response is exactly what the re-validation query would fetch, so seed it and
-			// spare the app a second identical request on the very next route (SPEC 4.2).
+			// spare the app a second identical request on the very next route.
 			queryClient.setQueryData(sessionQueryOptions(session).queryKey, memberships);
 
 			login(session);
 
-			// Not awaited: the day view must render on one request (SPEC 4.2). The services list
+			// Not awaited: the day view must render on one request. The services list
 			// is only needed by the first create or timer start, which reads this cache or waits
-			// on that single request if it has not landed yet (A-1).
+			// on that single request if it has not landed yet.
 			void queryClient.prefetchQuery(servicesQueryOptions(session));
 
 			await navigate({ to: '/' });
@@ -188,8 +173,6 @@ export function LoginForm() {
 							/>
 							<button
 								type="button"
-								// One glyph for both states, as drawn. The state is carried by the
-								// accessible name and `aria-pressed`, not by a second icon.
 								aria-label={isTokenVisible ? 'Hide token' : 'Show token'}
 								aria-pressed={isTokenVisible}
 								onClick={() => {

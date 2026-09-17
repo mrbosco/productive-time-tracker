@@ -3,7 +3,6 @@ import { readDuration } from '@/components/features/time-entries/TimeEntryForm/T
 import { formatDuration, parseDuration } from '@/lib/duration';
 import { cn } from '@/lib/utils';
 
-/** The corrections worth a button. They act on what is typed, not on what is stored. */
 const NUDGES = [-15, 15, 60];
 
 function PencilIcon() {
@@ -14,18 +13,8 @@ function PencilIcon() {
 	);
 }
 
-/**
- * The duration on a row, editable where it is written (`Card Actions.dc.html`).
- *
- * The number is the target rather than a pencil beside it: a dedicated edit icon would be a third
- * control in a row that already has two, and it would point at the thing it sits next to. Clicking
- * turns it into a field of the same size in the same place, so the edit happens where the eye
- * already was.
- *
- * The rules are the entry form's own (`readDuration`), so this rejects what the form rejects and
- * says the same sentence. It touches the duration and nothing else - not the description, the date
- * or the service - which is what makes it safe without a confirm step.
- */
+/** The duration on a row, editable where it is written, under the entry form's own rules
+ * (`readDuration`). It touches the duration and nothing else, which is why there is no confirm step. */
 export function DurationEditor({
 	minutes,
 	onSave,
@@ -35,20 +24,14 @@ export function DurationEditor({
 	onEditingChange,
 }: {
 	minutes: number;
-	/** Resolves when the write settles, so a failure can keep the field open and what was typed. */
 	onSave: (minutes: number) => Promise<void>;
-	/** Hover on a pointer. The class comes in so the row decides when its controls appear. */
 	isRevealed?: string;
-	/** A moving number has nothing stable to type over, so the field never opens on one. */
 	isTracking?: boolean;
-	/**
-	 * Open is the row's to decide, not the field's: the design's `Enter` opens this from the focused
-	 * row, and the row hides its play button while it is open. What has been typed stays here.
-	 */
+	/** Open is the row's to decide, not the field's: the design's `Enter` opens this from the focused
+	 * row, and the row hides its play button while it is open. What has been typed stays here. */
 	isEditing: boolean;
 	onEditingChange: (isEditing: boolean) => void;
 }) {
-	/** What has been typed. Null means nothing yet, and the stored duration is what is shown. */
 	const [typed, setTyped] = useState<string | null>(null);
 	const draft = typed ?? formatDuration(minutes);
 	const close = () => {
@@ -56,10 +39,8 @@ export function DurationEditor({
 		onEditingChange(false);
 	};
 	const [isSaving, setIsSaving] = useState(false);
-	/*
-	 * Enter submits and the blur that follows commits again, which wrote the same value twice. A
-	 * ref rather than `isSaving`, because the blur lands before a state update does.
-	 */
+	/* Enter submits and the blur that follows commits again, which wrote the same value twice. A
+	 * ref rather than `isSaving`, because the blur lands before a state update does. */
 	const isCommitting = useRef(false);
 
 	async function write() {
@@ -78,8 +59,7 @@ export function DurationEditor({
 			await onSave(current.minutes);
 			close();
 		} catch {
-			// Left open holding what was typed: the screen has raised the toast, and the only other
-			// way back to this number would be to type it again.
+			// Left open with what was typed; the screen has already raised the toast.
 		} finally {
 			setIsSaving(false);
 		}
@@ -148,7 +128,6 @@ export function DurationEditor({
 						event.preventDefault();
 						void commit();
 					}
-					// Restores the original and closes, which is the only way out that changes nothing.
 					if (event.key === 'Escape') {
 						event.preventDefault();
 						event.stopPropagation();
@@ -163,14 +142,7 @@ export function DurationEditor({
 				)}
 			/>
 
-			{/* Below the field and right-aligned with it, so it never covers the note beside it. */}
 			<div className="absolute top-12 right-0 z-10 flex w-[238px] flex-col gap-2.5 rounded-input border border-line bg-surface p-3 shadow-menu">
-				{/*
-				 * Side by side while valid, stacked while not: the form's message is a sentence, and
-				 * a sentence sharing a line with the key hint wrapped into a two-word column. The
-				 * wording is the form's rather than the design's shorter copy, because two sources
-				 * for "what counts as a duration" is the drift the page's own build note warns about.
-				 */}
 				{isValid ? (
 					<div className="flex items-baseline justify-between gap-2.5">
 						<span className="text-label font-medium text-accent tabular-nums">= {formatDuration(read.minutes)}</span>

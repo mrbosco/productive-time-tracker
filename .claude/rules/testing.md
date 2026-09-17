@@ -8,15 +8,15 @@ paths:
 
 # Testing
 
-Strategy in SPEC 8; conventions are guidebook rules 19-23. ADR-0003 holds the reasoning.
+Strategy in SPEC 7; conventions are guidebook rules 19-23. ADR-0003 holds the reasoning.
 
 ## Levels
 
-| Level     | Tool                            | Covers                                                                                   |
-| --------- | ------------------------------- | ---------------------------------------------------------------------------------------- |
-| Unit      | Vitest                          | `lib/duration`, `lib/date`, JSON:API parsing, error mapping, the quick-add parser        |
-| Component | Vitest + Testing Library + MSW  | Forms (validation, submit, error rendering) and list states: loading, empty, error, data |
-| E2E       | Playwright + MSW in the browser | One spec per user story: login and persistence, list by date, create, edit, delete       |
+| Level     | Tool                            | Covers                                                                                          |
+| --------- | ------------------------------- | ----------------------------------------------------------------------------------------------- |
+| Unit      | Vitest                          | `lib/duration`, `lib/date`, JSON:API parsing and validation, error mapping, note conversion     |
+| Component | Vitest + Testing Library + MSW  | Forms (validation, submit, error rendering) and list states: loading, empty, error, data        |
+| E2E       | Playwright + MSW in the browser | One spec per feature: login and persistence, the day list, create, edit, delete, and the extras |
 
 Every list-rendering component gets all four states tested. R-7 and R-8 make empty and error states requirements, not polish.
 
@@ -26,7 +26,7 @@ Every list-rendering component gets all four states tested. R-7 and R-8 make emp
 2. **Query by role and accessible name first**: `getByRole('button', { name: /save/i })`, `getByRole('textbox', { name: /description/i })`. Fall back to label, then text. Reach for `data-testid` only when there is no accessible handle, and treat needing one as an accessibility bug (guidebook 18).
 3. **`user-event`, never `fireEvent`.** `const user = userEvent.setup()` then `await user.click(...)`. It fires the full event sequence a real user produces.
 4. **Assert behaviour and rendered output**, never internal state, hook internals or implementation details. A refactor that preserves behaviour must not break a test.
-5. **Async**: `findBy*` or `waitFor`, never a bare timeout. Use fake timers deliberately (the timer and idle-detection features, X-4 and X-5, need them) and restore real timers afterwards.
+5. **Async**: `findBy*` or `waitFor`, never a bare timeout. Use fake timers deliberately (the timer and idle detection need them) and restore real timers afterwards.
 6. **One behaviour per test.** The name states the behaviour: `shows the empty state when the day has no entries`.
 
 ## What the runner already provides
@@ -42,7 +42,7 @@ Every list-rendering component gets all four states tested. R-7 and R-8 make emp
 
 - Specs live in `e2e/`, named per user story. `playwright.config.ts` boots `pnpm dev:mock` on `http://localhost:5173` itself; do not start a server in the test.
 - **E2E never touches the real Productive API** (ADR-0003): no secrets in CI, deterministic runs. Traffic is MSW handlers in the browser.
-- Two projects run every spec: `desktop-chromium` and `mobile-chrome` (Pixel 5). Mobile is a requirement (N-4), not an extra, so no spec may assume a desktop-only layout.
+- `desktop-chromium` runs every spec. `mobile-chrome` (Pixel 5) runs the ones tagged `@mobile`: the journeys that prove a person can sign in, read a day and log time on a phone, plus the cases that branch on the device. Mobile is a requirement (N-4), not an extra, so a spec that would read differently on a phone gets the tag.
 - Use `baseURL`-relative paths: `page.goto('/day/2026-09-15')`.
 - Prefer `getByRole` locators and Playwright's auto-waiting assertions (`await expect(locator).toBeVisible()`). No manual `waitForTimeout`.
 
