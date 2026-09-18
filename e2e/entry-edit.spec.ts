@@ -129,6 +129,39 @@ test.describe('editing a time entry', () => {
 	});
 
 	/**
+	 * The day behind the form is the day the person was reading. Opening the dialog already left it
+	 * where it was; closing it landed at the top, because the navigation back was the one that did
+	 * not say so. Only assertable in a browser - jsdom has no scrolling to lose.
+	 *
+	 * The viewport is shortened so the day is certain to scroll at all, and the first assertion is
+	 * that it did: without it the rest would pass on a page that never moved.
+	 */
+	test('leaves the day scrolled where it was when the form closes', async ({ page }) => {
+		await page.setViewportSize({ width: 1280, height: 400 });
+		await page.goto(`/day/${SEEDED_DATE}`);
+		await expect(notedEntry(page)).toBeVisible();
+
+		// Source rather than a closure, as `signIn` does it: the e2e project compiles without the DOM
+		// lib, so `window` is not a name this file can reference.
+		await page.evaluate('window.scrollTo(0, 200)');
+		const didScroll: unknown = await page.evaluate('window.scrollY > 0');
+		expect(didScroll).toBe(true);
+
+		await notedEntry(page).getByRole('button', { name: 'Entry actions' }).click();
+		await page.getByRole('menuitem', { name: 'Edit' }).click();
+		const form = page.getByRole('dialog', { name: 'Edit entry' });
+		await expect(form).toBeVisible();
+
+		await page.keyboard.press('Escape');
+
+		await expect(page).toHaveURL(new RegExp(`/day/${SEEDED_DATE}$`));
+		await expect(form).toBeHidden();
+
+		const stayedPut: unknown = await page.evaluate('window.scrollY > 0');
+		expect(stayedPut).toBe(true);
+	});
+
+	/**
 	 * ADR-0010 exists so this could not ship the loss it describes: a note written in Productive as
 	 * a list has to arrive as a list and leave as one. Only assertable in a browser - ProseMirror
 	 * needs `beforeinput`, which jsdom does not implement.

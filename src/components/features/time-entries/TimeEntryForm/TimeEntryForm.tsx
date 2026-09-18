@@ -174,8 +174,10 @@ export function TimeEntryForm({ session, date, entry, prefill }: TimeEntryFormPr
 		discard();
 	}
 
+	/* `resetScroll: false`, as on the way in: the day is still the day, so closing the form has no
+	 * business moving it. Without it the router lands at the top and a day read halfway down jumps. */
 	function discard() {
-		void navigate({ to: '/day/$date', params: { date: dayDate } });
+		void navigate({ to: '/day/$date', params: { date: dayDate }, resetScroll: false });
 	}
 
 	/** Awaited rather than navigating straight away: the entry is what this screen is for, so a
@@ -189,7 +191,12 @@ export function TimeEntryForm({ session, date, entry, prefill }: TimeEntryFormPr
 
 		try {
 			await deleteEntry.mutateAsync({ id: entry.id, date: entry.date, minutes: entry.minutes });
-			await navigate({ to: '/day/$date', params: { date: entry.date }, state: { toast: 'Entry deleted' } });
+			await navigate({
+				to: '/day/$date',
+				params: { date: entry.date },
+				state: { toast: 'Entry deleted' },
+				resetScroll: false,
+			});
 		} catch {
 			setIsDeleting(false);
 			setErrorMessage('Could not delete the entry. Try again.');
@@ -245,6 +252,9 @@ export function TimeEntryForm({ session, date, entry, prefill }: TimeEntryFormPr
 				to: '/day/$date',
 				params: { date: values.date },
 				state: { toast: 'Entry saved' },
+				/* Only when the entry stayed put. A date change lands on a different day, and arriving
+				 * partway down one is the jump this flag exists to prevent. */
+				resetScroll: values.date !== dayDate,
 			});
 		} catch (error) {
 			setErrorMessage(toSaveErrorMessage(error));
