@@ -42,3 +42,18 @@ whole page and cannot offer a retry scoped to the list.
 So the route starts the request and the component subscribes to the same query key, which is what
 renders the four list states in place. `ensureQueryData` remains the right call for
 `/entries/:id/edit` (US-3), where there is nothing to render until the entry is known.
+
+## Amendment (2026-09-18): the form loaders fetch rather than ensure
+
+`ensureQueryData` hands back whatever is in the cache however old it is - that is its contract, and
+it has no bearing on staleness. For `/entries/:id/edit` that meant an entry changed in Productive
+itself, or in another tab, opened a form on the values from before the change; `/entries/new` had the
+same hole in the entry a duplicate starts from.
+
+Both now call `queryClient.fetchQuery`, which honours the client's `staleTime` (30s): reopening a
+form straight after closing it still costs no request, and anything older is read again. The decision
+above is unchanged - the loader still starts the request on navigation and the edit route still awaits
+it, because there is nothing to render until the entry is known.
+
+The two hooks that `removeQueries(['time-entry', id])` after a write still need to: 30 seconds is
+long enough for a save or a delete to be handed back the copy it replaced.

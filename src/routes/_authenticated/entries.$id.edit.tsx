@@ -12,9 +12,14 @@ export const Route = createFileRoute('/_authenticated/entries/$id/edit')({
 	/** Awaited, unlike the day route's (ADR-0007): a form cannot open half-prefilled, and the entry's
 	 * date decides which day renders behind it. The router owning that wait is what makes the
 	 * skeleton a `pendingComponent` rather than another branch inside the form. The day and its week
-	 * are started but not awaited - they are decoration behind a modal. */
+	 * are started but not awaited - they are decoration behind a modal.
+	 *
+	 * `fetchQuery` rather than `ensureQueryData`, which hands back whatever is cached however old it
+	 * is: an entry changed in Productive itself, in another tab, would have opened this form on the
+	 * values from before that change. This respects the client's staleness instead, so reopening a
+	 * form straight after closing it still costs no request. */
 	loader: async ({ context, params }) => {
-		const entry = await context.queryClient.ensureQueryData(timeEntryQueryOptions(context.session, params.id));
+		const entry = await context.queryClient.fetchQuery(timeEntryQueryOptions(context.session, params.id));
 
 		void context.queryClient.prefetchQuery(weekEntriesQueryOptions(context.session, entry.date));
 

@@ -27,7 +27,7 @@ export const Route = createFileRoute('/_authenticated/entries/new')({
 		 * point, and an error page would refuse to let someone log time because the entry they
 		 * wanted to copy is gone. */
 		const source = await context.queryClient
-			.ensureQueryData(timeEntryQueryOptions(context.session, deps.duplicate))
+			.fetchQuery(timeEntryQueryOptions(context.session, deps.duplicate))
 			.catch(() => null);
 
 		return { prefill: source === null ? null : { minutes: source.minutes, note: source.note } };

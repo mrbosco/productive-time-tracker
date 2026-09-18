@@ -28,9 +28,9 @@ Three layers, with no overlap:
 - **Session** — token, organization ID, person ID, person name. React context over `localStorage`,
   injected into the router context so `beforeLoad` guards can redirect without rendering first.
 - **Server data** — TanStack Query. Keys are `[resource, ...scope]`, scoped by person wherever the
-  data is the person's:
-  `['time-entries', personId, date]` for one day, `['week-entries', personId, monday]` for the week
-  behind the strip and the timesheet, plus `['time-entry', id]`, `['services', personId]`,
+  data is the person's: `['week-entries', personId, monday]` carries the week behind the strip and
+  the timesheet *and* each day inside it, which is a `select` over that one array rather than a key
+  of its own (see section 3), plus `['time-entry', id]`, `['services', personId]`,
   `['timer', personId]` and a few narrower ones.
 - **UI state** — local component state. There is no global store.
 
@@ -226,11 +226,15 @@ Each of these was established by making the request and recording the response i
   it does not, and the list's Retry refetches the week. One request that can fail in one way is
   easier to reason about than two that can disagree, but it is a real reduction in graceful
   degradation rather than a free win.
-- **Two writes are optimistic, and only two.** Deleting removes the row and its minutes from the
-  day and the week cache on confirm, and `onError` restores both. Editing writes optimistically
+- **Two writes are optimistic, and only two.** Deleting removes the row from the week key on
+  confirm - which moves the list, the strip and the totals at once - and `onError` puts it back.
+  Editing writes optimistically
   **only when the duration alone changed and the entry stays on its day** — the inline editor
   corrects a number in place, so the number has to move with it; a date move rewrites which day an
-  entry belongs to, which the cache cannot honestly guess. Creating is never optimistic, and
+  entry belongs to, which the cache cannot honestly guess. Both cancel any week fetch already in
+  flight before they write, or its answer would land afterwards and undo them; the edit's rollback
+  restores the one duration rather than the whole array, so a row deleted while its PATCH was in
+  flight does not reappear. Creating is never optimistic, and
   neither is the rest of an edit: a POST or PATCH response carries only the `organization`
   relationship, so an optimistically-inserted row could not render the service name every card
   shows.
@@ -314,7 +318,7 @@ pull request titles.
 | R-2 | Credentials survive a refresh; logout clears them | `lib/storage.ts`, `features/auth/useSession` |
 | R-3 | A screen listing entries for a selected date, defaulting to today | `routes/_authenticated/day.$date.tsx`, `features/time-entries/DayView` |
 | R-4 | Only the current person's entries are shown | `filter[person_id]` in `api/time-entries.ts` |
-| R-5 | The date can be changed and the list follows | `features/time-entries/DateNavigator`; the date is part of the query key |
+| R-5 | The date can be changed and the list follows | `features/time-entries/DateNavigator`; the date selects the day out of its week's cache entry |
 | R-6 | An entry shows its duration, multiline description and date | `features/time-entries/TimeEntryCard` |
 | R-7 | An empty day shows an empty state | `features/time-entries/TimeEntryList` |
 | R-8 | A failed load shows an error | `features/time-entries/TimeEntryList` |

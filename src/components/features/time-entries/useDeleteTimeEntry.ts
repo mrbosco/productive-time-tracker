@@ -59,9 +59,9 @@ export function useDeleteTimeEntry(session: Session) {
 
 		onSettled: (_data, _error, { id, date }) => {
 			/* Removed, not invalidated, for the reason `useUpdateTimeEntry` gives: nothing
-			 * subscribes to this key, because the edit route reads its entry through
-			 * `ensureQueryData` - so an invalidated one would sit in the cache stale and be handed
-			 * straight back, opening a form on an entry that no longer exists. */
+			 * subscribes to this key, because the edit route reads its entry in a loader - so an
+			 * invalidated one would sit in the cache fresh enough to be handed straight back,
+			 * opening a form on an entry that no longer exists. */
 			queryClient.removeQueries({ queryKey: ['time-entry', id] });
 
 			// After either outcome: refetched whether the delete landed (to confirm it) or failed
