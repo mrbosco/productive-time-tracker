@@ -162,6 +162,42 @@ test.describe('editing a time entry', () => {
 	});
 
 	/**
+	 * The save is the one branch of the rule rather than the whole of it: staying on the day keeps
+	 * the scroll, and moving the entry to another day does not - arriving partway down a day you have
+	 * not read is the same disorientation in reverse. Both halves here, because a conditional with
+	 * one side tested is a conditional nobody is testing.
+	 */
+	test('keeps the scroll when a save stays on the day, and drops it when the entry moves', async ({ page }) => {
+		await page.setViewportSize({ width: 1280, height: 400 });
+		await page.goto(`/day/${SEEDED_DATE}`);
+		await expect(notedEntry(page)).toBeVisible();
+
+		await page.evaluate('window.scrollTo(0, 200)');
+		expect(await page.evaluate('window.scrollY > 0')).toBe(true);
+
+		await notedEntry(page).getByRole('button', { name: 'Entry actions' }).click();
+		await page.getByRole('menuitem', { name: 'Edit' }).click();
+		await setDuration(page, '5h 30m');
+		await page.getByRole('button', { name: 'Save changes' }).click();
+
+		await expect(page).toHaveURL(new RegExp(`/day/${SEEDED_DATE}$`));
+		const keptOnSameDay: unknown = await page.evaluate('window.scrollY > 0');
+		expect(keptOnSameDay).toBe(true);
+
+		// Now the other half: the same form, the same scroll, but the entry leaves the day.
+		await page.evaluate('window.scrollTo(0, 200)');
+		await notedEntry(page).getByRole('button', { name: 'Entry actions' }).click();
+		await page.getByRole('menuitem', { name: 'Edit' }).click();
+		await page.getByRole('button', { name: /Date Tue 15 Sep 2026/ }).click();
+		await page.getByRole('button', { name: 'Wednesday, September 16th, 2026' }).click();
+		await page.getByRole('button', { name: 'Save changes' }).click();
+
+		await expect(page).toHaveURL(new RegExp(`/day/${NEXT_DATE}$`));
+		const resetOnNewDay: unknown = await page.evaluate('window.scrollY === 0');
+		expect(resetOnNewDay).toBe(true);
+	});
+
+	/**
 	 * ADR-0010 exists so this could not ship the loss it describes: a note written in Productive as
 	 * a list has to arrive as a list and leave as one. Only assertable in a browser - ProseMirror
 	 * needs `beforeinput`, which jsdom does not implement.
