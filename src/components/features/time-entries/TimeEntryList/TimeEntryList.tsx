@@ -3,7 +3,6 @@ import { addDays, formatDayShort } from '@/lib/date';
 import { cn } from '@/lib/utils';
 import { Clock3, Copy, Plus } from 'lucide-react';
 import { Link } from '@tanstack/react-router';
-import type { ReactNode } from 'react';
 import type { TimeEntry } from '@/api/types';
 import { Button } from '@/components/core/Button';
 import { TimeEntryCard } from '@/components/features/time-entries/TimeEntryCard/TimeEntryCard';
@@ -33,18 +32,6 @@ interface TimeEntryListProps {
 	trackingEntryId?: string | null;
 	trackingSince?: string | null;
 	onStopTimer?: () => void;
-}
-
-/** The card the empty and error states share, so the list never collapses to nothing. */
-function ListState({ children, role }: { children: ReactNode; role?: 'alert' }) {
-	return (
-		<div
-			role={role}
-			className="flex animate-entry-in flex-col items-center gap-4 rounded-entry border border-line bg-surface px-5 py-10 text-center md:py-14"
-		>
-			{children}
-		</div>
-	);
 }
 
 function CardSkeleton() {
@@ -88,11 +75,14 @@ export function TimeEntryList({
 	trackingSince = null,
 	onStopTimer,
 }: TimeEntryListProps) {
-	const entrance = useDayEntrance(date);
+	/* Gates every animation below. The day's own arrival is what earns one; a remount on the same
+	 * day - which is what opening the entry form is - does not. Told when the day is really on
+	 * screen, so the skeleton does not spend the entrance the rows it stands in for want. */
+	const isEntering = useDayEntrance(date, !isPending);
 
 	if (isPending) {
 		return (
-			<div key={date} className={cn('flex flex-col gap-2.5', entrance)}>
+			<div key={date} className={cn('flex flex-col gap-2.5', isEntering && 'animate-day-in')}>
 				<span role="status" className="sr-only">
 					Loading entries
 				</span>
@@ -110,13 +100,20 @@ export function TimeEntryList({
 	 * the loading branch's `role="status"`, which would otherwise unmount and announce nothing. */
 	if (entries === undefined) {
 		return (
-			<ListState key={date} role="alert">
+			<div
+				key={date}
+				role="alert"
+				className={cn(
+					'flex flex-col items-center gap-4 rounded-entry border border-line bg-surface px-5 py-10 text-center md:py-14',
+					isEntering && 'animate-entry-in'
+				)}
+			>
 				<LoadFailedIllustration />
 				<p className="text-base leading-[140%]">Could not load entries.</p>
 				<Button variant="outline" disabled={isRetrying} onClick={onRetry}>
 					{isRetrying ? 'Retrying...' : 'Retry'}
 				</Button>
-			</ListState>
+			</div>
 		);
 	}
 
@@ -124,7 +121,10 @@ export function TimeEntryList({
 		return (
 			<div
 				key={date}
-				className="flex animate-entry-in flex-col items-center rounded-entry border border-line bg-surface px-6 py-10 text-center shadow-card md:py-12"
+				className={cn(
+					'flex flex-col items-center rounded-entry border border-line bg-surface px-6 py-10 text-center shadow-card md:py-12',
+					isEntering && 'animate-entry-in'
+				)}
 			>
 				<div
 					aria-hidden="true"
@@ -173,7 +173,7 @@ export function TimeEntryList({
 			{entries.map((entry, index) => (
 				<li
 					key={entry.id}
-					className="animate-entry-in border-b border-line/70 last:border-b-0"
+					className={cn('border-b border-line/70 last:border-b-0', isEntering && 'animate-entry-in')}
 					style={{ animationDelay: `${Math.min(index, 4) * 40}ms` }}
 				>
 					<TimeEntryCard

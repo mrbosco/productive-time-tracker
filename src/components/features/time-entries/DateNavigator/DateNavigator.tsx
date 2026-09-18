@@ -35,7 +35,7 @@ function CaretIcon() {
 /** Previous / next day around a label in words that opens a calendar, plus a `Today`. The label is the
  * page's `h1` and `__root.tsx` focuses it after every navigation, so stepping a day announces it. */
 export function DateNavigator({ date, onSelect, today = todayIso() }: DateNavigatorProps) {
-	const entrance = useDayEntrance(date);
+	const entrance = useDayEntrance(date) ? 'animate-day-in' : '';
 	const isToday = date === today;
 	const arrowClassName =
 		'flex size-11 flex-none place-items-center justify-center rounded-control text-muted transition-colors duration-ui ease-ui hover:bg-subtle hover:text-ink md:border md:border-line md:bg-surface';

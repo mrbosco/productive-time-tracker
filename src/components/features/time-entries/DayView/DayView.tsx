@@ -39,7 +39,7 @@ function PlusIcon() {
  * `/day/$date` so `/entries/new` can render it behind its dialog; the route still owns the date
  * guard and the prefetch. */
 export function DayView({ session, date }: { session: Session; date: string }) {
-	const entrance = useDayEntrance(date);
+	const entrance = useDayEntrance(date) ? 'animate-day-in' : '';
 	const navigate = useNavigate();
 	const { data: entries, isPending, isFetching, refetch } = useTimeEntries(session, date);
 	const { data: weekTotals, isPending: isWeekPending, isError: isWeekError } = useWeekTotals(session, date);
