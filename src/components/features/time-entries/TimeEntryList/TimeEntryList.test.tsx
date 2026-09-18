@@ -41,20 +41,30 @@ describe('TimeEntryList', () => {
 		expect(screen.getByRole('link', { name: 'Add entry' })).toHaveAttribute('href', '/entries/new?date=2026-09-10');
 	});
 
-	/** The offer names the day it would copy, not "yesterday". */
-	it('offers to copy the day before into an empty day, naming it', async () => {
-		const onCopyFromYesterday = vi.fn();
+	/** The offer names the day it would copy, not "yesterday" - and the day is the caller's to pick,
+	 * so the button says whichever one it was handed. */
+	it('offers to copy an earlier day into an empty day, naming the one it was given', async () => {
+		const onCopyFromDay = vi.fn();
 		const user = userEvent.setup();
-		await renderWithProviders(<TimeEntryList {...baseProps} entries={[]} onCopyFromYesterday={onCopyFromYesterday} />);
+		await renderWithProviders(
+			<TimeEntryList {...baseProps} entries={[]} copyFrom="2026-09-11" onCopyFromDay={onCopyFromDay} />
+		);
 
-		await user.click(screen.getByRole('button', { name: 'Copy from Mon 14 Sep' }));
+		await user.click(screen.getByRole('button', { name: 'Copy from Fri 11 Sep' }));
 
-		expect(onCopyFromYesterday).toHaveBeenCalledTimes(1);
+		expect(onCopyFromDay).toHaveBeenCalledTimes(1);
+	});
+
+	/** Standalone, with no day picked for it: the one before still stands in. */
+	it('falls back to the day before when it was given none', async () => {
+		await renderWithProviders(<TimeEntryList {...baseProps} entries={[]} onCopyFromDay={vi.fn()} />);
+
+		expect(screen.getByRole('button', { name: 'Copy from Mon 14 Sep' })).toBeInTheDocument();
 	});
 
 	/** The copy is N sequential POSTs, so the offer says so rather than sitting there looking inert. */
 	it('says a copy is under way rather than looking idle', async () => {
-		await renderWithProviders(<TimeEntryList {...baseProps} entries={[]} onCopyFromYesterday={vi.fn()} isCopying />);
+		await renderWithProviders(<TimeEntryList {...baseProps} entries={[]} onCopyFromDay={vi.fn()} isCopying />);
 
 		expect(screen.getByRole('button', { name: 'Copying...' })).toBeDisabled();
 	});

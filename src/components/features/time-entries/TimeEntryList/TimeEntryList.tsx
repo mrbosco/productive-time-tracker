@@ -20,8 +20,10 @@ interface TimeEntryListProps {
 	 * owns it, because the keys are bound there. */
 	focusedEntryId?: string | null;
 	onFocusEntry?: (id: string) => void;
-	/** Fills an empty day from the one before it. The day view owns the copy and its toast. */
-	onCopyFromYesterday?: () => void;
+	/** Fills an empty day from an earlier one. The day view owns the copy, the day it picked and the
+	 * toast that reports it; the offer only has to name it. */
+	onCopyFromDay?: () => void;
+	copyFrom?: string;
 	isCopying?: boolean;
 	/** Starts a timer on that entry, which the stop then adds to. */
 	onContinueTimer?: (entry: TimeEntry) => void;
@@ -66,7 +68,9 @@ export function TimeEntryList({
 	onRequestDelete,
 	focusedEntryId = null,
 	onFocusEntry,
-	onCopyFromYesterday,
+	onCopyFromDay,
+	/* Defaulted so the list stays renderable on its own; the day view passes the day it resolved. */
+	copyFrom = addDays(date, -1),
 	isCopying = false,
 	onContinueTimer,
 	onSaveDuration,
@@ -137,7 +141,7 @@ export function TimeEntryList({
 				</div>
 				<h2 className="text-title font-semibold tracking-tight">Ready when you are</h2>
 				<p className="mt-2 max-w-80 text-meta leading-relaxed text-muted">Nothing logged for this day yet.</p>
-				<p className="max-w-80 text-meta leading-relaxed text-muted">Add an entry or copy yesterday's work.</p>
+				<p className="max-w-80 text-meta leading-relaxed text-muted">Add an entry or copy a day you logged.</p>
 				<div className="mt-6 flex flex-wrap justify-center gap-2.5">
 					<Button asChild size="sm">
 						<Link to="/entries/new" search={{ date }} resetScroll={false}>
@@ -149,11 +153,11 @@ export function TimeEntryList({
 						type="button"
 						variant="outline"
 						size="sm"
-						disabled={onCopyFromYesterday === undefined || isCopying}
-						onClick={onCopyFromYesterday}
+						disabled={onCopyFromDay === undefined || isCopying}
+						onClick={onCopyFromDay}
 					>
 						<Copy size={15} aria-hidden="true" />
-						{isCopying ? 'Copying...' : `Copy from ${formatDayShort(addDays(date, -1))}`}
+						{isCopying ? 'Copying...' : `Copy from ${formatDayShort(copyFrom)}`}
 					</Button>
 				</div>
 				<p className="mt-5 hidden items-center gap-1.5 text-caption text-muted md:flex">

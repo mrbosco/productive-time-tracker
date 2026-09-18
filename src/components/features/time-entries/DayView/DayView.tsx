@@ -12,6 +12,7 @@ import { DaySummary } from '@/components/features/time-entries/DaySummary/DaySum
 import { TimeEntryDeleteDialog } from '@/components/features/time-entries/TimeEntryDeleteDialog/TimeEntryDeleteDialog';
 import { ServiceTotals } from '@/components/features/time-entries/ServiceTotals/ServiceTotals';
 import { TimeEntryList } from '@/components/features/time-entries/TimeEntryList/TimeEntryList';
+import { lastLoggedDayBefore } from '@/components/features/time-entries/totals.utils';
 import { useCopyDayForward } from '@/components/features/time-entries/useCopyDayForward';
 import { useDeleteTimeEntry } from '@/components/features/time-entries/useDeleteTimeEntry';
 import { useUpdateTimeEntry } from '@/components/features/time-entries/useUpdateTimeEntry';
@@ -132,14 +133,17 @@ export function DayView({ session, date }: { session: Session; date: string }) {
 	 */
 	const addEntryRef = useRef<HTMLAnchorElement>(null);
 
+	/** The day a copy would come from. Named here rather than in the list, because the copy and the
+	 * toasts that report it are this screen's. */
+	const copyFrom = lastLoggedDayBefore(date, weekTotals);
+
 	/** One toast over four outcomes. Only an unreadable source day is an error: a partial copy put
 	 * real entries on the day, and colouring it red would suggest they need undoing. */
-	async function copyFromYesterday() {
-		const from = addDays(date, -1);
-		const named = formatDayShort(from);
+	async function copyFromLastLoggedDay() {
+		const named = formatDayShort(copyFrom);
 
 		try {
-			const { copied, failed } = await copyDay.mutateAsync({ from, to: date });
+			const { copied, failed } = await copyDay.mutateAsync({ from: copyFrom, to: date });
 
 			if (copied === 0 && failed === 0) {
 				setToast({ message: `Nothing was logged on ${named}.`, variant: 'success' });
@@ -293,8 +297,9 @@ export function DayView({ session, date }: { session: Session; date: string }) {
 							onRequestDelete={setEntryPendingDelete}
 							focusedEntryId={focusedEntryId}
 							onFocusEntry={setFocusedEntryId}
-							onCopyFromYesterday={() => {
-								void copyFromYesterday();
+							copyFrom={copyFrom}
+							onCopyFromDay={() => {
+								void copyFromLastLoggedDay();
 							}}
 							isCopying={copyDay.isPending}
 							onSaveDuration={saveDuration}

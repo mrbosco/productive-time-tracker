@@ -284,7 +284,7 @@ built on top of the five required features. Each is described in
 | Timer | Start, stop, continue an existing entry, and survive a refresh |
 | Idle awareness | Notices a timer running with nobody there and offers to deduct the idle time |
 | Range entry | Log an entry as a start and end time instead of a duration |
-| Duplicate and copy forward | Duplicate one entry, or fill an empty day from the day before |
+| Duplicate and copy forward | Duplicate one entry, or fill an empty day from the last day that was worked |
 | Rich-text descriptions | Round-trip with Productive's own editor |
 
 ## 7. Testing
