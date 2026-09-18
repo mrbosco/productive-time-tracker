@@ -31,7 +31,7 @@ Infrastructure scopes:
 
 `scaffold` · `api` · `router` · `ui` · `lib` · `mocks` · `e2e` · `ci` · `deps` · `docs` · `spec` · `claude` · `release`
 
-`scaffold` covers build/tooling config (Vite, TypeScript, ESLint, Prettier, Husky, Changesets). `ui` covers `components/core/` and `components/shared/`. `router` covers `src/routes/` and router setup. `spec` covers `docs/SPEC.md`, the ADRs and the diagrams; `docs` covers the rest of `docs/`. `claude` covers `.claude/` and `CLAUDE.md`. `release` is for version bumps and tags.
+`scaffold` covers build/tooling config (Vite, TypeScript, ESLint, Prettier, Husky, Changesets). `ui` covers `components/core/` and `components/shared/`, and a presentational pass that crosses several features at once without changing what any of them does - a design pass is one change, and splitting it across feature scopes would describe it as several. `router` covers `src/routes/` and router setup. `spec` covers `docs/SPEC.md`, the ADRs and the diagrams; `docs` covers the rest of `docs/`. `claude` covers `.claude/` and `CLAUDE.md`. `release` is for version bumps and tags.
 
 > This list is duplicated in `commitlint.config.mjs` as `SCOPES`. **Adding or renaming a scope means editing both files in the same commit**, or the rule and the enforcement drift apart.
 
@@ -52,6 +52,7 @@ Refs: N-4
 ```
 
 - `R-n` is a functional requirement and `N-n` a constraint, both from `docs/SPEC.md` section 9.
+- `X-n` is a feature beyond the assignment and `P-n` a polish item, both from section 6, defined in `docs/adr/0008-extra-features.md`.
 - `A-n` is an assumption, from section 4, for a change that rests on one.
 - `UC-n` in `docs/diagrams/01-use-cases.mmd` names a use case; reference it as `UC-n`.
 - Chores (tooling, CI, docs, config) use `Refs: ADR-000n` when a decision drove them, otherwise no footer.
