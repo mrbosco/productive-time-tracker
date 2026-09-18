@@ -173,11 +173,14 @@ export function TimeEntryList({
 	const tabStopId = focusedEntryId ?? entries[0]?.id;
 
 	return (
-		<ul key={date} className="flex flex-col rounded-entry border border-line bg-surface p-2 shadow-card">
+		<ul
+			key={date}
+			className="flex flex-col gap-3 md:gap-0 md:rounded-entry md:border md:border-line md:bg-surface md:p-2 md:shadow-card"
+		>
 			{entries.map((entry, index) => (
 				<li
 					key={entry.id}
-					className={cn('border-b border-line/70 last:border-b-0', isEntering && 'animate-entry-in')}
+					className={cn('md:border-b md:border-line/70 md:last:border-b-0', isEntering && 'animate-entry-in')}
 					style={{ animationDelay: `${Math.min(index, 4) * 40}ms` }}
 				>
 					<TimeEntryCard

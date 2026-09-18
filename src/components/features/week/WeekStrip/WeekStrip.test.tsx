@@ -12,11 +12,18 @@ function renderStrip(date = '2026-09-15', overrides: Partial<Parameters<typeof W
 }
 
 describe('WeekStrip', () => {
+	/**
+	 * By the panel's accessible name rather than its visible text. The total is rendered twice - in
+	 * the strip for a wide screen and in a row beneath it for a phone - and CSS decides which one is
+	 * shown, which jsdom does not evaluate (`css: false`). The name is unique, and it carries the
+	 * figure, so this asserts more than the text match it replaces. The phone row is covered where
+	 * viewports are real, in `e2e/day.spec.ts`.
+	 */
 	it('shows the seven days of the selected week plus the week total', async () => {
 		await renderStrip();
 
 		expect(screen.getAllByRole('link')).toHaveLength(7);
-		expect(screen.getByText('Weekly total')).toBeInTheDocument();
+		expect(screen.getByLabelText('Weekly total, 10h')).toBeInTheDocument();
 	});
 
 	it('shows what was logged on a day that has entries', async () => {
