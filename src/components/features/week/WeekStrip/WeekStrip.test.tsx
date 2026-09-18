@@ -12,11 +12,20 @@ function renderStrip(date = '2026-09-15', overrides: Partial<Parameters<typeof W
 }
 
 describe('WeekStrip', () => {
+	/**
+	 * By role and accessible name rather than by visible text (testing.md rule 2). The total is
+	 * rendered twice - in the strip for a wide screen and in a row beneath it for a phone - and CSS
+	 * decides which one is shown, which jsdom does not evaluate (`css: false`), so the text is
+	 * ambiguous and the name is not. Asking by role also keeps the assertion honest: `getByLabelText`
+	 * reads the attribute, where `getByRole` computes the name the way a browser does, and a name on
+	 * a role that cannot carry one would not be found. The phone row is covered where viewports are
+	 * real, in `e2e/day.spec.ts`.
+	 */
 	it('shows the seven days of the selected week plus the week total', async () => {
 		await renderStrip();
 
 		expect(screen.getAllByRole('link')).toHaveLength(7);
-		expect(screen.getByText('Weekly total')).toBeInTheDocument();
+		expect(screen.getByRole('group', { name: 'Weekly total, 10h' })).toBeInTheDocument();
 	});
 
 	it('shows what was logged on a day that has entries', async () => {

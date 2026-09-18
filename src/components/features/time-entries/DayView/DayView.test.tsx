@@ -20,10 +20,14 @@ function renderDay() {
 }
 
 /**
- * The day after the recorded one: empty, so it shows the empty state, and its yesterday is the day
- * the fixture describes.
+ * The day after the recorded one: empty, so it shows the empty state, and the last day with anything
+ * on it is the one the fixture describes.
  */
 const EMPTY_DATE = addDays(SEEDED_DATE, 1);
+
+/** Two days after it: empty, and so is the day before it - the copy has to look further back than
+ * one day to find the recorded day. */
+const SECOND_EMPTY_DATE = addDays(SEEDED_DATE, 2);
 
 /** The button and the toasts name the day they copy from rather than saying "yesterday", which on a
  * Monday would have meant the Sunday nobody worked. */
@@ -36,8 +40,8 @@ function renderEmptyDay() {
 	});
 }
 
-/** Waits for the empty state, then answers its `Copy from yesterday`. */
-async function copyYesterday(user: ReturnType<typeof userEvent.setup>) {
+/** Waits for the empty state, then answers whichever day its copy button offers. */
+async function copyEarlierDay(user: ReturnType<typeof userEvent.setup>) {
 	await user.click(await screen.findByRole('button', { name: /^Copy from / }));
 }
 
@@ -105,11 +109,11 @@ describe('DayView', () => {
 	 * The mutation is tested on its own; what only exists once the screen is assembled is the one
 	 * toast it raises, and the four things it can say.
 	 */
-	it('copies yesterday onto an empty day and says how many', async () => {
+	it('copies the last logged day onto an empty day and says how many', async () => {
 		const user = userEvent.setup();
 		await renderEmptyDay();
 
-		await copyYesterday(user);
+		await copyEarlierDay(user);
 
 		expect(await screen.findByRole('status')).toHaveTextContent(`3 entries copied from ${SOURCE_DAY}`);
 		await waitFor(() => {
@@ -135,22 +139,38 @@ describe('DayView', () => {
 		const user = userEvent.setup();
 		await renderEmptyDay();
 
-		await copyYesterday(user);
+		await copyEarlierDay(user);
 
 		expect(await screen.findByRole('alert')).toHaveTextContent('2 entries copied, 1 failed');
 	});
 
-	it('says so rather than nothing when yesterday was empty', async () => {
-		const user = userEvent.setup();
-		await renderWithProviders(<DayView session={testSession} date="2026-09-19" />, {
+	/**
+	 * The offer skips days with nothing on them. An empty Sunday offering an empty Saturday is an
+	 * offer to copy nothing, so it reaches past it to the last day that was worked.
+	 */
+	it('offers the last day with time on it rather than the day before', async () => {
+		await renderWithProviders(<DayView session={testSession} date={SECOND_EMPTY_DATE} />, {
 			session: testSession,
-			initialEntry: '/day/2026-09-19',
+			initialEntry: `/day/${SECOND_EMPTY_DATE}`,
 		});
 
-		await copyYesterday(user);
+		expect(await screen.findByRole('button', { name: `Copy from ${SOURCE_DAY}` })).toBeInTheDocument();
+	});
+
+	/** A week with nothing in it has no better day to offer, so the day before stands in - and then
+	 * there is genuinely nothing to copy. */
+	it('says so rather than nothing when the day it falls back to is empty', async () => {
+		const emptyWeekDay = '2026-09-26';
+		const user = userEvent.setup();
+		await renderWithProviders(<DayView session={testSession} date={emptyWeekDay} />, {
+			session: testSession,
+			initialEntry: `/day/${emptyWeekDay}`,
+		});
+
+		await copyEarlierDay(user);
 
 		expect(await screen.findByRole('status')).toHaveTextContent(
-			`Nothing was logged on ${formatDayShort(addDays('2026-09-19', -1))}.`
+			`Nothing was logged on ${formatDayShort(addDays(emptyWeekDay, -1))}.`
 		);
 	});
 
@@ -161,7 +181,7 @@ describe('DayView', () => {
 		await screen.findByRole('button', { name: /^Copy from / });
 
 		server.use(http.get('*/time_entries', () => new HttpResponse(null, { status: 500 })));
-		await copyYesterday(user);
+		await copyEarlierDay(user);
 
 		expect(await screen.findByRole('alert')).toHaveTextContent(`Could not read the entries for ${SOURCE_DAY}.`);
 	});

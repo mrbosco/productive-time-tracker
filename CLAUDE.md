@@ -2,8 +2,9 @@
 
 Client-side SPA (no server code) for managing a person's [Productive](https://www.productive.io/)
 time entries for a selected day: log in with an API token and organization ID, list entries for a
-date, create, edit and delete them. Built for the Productive Frontend Engineer take-home; the PDF
-in `docs/assignment/` is the source of truth.
+date, create, edit and delete them. Built for the Productive Frontend Engineer take-home. The
+assignment PDF is Productive's document and is not in the repo; `docs/SPEC.md` section 9 restates
+every requirement it sets.
 
 **Status: complete.** The assignment's five features plus the extras — week strip and timesheet,
 keyboard shortcuts, timer with idle awareness, range entry, duplicate and copy-day-forward, and
@@ -15,7 +16,6 @@ Authoritative over anything inferred from code. Read before changing.
 
 | Document              | Holds                                                                      |
 | --------------------- | -------------------------------------------------------------------------- |
-| `docs/assignment/`    | The assignment PDF. Outranks everything else                               |
 | `docs/SPEC.md`        | Architecture, UI components, API communication, assumptions, decisions     |
 | `docs/adr/0001..0010` | Decisions and their reasoning. Do not relitigate a decided ADR in code     |
 | `docs/api/README.md`  | Productive JSON:API endpoints, auth headers, filter shape, verified quirks |

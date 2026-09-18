@@ -70,10 +70,17 @@ function WeekTotalPanel({
 
 	const panel = (
 		<div
+			/* Named, so it needs a role that may carry a name: both children are `aria-hidden`, and
+			 * ARIA forbids naming the generic role a bare `div` has, so the label was being dropped
+			 * and the total reached a screen reader as nothing at all. */
+			role="group"
 			aria-label={isError ? 'Week total unavailable' : name}
 			className="flex h-[92px] w-[108px] flex-none flex-col items-center justify-center gap-0.5 rounded-input bg-selection/65 px-2 md:h-[124px] md:w-auto md:items-start md:px-4"
 		>
-			<span aria-hidden="true" className="text-title font-semibold tracking-tight text-accent-dark tabular-nums">
+			<span
+				aria-hidden="true"
+				className="text-title font-semibold tracking-tight whitespace-nowrap text-accent-dark tabular-nums"
+			>
 				{isError ? '·' : formatDuration(total)}
 			</span>
 			<span aria-hidden="true" className="text-micro font-medium whitespace-nowrap text-muted">
@@ -152,116 +159,134 @@ export function WeekStrip({
 
 	if (isPending) {
 		return (
-			<div className="flex gap-2 overflow-hidden md:grid md:grid-cols-8 md:gap-1 md:rounded-entry md:border md:border-line md:bg-surface md:p-2">
-				{days.map((day) => (
-					<CellSkeleton key={day} className="h-[92px] w-16 flex-none md:h-[124px] md:w-auto" />
-				))}
-				<CellSkeleton className="h-[92px] w-[108px] flex-none md:h-[124px] md:w-auto" />
+			<div className="flex flex-col gap-3">
+				<div className="flex gap-2 overflow-hidden md:grid md:grid-cols-8 md:gap-1 md:rounded-entry md:border md:border-line md:bg-surface md:p-2">
+					{days.map((day) => (
+						<CellSkeleton key={day} className="h-[92px] w-16 flex-none md:h-[124px] md:w-auto" />
+					))}
+					<CellSkeleton className="hidden md:block md:h-[124px] md:w-auto" />
+				</div>
+				<CellSkeleton className="h-[66px] md:hidden" />
 			</div>
 		);
 	}
 
 	return (
-		<nav
-			ref={stripRef}
-			aria-label="Week"
-			className="-mx-4 flex [scrollbar-width:none] gap-2 overflow-x-auto px-4 md:mx-0 md:grid md:grid-cols-8 md:gap-1 md:overflow-visible md:rounded-entry md:border md:border-line md:bg-surface md:p-2"
-		>
-			{days.map((day) => {
-				const isSelected = day === date;
-				const minutes = weekTotals?.[day] ?? 0;
-				const expected = expectedOn(day);
-				// The person's own working hours where they are known, which catches a four-day week that a
-				// weekend test cannot. The weekend is the fallback for an account that has never set any.
-				const isNonWorking = expected === null ? isWeekend(day) : expected === 0;
+		<div className="flex flex-col gap-3">
+			<nav
+				ref={stripRef}
+				aria-label="Week"
+				className="-mx-4 flex [scrollbar-width:none] gap-2 overflow-x-auto px-4 md:mx-0 md:grid md:grid-cols-8 md:gap-1 md:overflow-visible md:rounded-entry md:border md:border-line md:bg-surface md:p-2"
+			>
+				{days.map((day) => {
+					const isSelected = day === date;
+					const minutes = weekTotals?.[day] ?? 0;
+					const expected = expectedOn(day);
+					// The person's own working hours where they are known, which catches a four-day week that a
+					// weekend test cannot. The weekend is the fallback for an account that has never set any.
+					const isNonWorking = expected === null ? isWeekend(day) : expected === 0;
 
-				const cell = (
-					<Link
-						key={day}
-						ref={isSelected ? selectedRef : undefined}
-						to="/day/$date"
-						params={{ date: day }}
-						aria-label={describeCell(day, minutes, isNonWorking, isError, expected)}
-						className={cn(
-							'duration-ui relative flex h-[92px] w-16 flex-none flex-col items-center gap-1 overflow-hidden rounded-input border bg-surface pt-2.5 leading-[1.2] whitespace-nowrap transition-colors ease-ui hover:bg-subtle md:h-[124px] md:w-auto md:items-start md:gap-2 md:px-4 md:pt-3',
-							isNonWorking
-								? 'border-dashed border-line hatched md:border-transparent'
-								: 'border-line md:border-transparent',
-							isSelected && 'border-accent bg-accent text-white shadow-fab hover:bg-accent md:border-accent'
-						)}
-					>
-						<span
-							aria-hidden="true"
-							className={cn('text-micro font-medium md:hidden', isSelected ? 'text-white/80' : 'text-muted')}
-						>
-							{formatWeekdayInitial(day)}
-						</span>
-						<span
-							aria-hidden="true"
-							className={cn('hidden text-caption font-medium md:block', isSelected ? 'text-white/80' : 'text-muted')}
-						>
-							{formatWeekdayAndDay(day).split(' ')[0]}
-						</span>
-						<span
-							aria-hidden="true"
+					const cell = (
+						<Link
+							key={day}
+							ref={isSelected ? selectedRef : undefined}
+							to="/day/$date"
+							params={{ date: day }}
+							aria-label={describeCell(day, minutes, isNonWorking, isError, expected)}
 							className={cn(
-								'text-title font-semibold tracking-tight tabular-nums md:text-[28px]',
-								isNonWorking && !isSelected && 'text-muted'
+								'duration-ui relative flex h-[92px] w-16 flex-none flex-col items-center gap-1 overflow-hidden rounded-input border bg-surface pt-2.5 leading-[1.2] whitespace-nowrap transition-colors ease-ui hover:bg-subtle md:h-[124px] md:w-auto md:items-start md:gap-2 md:px-4 md:pt-3',
+								isNonWorking
+									? 'border-dashed border-line hatched md:border-transparent'
+									: 'border-line md:border-transparent',
+								isSelected && 'border-accent bg-accent text-white shadow-fab hover:bg-accent md:border-accent'
 							)}
 						>
-							{dayOfMonth(day)}
-						</span>
-						<span
-							aria-hidden="true"
-							className={cn(
-								'text-micro font-medium tabular-nums md:text-caption',
-								isSelected ? 'text-white/80' : 'text-muted'
-							)}
-						>
-							{isError ? '·' : formatCellTotal(minutes, isNonWorking)}
-						</span>
-
-						{day === today && (
 							<span
-								className={cn(
-									'absolute top-1.5 right-1.5 size-[5px] rounded-pill md:top-3 md:right-3 md:size-1.5',
-									isSelected ? 'bg-white' : 'bg-accent'
-								)}
-							/>
-						)}
-						{!isError && expected !== null && expected > 0 && (
+								aria-hidden="true"
+								className={cn('text-micro font-medium md:hidden', isSelected ? 'text-white/80' : 'text-muted')}
+							>
+								{formatWeekdayInitial(day)}
+							</span>
+							<span
+								aria-hidden="true"
+								className={cn('hidden text-caption font-medium md:block', isSelected ? 'text-white/80' : 'text-muted')}
+							>
+								{formatWeekdayAndDay(day).split(' ')[0]}
+							</span>
 							<span
 								aria-hidden="true"
 								className={cn(
-									'absolute inset-x-4 bottom-3 hidden h-[3px] overflow-hidden rounded-pill md:block',
-									isSelected ? 'bg-white/20' : 'bg-subtle'
+									'text-title font-semibold tracking-tight tabular-nums md:text-[28px]',
+									isNonWorking && !isSelected && 'text-muted'
 								)}
 							>
+								{dayOfMonth(day)}
+							</span>
+							<span
+								aria-hidden="true"
+								className={cn(
+									'text-micro font-medium tabular-nums md:text-caption',
+									isSelected ? 'text-white/80' : 'text-muted'
+								)}
+							>
+								{isError ? '·' : formatCellTotal(minutes, isNonWorking)}
+							</span>
+
+							{day === today && (
 								<span
 									className={cn(
-										'block h-full rounded-pill transition-[width] duration-500',
-										isSelected ? 'bg-white' : 'bg-accent/60'
+										'absolute top-1.5 right-1.5 size-[5px] rounded-pill md:top-3 md:right-3 md:size-1.5',
+										isSelected ? 'bg-white' : 'bg-accent'
 									)}
-									style={{ width: `${Math.min(100, (minutes / expected) * 100)}%` }}
 								/>
-							</span>
-						)}
-					</Link>
-				);
+							)}
+							{!isError && expected !== null && expected > 0 && (
+								<span
+									aria-hidden="true"
+									className={cn(
+										'absolute inset-x-4 bottom-3 hidden h-[3px] overflow-hidden rounded-pill md:block',
+										isSelected ? 'bg-white/20' : 'bg-subtle'
+									)}
+								>
+									<span
+										className={cn(
+											'block h-full rounded-pill transition-[width] duration-500',
+											isSelected ? 'bg-white' : 'bg-accent/60'
+										)}
+										style={{ width: `${Math.min(100, (minutes / expected) * 100)}%` }}
+									/>
+								</span>
+							)}
+						</Link>
+					);
 
-				if (!hasHover || expected === null || isError) return cell;
+					if (!hasHover || expected === null || isError) return cell;
 
-				return (
-					<Tooltip key={day}>
-						<TooltipTrigger asChild>{cell}</TooltipTrigger>
-						<TooltipContent side="bottom" className="min-w-[232px]">
-							<ExpectedRows expected={expected} worked={minutes} />
-						</TooltipContent>
-					</Tooltip>
-				);
-			})}
+					return (
+						<Tooltip key={day}>
+							<TooltipTrigger asChild>{cell}</TooltipTrigger>
+							<TooltipContent side="bottom" className="min-w-[232px]">
+								<ExpectedRows expected={expected} worked={minutes} />
+							</TooltipContent>
+						</Tooltip>
+					);
+				})}
 
-			<WeekTotalPanel total={weekTotal} expected={weekExpected} isError={isError} hasHover={hasHover} />
-		</nav>
+				<div className="hidden md:contents">
+					<WeekTotalPanel total={weekTotal} expected={weekExpected} isError={isError} hasHover={hasHover} />
+				</div>
+			</nav>
+			<div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 rounded-control border border-accent/10 bg-selection/65 px-4 py-3 md:hidden">
+				<div className="flex flex-col gap-0.5">
+					<span className="text-label font-medium text-accent-dark">Weekly total</span>
+					{!isError && weekExpected !== null && weekExpected > 0 && (
+						<span className="text-caption text-muted">{formatDuration(weekExpected)} expected</span>
+					)}
+				</div>
+				<span className="text-title font-semibold tracking-tight whitespace-nowrap text-accent-dark tabular-nums">
+					{isError ? 'Unavailable' : formatDuration(weekTotal)}
+				</span>
+			</div>
+		</div>
 	);
 }

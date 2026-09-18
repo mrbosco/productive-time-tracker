@@ -9,17 +9,20 @@ import { useEffect } from 'react';
 let lastEnteredDay: string | null = null;
 
 /**
- * The entrance class for a day, or nothing when this day is already on screen.
+ * Whether this day is arriving now rather than already being on screen. The caller picks its own
+ * animation; several parts of the day animate together, so each asks during the same render pass
+ * and they all get the same answer before any effect runs.
  *
- * Several parts of the day animate together, so each asks during the same render pass and they all
- * get the same answer before any effect runs.
+ * `settled` is for the one caller that knows whether the day is really on screen: a skeleton would
+ * otherwise spend the entrance, and the rows it stands in for would appear without one. Callers
+ * that cannot tell leave it alone and only ask.
  */
-export function useDayEntrance(date: string): string {
+export function useDayEntrance(date: string, settled = false): boolean {
 	const isNewDay = lastEnteredDay !== date;
 
 	useEffect(() => {
-		lastEnteredDay = date;
-	}, [date]);
+		if (settled) lastEnteredDay = date;
+	}, [date, settled]);
 
-	return isNewDay ? 'animate-day-in' : '';
+	return isNewDay;
 }

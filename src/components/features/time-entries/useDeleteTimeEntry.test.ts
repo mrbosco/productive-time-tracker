@@ -92,8 +92,8 @@ describe('useDeleteTimeEntry', () => {
 	});
 
 	/**
-	 * The edit route reads its entry through `ensureQueryData`, so an invalidated copy left in the
-	 * cache would be handed straight back - opening a form on an entry that no longer exists.
+	 * The edit route reads its entry in a loader, so an invalidated copy left in the cache would be
+	 * young enough to be handed straight back - opening a form on an entry that no longer exists.
 	 */
 	it('drops the deleted entry from the cache rather than leaving it stale', async () => {
 		const { result, queryClient } = renderHookWithProviders(() => useDeleteTimeEntry(testSession));

@@ -28,30 +28,48 @@ export function useUpdateTimeEntry(session: Session) {
 		 * written, so the number has to move with it - waiting for a PATCH and a refetch reads as the
 		 * edit having been ignored. A date move rewrites which day an entry is on, which is more than
 		 * a cache can honestly guess at. */
-		onMutate: ({ id, date, previousDate, changes }) => {
-			if (changes.minutes === undefined || date !== previousDate) return undefined;
+		onMutate: async ({ id, date, previousDate, changes }) => {
+			const minutes = changes.minutes;
+			if (minutes === undefined || date !== previousDate) return undefined;
 
-			const keys = [[...weekQueryKey(session, date)]];
-			const previous = keys.map((key) => [key, queryClient.getQueryData<TimeEntry[]>(key)] as const);
+			const weekKey = weekQueryKey(session, date);
 
-			for (const [key] of previous) {
-				queryClient.setQueryData<TimeEntry[]>(key, (entries) =>
-					entries?.map((entry) => (entry.id === id ? { ...entry, minutes: changes.minutes ?? entry.minutes } : entry))
-				);
-			}
+			/* A refetch already in flight would land after this and put the old number back, which is
+			 * the same reason `useDeleteTimeEntry` cancels before it writes. The `onSuccess` below
+			 * invalidates the week anyway, so nothing is left waiting on the fetch dropped here. */
+			await queryClient.cancelQueries({ queryKey: weekKey });
 
-			return { previous };
+			const previousMinutes = queryClient.getQueryData<TimeEntry[]>(weekKey)?.find((entry) => entry.id === id)?.minutes;
+
+			queryClient.setQueryData<TimeEntry[]>(weekKey, (entries) =>
+				entries?.map((entry) => (entry.id === id ? { ...entry, minutes } : entry))
+			);
+
+			return { weekKey, previousMinutes };
 		},
 
-		onError: (_error, _input, context) => {
-			for (const [key, entries] of context?.previous ?? []) queryClient.setQueryData(key, entries);
+		/** One entry's minutes, not the week as it was. A snapshot of the whole array written back
+		 * would also undo what another write had done to a different row while this PATCH was in
+		 * flight - a row deleted in the meantime would reappear until the next refetch. */
+		onError: (_error, { id }, context) => {
+			if (context?.previousMinutes === undefined) return;
+
+			const { weekKey, previousMinutes } = context;
+			queryClient.setQueryData<TimeEntry[]>(weekKey, (entries) =>
+				entries?.map((entry) => (entry.id === id ? { ...entry, minutes: previousMinutes } : entry))
+			);
 		},
 
-		onSuccess: (_entry, { id, previousDate, date }) => {
+		/* After either outcome, as `useDeleteTimeEntry` does it. On success this is what replaces the
+		 * optimistic guess with the server's answer; on failure it is what makes the week readable
+		 * again - `onMutate` cancelled whatever fetch was in flight, and a cancel reverts rather than
+		 * resumes, so a first fetch dropped there would otherwise leave the day on its skeleton with
+		 * nothing left to finish it. The duration restored by `onError` is also of unknown age. */
+		onSettled: (_entry, _error, { id, previousDate, date }) => {
 			/* Removed, not invalidated: nothing observes this key, because the edit route reads its
 			 * entry from a loader, and `invalidateQueries` only refetches what something watches. An
-			 * invalidated one would sit stale and `ensureQueryData` would hand it straight back, so
-			 * reopening an entry just saved prefilled the values from before the save. */
+			 * invalidated one would sit in the cache fresh enough for the loader to hand straight
+			 * back, so reopening an entry just saved prefilled the values from before the save. */
 			queryClient.removeQueries({ queryKey: ['time-entry', id] });
 
 			// Both weeks, because an edit can move an entry across a week boundary. A Set, because

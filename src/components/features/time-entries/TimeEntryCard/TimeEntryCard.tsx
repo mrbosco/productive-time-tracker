@@ -123,8 +123,10 @@ export function TimeEntryCard({
 				setIsEditingDuration(true);
 			}}
 			className={cn(
-				'duration-ui group relative flex min-h-[76px] flex-wrap items-start gap-3.5 rounded-input border bg-surface p-3 transition-colors md:flex-nowrap md:items-center md:gap-4 md:px-4 md:py-6',
-				isTracking ? 'border-transparent bg-selection/65' : 'border-transparent hover:bg-canvas/80'
+				'duration-ui group relative flex min-h-[76px] flex-wrap items-start gap-3 rounded-entry border bg-surface p-4 transition-colors md:flex-nowrap md:items-center md:gap-4 md:px-4 md:py-6',
+				isTracking
+					? 'border-accent/15 bg-selection/65 md:border-transparent'
+					: 'border-line md:border-transparent md:hover:bg-canvas/80'
 			)}
 		>
 			{isTracking && (
@@ -134,7 +136,7 @@ export function TimeEntryCard({
 				name={entry.service?.companyName ?? ''}
 				src={entry.service?.companyAvatarUrl}
 				initialsFrom="start"
-				className="size-11 flex-none rounded-[13px] object-contain p-2"
+				className="hidden size-11 flex-none rounded-[13px] object-contain p-2 md:grid"
 				fallbackClassName={cn(
 					'text-micro font-bold tracking-[.02em]',
 					entry.service?.companyName === null || entry.service?.companyName === undefined
@@ -143,10 +145,10 @@ export function TimeEntryCard({
 				)}
 			/>
 
-			<div className="order-last flex min-w-0 flex-1 basis-full flex-col gap-1.5 md:order-none md:basis-auto">
+			<div className="flex min-w-0 flex-1 basis-full flex-col gap-3 md:basis-auto md:gap-1.5">
 				<div className="flex flex-wrap items-center gap-2">
 					<ServiceContext service={entry.service} />
-					<time dateTime={entry.date} className="text-caption leading-[140%] text-muted">
+					<time dateTime={entry.date} className="hidden text-caption leading-[140%] text-muted md:block">
 						{formatDayShort(entry.date)}
 					</time>
 					{isTracking && (
@@ -173,89 +175,96 @@ export function TimeEntryCard({
 				{hasNote ? <ClampedNote note={entry.note ?? ''} /> : <p className="text-label text-muted">No description</p>}
 			</div>
 
-			{hasHover &&
-				(isTracking ? null : isEditingDuration || onContinueTimer === undefined ? (
-					<span aria-hidden="true" className="hidden size-9 flex-none md:block" />
+			<div className="flex w-full items-center gap-2 border-t border-line/70 pt-2 md:contents">
+				<time dateTime={entry.date} className="mr-auto text-caption text-muted md:hidden">
+					{formatDayShort(entry.date)}
+				</time>
+				{hasHover &&
+					(isTracking ? null : isEditingDuration || onContinueTimer === undefined ? (
+						<span aria-hidden="true" className="hidden size-9 flex-none md:block" />
+					) : (
+						<button
+							type="button"
+							aria-label="Continue timer on this entry"
+							title="Continue timer"
+							onClick={onContinueTimer}
+							className={cn(
+								'duration-ui hidden size-9 flex-none place-items-center rounded-control border border-line text-accent transition-colors ease-ui hover:border-transparent hover:bg-selection md:grid',
+								REVEALED
+							)}
+						>
+							<PlayIcon />
+						</button>
+					))}
+
+				{isTracking && onStopTimer !== undefined && (
+					<StopTimerButton
+						onStop={onStopTimer}
+						label="Stop"
+						className="ml-auto h-9 flex-none rounded-[10px] border border-accent/15 bg-surface text-accent-dark shadow-control transition-colors hover:scale-100 hover:bg-selection md:ml-0"
+					/>
+				)}
+
+				{hasHover && onSaveDuration !== undefined ? (
+					<DurationEditor
+						minutes={minutes}
+						isTracking={isTracking}
+						onSave={async (next) => {
+							await onSaveDuration(next);
+							setHasJustSaved(true);
+						}}
+						isEditing={isEditingDuration}
+						onEditingChange={setIsEditingDuration}
+						isRevealed={REVEALED}
+					/>
 				) : (
-					<button
-						type="button"
-						aria-label="Continue timer on this entry"
-						title="Continue timer"
-						onClick={onContinueTimer}
+					<p
 						className={cn(
-							'duration-ui hidden size-9 flex-none place-items-center rounded-control border border-line text-accent transition-colors ease-ui hover:border-transparent hover:bg-selection md:grid',
-							REVEALED
+							'flex-none rounded-control bg-canvas px-3 py-2 text-duration leading-[120%] font-semibold tracking-[-.01em] whitespace-nowrap tabular-nums md:bg-transparent md:p-0 md:font-medium',
+							isTracking && 'text-accent-dark'
 						)}
 					>
-						<PlayIcon />
-					</button>
-				))}
+						{formatDuration(minutes)}
+					</p>
+				)}
 
-			{isTracking && onStopTimer !== undefined && (
-				<StopTimerButton
-					onStop={onStopTimer}
-					label="Stop"
-					className="ml-auto h-9 flex-none rounded-[10px] border border-accent/15 bg-surface text-accent-dark shadow-control transition-colors hover:scale-100 hover:bg-selection md:ml-0"
-				/>
-			)}
+				<DropdownMenu>
+					<DropdownMenuTrigger
+						aria-label="Entry actions"
+						className="duration-ui -mr-2.5 grid size-11 flex-none place-items-center rounded-control text-muted transition-colors ease-ui hover:bg-subtle hover:text-ink md:-mt-0 md:-mr-1 md:size-9"
+					>
+						<KebabIcon />
+					</DropdownMenuTrigger>
 
-			{hasHover && onSaveDuration !== undefined ? (
-				<DurationEditor
-					minutes={minutes}
-					isTracking={isTracking}
-					onSave={async (next) => {
-						await onSaveDuration(next);
-						setHasJustSaved(true);
-					}}
-					isEditing={isEditingDuration}
-					onEditingChange={setIsEditingDuration}
-					isRevealed={REVEALED}
-				/>
-			) : (
-				<p
-					className={cn(
-						'ml-auto flex-none pt-0.5 text-duration leading-[120%] font-medium tracking-[-.01em] tabular-nums md:ml-0 md:pt-0',
-						isTracking && 'text-accent-dark'
-					)}
-				>
-					{formatDuration(minutes)}
-				</p>
-			)}
-
-			<DropdownMenu>
-				<DropdownMenuTrigger
-					aria-label="Entry actions"
-					className="duration-ui -mr-2.5 grid size-11 flex-none place-items-center rounded-control text-muted transition-colors ease-ui hover:bg-subtle hover:text-ink md:-mt-0 md:-mr-1 md:size-9"
-				>
-					<KebabIcon />
-				</DropdownMenuTrigger>
-
-				{/* `Edit` is a `Link`, never an import of the form: TipTap is 404 kB raw and
+					{/* `Edit` is a `Link`, never an import of the form: TipTap is 404 kB raw and
 				     `autoCodeSplitting` keeps it out of the day's chunk. `Duplicate` carries the entry's
 				     ID rather than its values, so nobody's description ends up in a URL. */}
-				<DropdownMenuContent align="end" className="w-[210px]">
-					<DropdownMenuItem asChild>
-						<Link to="/entries/$id/edit" params={{ id: entry.id }} resetScroll={false}>
-							Edit
-						</Link>
-					</DropdownMenuItem>
-					{!hasHover && (
-						<DropdownMenuItem disabled={isTracking || onContinueTimer === undefined} onSelect={onContinueTimer}>
-							Continue timer
+					<DropdownMenuContent align="end" className="w-[210px]">
+						<DropdownMenuItem asChild>
+							<Link to="/entries/$id/edit" params={{ id: entry.id }} resetScroll={false}>
+								Edit
+							</Link>
 						</DropdownMenuItem>
-					)}
-					<DropdownMenuItem asChild>
-						<Link to="/entries/new" search={{ date: todayIso(), duplicate: entry.id }} resetScroll={false}>
-							Duplicate
-						</Link>
-					</DropdownMenuItem>
-					{onShowTimerLogs !== undefined && <DropdownMenuItem onSelect={onShowTimerLogs}>Timer logs</DropdownMenuItem>}
-					<DropdownMenuSeparator />
-					<DropdownMenuItem variant="destructive" onSelect={onRequestDelete}>
-						Delete
-					</DropdownMenuItem>
-				</DropdownMenuContent>
-			</DropdownMenu>
+						{!hasHover && (
+							<DropdownMenuItem disabled={isTracking || onContinueTimer === undefined} onSelect={onContinueTimer}>
+								Continue timer
+							</DropdownMenuItem>
+						)}
+						<DropdownMenuItem asChild>
+							<Link to="/entries/new" search={{ date: todayIso(), duplicate: entry.id }} resetScroll={false}>
+								Duplicate
+							</Link>
+						</DropdownMenuItem>
+						{onShowTimerLogs !== undefined && (
+							<DropdownMenuItem onSelect={onShowTimerLogs}>Timer logs</DropdownMenuItem>
+						)}
+						<DropdownMenuSeparator />
+						<DropdownMenuItem variant="destructive" onSelect={onRequestDelete}>
+							Delete
+						</DropdownMenuItem>
+					</DropdownMenuContent>
+				</DropdownMenu>
+			</div>
 		</article>
 	);
 }

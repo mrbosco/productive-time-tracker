@@ -106,10 +106,13 @@ test.describe('the day view', { tag: '@mobile' }, () => {
 	test('shows the week around the selected day', async ({ page }) => {
 		await page.goto(`/day/${SEEDED_DATE}`);
 
-		// Mon 14 to Sun 20, plus the week's own total cell.
+		// Mon 14 to Sun 20, plus the week's own total.
 		await expect(page.getByRole('link', { name: /^Mon 14 Sep/ })).toBeVisible();
 		await expect(page.getByRole('link', { name: /^Sun 20 Sep/ })).toBeVisible();
-		await expect(page.getByText('Weekly total', { exact: true })).toBeVisible();
+		/* The total is the eighth cell of the strip on a wide screen and its own row underneath on a
+		 * phone, so both are in the markup and CSS picks one. Filtered to the one this viewport shows,
+		 * which is what makes the single assertion true in both projects. */
+		await expect(page.getByText('Weekly total', { exact: true }).filter({ visible: true })).toBeVisible();
 	});
 
 	test('moves to another day from the week strip', async ({ page }) => {
