@@ -14,8 +14,15 @@ established by recording real responses into [`docs/api/samples/`](docs/api/samp
 
 ```sh
 nvm use                # Node 22 (.nvmrc)
-corepack enable        # pnpm 12
+corepack enable        # pnpm 12, from the packageManager pin
 pnpm install
+```
+
+**`pnpm install` fails with `ERR_PNPM_NO_MATCHING_VERSION` for `@pnpm/macos-arm64@12.4.2`?** A
+standalone pnpm cannot self-manage to 12.x. Run it through the JavaScript build instead:
+
+```sh
+npx pnpm@12.4.2 install
 ```
 
 **Without a Productive account** — runs against mock handlers, no credentials needed:
