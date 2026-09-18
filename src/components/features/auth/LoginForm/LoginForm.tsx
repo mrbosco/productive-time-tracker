@@ -129,7 +129,9 @@ export function LoginForm() {
 
 	return (
 		<div className="w-full max-w-[460px]">
-			<img src={logoUrl} alt="Productive" className="mx-auto mb-8 h-7 w-auto" />
+			{/* Decorative: the `h1` below already says the name, and an alt of "Productive" made a
+			    screen reader announce it twice before reaching the heading. */}
+			<img src={logoUrl} alt="" className="mx-auto mb-8 h-7 w-auto" />
 			<form
 				noValidate
 				onSubmit={(event) => {

@@ -70,6 +70,10 @@ function WeekTotalPanel({
 
 	const panel = (
 		<div
+			/* Named, so it needs a role that may carry a name: both children are `aria-hidden`, and
+			 * ARIA forbids naming the generic role a bare `div` has, so the label was being dropped
+			 * and the total reached a screen reader as nothing at all. */
+			role="group"
 			aria-label={isError ? 'Week total unavailable' : name}
 			className="flex h-[92px] w-[108px] flex-none flex-col items-center justify-center gap-0.5 rounded-input bg-selection/65 px-2 md:h-[124px] md:w-auto md:items-start md:px-4"
 		>

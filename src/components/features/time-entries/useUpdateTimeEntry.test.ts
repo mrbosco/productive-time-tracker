@@ -126,6 +126,25 @@ describe('useUpdateTimeEntry', () => {
 		expect(queryClient.getQueryData<TimeEntry[]>(weekKey)?.map((entry) => entry.minutes)).toEqual([300]);
 	});
 
+	/**
+	 * `onMutate` cancels the week fetch before it writes, and a cancel reverts rather than resumes -
+	 * so a first fetch dropped there leaves nothing to finish it. Invalidating on success alone left
+	 * the day behind a failed save on its skeleton, and left the duration `onError` restored sitting
+	 * at an unknown age. `useDeleteTimeEntry` has settled both outcomes since it was written.
+	 */
+	it('makes the week readable again after a failed edit, not only a successful one', async () => {
+		server.use(http.patch('*/time_entries/:id', () => new HttpResponse(null, { status: 500 })));
+		const { result, queryClient } = renderHookWithProviders(() => useUpdateTimeEntry(testSession));
+		const weekKey = weekQueryKey(testSession, DATE);
+		queryClient.setQueryData<TimeEntry[]>(weekKey, [buildEntry({ id: ENTRY_ID, minutes: 300 })]);
+
+		await result.current
+			.mutateAsync({ id: ENTRY_ID, previousDate: DATE, date: DATE, changes: { minutes: 45 } })
+			.catch(() => null);
+
+		expect(queryClient.getQueryState(weekKey)?.isInvalidated).toBe(true);
+	});
+
 	it('throws when the API rejects the edit, so the form can show why', async () => {
 		server.use(http.patch('*/time_entries/:id', () => new HttpResponse(null, { status: 500 })));
 		const { result } = renderHookWithProviders(() => useUpdateTimeEntry(testSession));

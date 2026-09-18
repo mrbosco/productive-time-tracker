@@ -60,7 +60,12 @@ export function useUpdateTimeEntry(session: Session) {
 			);
 		},
 
-		onSuccess: (_entry, { id, previousDate, date }) => {
+		/* After either outcome, as `useDeleteTimeEntry` does it. On success this is what replaces the
+		 * optimistic guess with the server's answer; on failure it is what makes the week readable
+		 * again - `onMutate` cancelled whatever fetch was in flight, and a cancel reverts rather than
+		 * resumes, so a first fetch dropped there would otherwise leave the day on its skeleton with
+		 * nothing left to finish it. The duration restored by `onError` is also of unknown age. */
+		onSettled: (_entry, _error, { id, previousDate, date }) => {
 			/* Removed, not invalidated: nothing observes this key, because the edit route reads its
 			 * entry from a loader, and `invalidateQueries` only refetches what something watches. An
 			 * invalidated one would sit in the cache fresh enough for the loader to hand straight
