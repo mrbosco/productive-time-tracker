@@ -14,3 +14,7 @@ test-results
 # Git worktrees created under the project (`git worktree add .claude/worktrees/<branch>`)
 .claude/worktrees/
 .tanstack
+
+# The assignment PDF is Productive's own document, not ours to publish. Keep it here locally; it
+# stays out of the repo. SPEC 9 restates every requirement it sets.
+docs/assignment/
