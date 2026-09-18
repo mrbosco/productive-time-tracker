@@ -126,8 +126,11 @@ choice, with **`ServicePicker`** providing search and grouping by company.
 ### Responsive behaviour
 
 Mobile is a design rather than a reflow: the app bar collapses, the week strip becomes a
-horizontally scrollable rail, the totals panel drops, the entry form becomes full-screen with a
-sticky footer, and the timesheet is withheld entirely. Accessibility throughout is semantic HTML
+horizontally scrollable rail whose total leaves the rail for a row beneath it, the day-overview
+panel drops, entries become standalone cards with a footer carrying the date beside the duration
+rather than rows in one container, the company avatar and the inline date are withheld as the width
+for them is, the login screen puts its heading in a banded header and its storage note in a footer,
+the entry form becomes full-screen with a sticky footer, and the timesheet is withheld entirely. Accessibility throughout is semantic HTML
 first — labelled inputs, focus moved to the page heading on navigation, focus trapped and returned
 by dialogs, AA contrast, and every control keyboard-operable.
 
@@ -281,15 +284,17 @@ The brief notes that a submission implementing only CRUD reads as incomplete, so
 built on top of the five required features. Each is described in
 [ADR-0008](adr/0008-extra-features.md).
 
-| | Feature |
-| --- | --- |
-| Week strip and timesheet | Seven days and a weekly total from one request; a desktop timesheet grid with expected hours read from the person's availability |
-| Keyboard shortcuts | `n`, `←`/`→`, `t`, `↑`/`↓`, `e`, `Del`, `s`, `?`, `Esc`, all suppressed inside a field or a dialog |
-| Timer | Start, stop, continue an existing entry, and survive a refresh |
-| Idle awareness | Notices a timer running with nobody there and offers to deduct the idle time |
-| Range entry | Log an entry as a start and end time instead of a duration |
-| Duplicate and copy forward | Duplicate one entry, or fill an empty day from the last day that was worked |
-| Rich-text descriptions | Round-trip with Productive's own editor |
+Identifiers are used in commit footers, as `R-n` and `N-n` are; each is defined in ADR-0008.
+
+| | Feature | |
+| --- | --- | --- |
+| X-1 | Week strip and timesheet | Seven days and a weekly total from one request; a desktop timesheet grid with expected hours read from the person's availability |
+| X-2 | Keyboard shortcuts | `n`, `←`/`→`, `t`, `↑`/`↓`, `e`, `Del`, `s`, `?`, `Esc`, all suppressed inside a field or a dialog |
+| X-4 | Timer | Start, stop, continue an existing entry, and survive a refresh |
+| X-5 | Idle awareness | Notices a timer running with nobody there and offers to deduct the idle time |
+| P-2 | Range entry | Log an entry as a start and end time instead of a duration |
+| X-3 | Duplicate and copy forward | Duplicate one entry, or fill an empty day from the last day that was worked |
+| ADR-0010 | Rich-text descriptions | Round-trip with Productive's own editor |
 
 ## 7. Testing
 
